@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">مساعد BYD NG</string>
+    <string name="wheel_key_service_name">زر المقود لمساعد BYD NG</string>
+    <string name="wheel_key_service_description">يتيح لمساعد BYD NG بدء الاستماع عند الضغط على زر الميكروفون في المقود. يراقب هذا الزر فقط، ولا يقرأ الشاشة ولا ما تكتبه.</string>
+
+    <!-- Shared actions -->
+    <string name="action_back">رجوع</string>
+    <string name="action_cancel">إلغاء</string>
+    <string name="action_enable">تفعيل</string>
+    <string name="action_save">حفظ</string>
+    <string name="action_clear">مسح</string>
+    <string name="action_share">مشاركة</string>
+
+    <!-- Home -->
+    <string name="home_settings">الإعدادات</string>
+    <string name="home_vehicle_armed">التحكم بالسيارة مفعّل</string>
+    <string name="home_talk">تحدّث</string>
+    <string name="home_tap_to_talk">اضغط للتحدث</string>
+    <string name="home_connecting">جارٍ الاتصال…</string>
+    <string name="home_listening">أستمع… اضغط للإنهاء</string>
+    <string name="home_thinking">أفكّر…</string>
+
+    <!-- Status banner -->
+    <string name="banner_connecting">جارٍ الاتصال…</string>
+    <string name="banner_listening">أستمع…</string>
+    <string name="banner_thinking">أفكّر…</string>
+    <string name="banner_speaking">أتحدث…</string>
+    <string name="banner_error">حدث خطأ</string>
+    <string name="banner_listening_press_to_stop">أستمع… اضغط للإيقاف</string>
+    <string name="banner_navigating">جارٍ التنقل إلى %1$s</string>
+    <string name="banner_opening_app">فتح %1$s</string>
+    <string name="banner_media">الوسائط: %1$s</string>
+    <string name="media_play">تشغيل</string>
+    <string name="media_pause">إيقاف مؤقت</string>
+    <string name="media_next">التالي</string>
+    <string name="media_previous">السابق</string>
+    <string name="media_stop">إيقاف</string>
+
+    <!-- Errors shown to the user -->
+    <string name="err_no_audio">لم يتم التقاط أي صوت</string>
+    <string name="err_cant_record">تعذّر بدء التسجيل</string>
+    <string name="err_mic_off">إذن الميكروفون متوقف — افتح مساعد BYD NG لمنحه</string>
+    <string name="err_finish_setup">أكمل إعداد مساعد BYD NG أولاً</string>
+    <string name="fail_no_network">لا يوجد اتصال بالإنترنت — تحقق من الشبكة أو من نقطة اتصال هاتفك</string>
+    <string name="fail_api_key">رفض Gemini الطلب — تحقق من مفتاح API في الإعدادات</string>
+    <string name="fail_busy">Gemini مشغول أو تجاوز الحد المسموح — حاول بعد قليل</string>
+    <string name="fail_generic">فشل الاتصال الصوتي — حاول مرة أخرى</string>
+    <string name="fail_no_key">أضف مفتاح Gemini API في إعدادات مساعد BYD NG</string>
+    <string name="err_mic_reopen">تعذّرت إعادة تشغيل الميكروفون.</string>
+    <string name="fail_lost">انقطع الاتصال الصوتي</string>
+    <string name="classic_no_key">لم يُضبط مفتاح Gemini API بعد — أضفه في الإعدادات.</string>
+    <string name="classic_cant_read">تعذّرت قراءة التسجيل.</string>
+    <string name="classic_empty_reply">رد فارغ من Gemini.</string>
+    <string name="classic_key_rejected">رفض Gemini مفتاح API — تحقق منه في الإعدادات.</string>
+    <string name="classic_permission_denied">رفضت Google الوصول لمشروع هذا المفتاح%1$s. إعادة إدخال المفتاح لن تفيد — استخدم مفتاحاً من مشروع آخر أو راجع AI Studio.</string>
+    <string name="classic_rate_limited">يحدّ Gemini من عدد الطلبات — حاول بعد قليل.</string>
+    <string name="classic_network">تعذّر الوصول إلى Gemini — تحقق من الاتصال.</string>
+    <string name="classic_provider_error">أعاد Gemini خطأً.</string>
+    <string name="classic_empty_response">أعاد Gemini رداً فارغاً.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="app_language_title">لغة التطبيق</string>
+    <string name="app_language_hint">لغة الشاشات والرسائل. لا تغيّر اللغة التي يتحدث بها المساعد.</string>
+    <string name="app_language_system">لغة النظام</string>
+    <string name="app_language_english">English</string>
+    <string name="app_language_arabic">العربية</string>
+    <string name="assistant_language_title">لغة المساعد</string>
+    <string name="assistant_language_hint">اللغة التي يرد بها المساعد.</string>
+    <string name="language_auto">تلقائي</string>
+    <string name="language_english">الإنجليزية</string>
+    <string name="language_arabic">العربية</string>
+    <string name="dialect_title">اللهجة العربية</string>
+    <string name="dialect_hint">اللهجة التي يتحدث بها عندما يرد بالعربية. «مثلي» يتبع طريقة كلامك. يسري التغيير في المحادثة التالية.</string>
+    <string name="dialect_match">مثلي</string>
+    <string name="dialect_gulf">الخليجية</string>
+    <string name="dialect_egyptian">المصرية</string>
+    <string name="dialect_levantine">الشامية</string>
+    <string name="dialect_maghrebi">المغاربية</string>
+    <string name="dialect_msa">الفصحى</string>
+    <string name="voice_title">الصوت</string>
+    <string name="voice_default">الافتراضي</string>
+    <string name="voice_hint">صوت المساعد. يسري التغيير في المحادثة التالية — ابدأ محادثة واستمع.</string>
+    <string name="web_search_title">البحث على الويب</string>
+    <string name="web_search_desc">يتيح للمساعد البحث في Google — الأخبار والطقس والنتائج والأسعار — عندما تسأله عما لا يعرفه. ما تسأل عنه يُرسل إلى بحث Google. يسري التغيير في المحادثة التالية.</string>
+    <string name="web_search_note">يتطلب خطة Gemini مدفوعة (تفعيل الفوترة لمفتاح API). مع مفتاح مجاني ترفضه Google ويتابع المساعد دون بحث.</string>
+    <string name="wheel_title">زر المقود</string>
+    <string name="wheel_off">متوقف. شغّله لتبدأ الاستماع بزر الميكروفون في المقود. يراقب هذا الزر فقط.</string>
+    <string name="wheel_turning_on">جارٍ التشغيل…</string>
+    <string name="wheel_turn_on">تشغيل</string>
+    <string name="wheel_press_now">اضغط الزر في المقود الآن…</string>
+    <string name="wheel_on">مفعّل. %1$s يبدأ الاستماع ويوقفه.</string>
+    <string name="wheel_use_different">استخدام زر آخر</string>
+    <string name="wheel_back_to_mic">العودة إلى زر الميكروفون</string>
+    <string name="wheel_conflict_note">إذا كان تطبيق آخر (مثل تطبيق لتخصيص الأزرار) يستخدم هذا الزر، فأزل تعيينه هناك — وإلا سيستجيب الاثنان معاً.</string>
+    <string name="wheel_failure_hint">تعذّر التشغيل تلقائياً — يتطلب ذلك تفعيل تصحيح ADB في هذه الوحدة. أو نفّذ مرة واحدة من حاسوب: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS ثم حاول مجدداً.</string>
+    <string name="barge_title">التحدث فوق المساعد</string>
+    <string name="barge_desc">ابدأ الكلام أثناء حديثه فيتوقف ويستمع إليك. أوقفه إذا قاطع نفسه بالخطأ.</string>
+    <string name="vehicle_title">التحكم بالسيارة (تجريبي)</string>
+    <string name="vehicle_desc">يتيح للمساعد تشغيل عناصر التحكم في السيارة فعلياً، لا الحديث عنها فقط.</string>
+    <string name="vehicle_warning_title">تفعيل التحكم التجريبي بالسيارة؟</string>
+    <string name="vehicle_warning_body">يتيح هذا للمساعد تشغيل المكيف والنوافذ والمقاعد وما شابهها فعلياً عند طلبك. الميزة تجريبية: استخدمها أثناء التوقف فقط وعلى مسؤوليتك.</string>
+    <string name="autostart_title">التشغيل التلقائي بعد إعادة التشغيل</string>
+    <string name="autostart_confirmed">فتحتَ شاشة التشغيل التلقائي في الوحدة منذ آخر تحديث. إذا توقف زر المقود عن الاستجابة بعد نوم السيارة أو إعادة تشغيلها، فتأكد من تفعيل هذا التطبيق هناك.</string>
+    <string name="autostart_unconfirmed">غير مؤكد. فعّل هذا التطبيق في شاشة التشغيل التلقائي للوحدة، وإلا قد يغلقه النظام عند نوم السيارة أو إعادة تشغيلها، فيتوقف زر المقود حتى تفتح التطبيق مجدداً.</string>
+    <string name="autostart_open">فتح إعدادات التشغيل التلقائي</string>
+    <string name="api_key_title">مفتاح Gemini API</string>
+    <string name="api_key_saved">يوجد مفتاح محفوظ.</string>
+    <string name="api_key_none">لا يوجد مفتاح — لا يستطيع المساعد التحدث مع Gemini بعد.</string>
+    <string name="api_key_new_label">مفتاح API جديد</string>
+    <string name="updates_title">التحديثات</string>
+    <string name="updates_current_version">الإصدار الحالي: %1$s</string>
+    <string name="view_app_log">عرض سجل التطبيق</string>
+    <string name="view_crash_log">عرض سجل الأعطال</string>
+    <string name="ota_check">التحقق من التحديثات</string>
+    <string name="ota_checking">جارٍ التحقق…</string>
+    <string name="ota_up_to_date">أنت على آخر إصدار.</string>
+    <string name="ota_available">الإصدار %1$s متاح.</string>
+    <string name="ota_download_install">تنزيل وتثبيت</string>
+    <string name="ota_downloading">جارٍ تنزيل التحديث…</string>
+    <string name="ota_download_failed">فشل التنزيل.</string>
+    <string name="key_cannot_use">لا يمكن استخدام %1$s — فهو مطلوب للتنقل في الوحدة.</string>
+    <string name="key_now_using">المستخدم الآن: %1$s</string>
+    <string name="key_no_press">لم يُرصد ضغط على أي زر — حاول مجدداً.</string>
+    <string name="key_service_not_running">خدمة زر المقود لا تعمل — شغّلها من إعدادات إمكانية الوصول أولاً.</string>
+    <string name="api_enter_key">أدخل المفتاح أولاً.</string>
+    <string name="api_saved">تم حفظ مفتاح API.</string>
+    <string name="api_save_failed">تعذّر حفظ مفتاح API — حاول مجدداً.</string>
+    <string name="api_cleared">تم مسح مفتاح API.</string>
+
+    <!-- Onboarding -->
+    <string name="onb_welcome">أهلاً بك</string>
+    <string name="onb_intro">بضعة أمور يحتاجها هذا المساعد ليتمكن من الرد عليك.</string>
+    <string name="onb_mic_title">الميكروفون</string>
+    <string name="onb_mic_desc">مطلوب — يُرسل صوتك إلى Gemini للحصول على رد صوتي. اختر «أثناء استخدام التطبيق» (أو «سماح»): خيار «هذه المرة فقط» ينتهي ويتوقف المساعد عن العمل بصمت.</string>
+    <string name="onb_notif_title">الإشعارات</string>
+    <string name="onb_notif_desc">موصى به — ليخبرك التطبيق عند توفر إصدار جديد.</string>
+    <string name="onb_wheel_title">زر الميكروفون في المقود</string>
+    <string name="onb_wheel_desc">موصى به — ليبدأ زر الميكروفون في المقود الاستماع. يراقب هذا الزر فقط. يتطلب تفعيل تصحيح ADB في هذه الوحدة.</string>
+    <string name="onb_api_title">مفتاح Gemini API</string>
+    <string name="onb_api_label">مفتاح API</string>
+    <string name="onb_api_note">من Google AI Studio. يُخزَّن مشفّراً على الجهاز ولا يُرسل إلى أي جهة سوى واجهة Google.</string>
+    <string name="onb_get_started">ابدأ</string>
+    <string name="onb_granted">تم المنح</string>
+    <string name="onb_grant">منح</string>
+    <string name="onb_enter_key">أدخل مفتاح Gemini API.</string>
+
+    <!-- Logs -->
+    <string name="log_app_title">سجل التطبيق</string>
+    <string name="log_crash_title">سجل الأعطال</string>
+
+    <!-- Steering-wheel key names -->
+    <string name="key_mic_short">زر الميكروفون في المقود، ضغطة قصيرة (المفتاح %1$d)</string>
+    <string name="key_mic_long">زر الميكروفون في المقود، ضغطة طويلة (المفتاح %1$d)</string>
+    <string name="key_generic">المفتاح %1$d</string>
+    <string name="key_named">%1$s (المفتاح %2$d)</string>
+
+    <!-- Update notification -->
+    <string name="ota_channel_name">تحديثات التطبيق</string>
+    <string name="ota_channel_desc">إشعارات تحديثات مساعد BYD NG</string>
+    <string name="ota_notif_title">تحديث متاح: %1$s</string>
+    <string name="ota_notif_text">الإصدار %1$s متاح. اضغط للتحديث.</string>
+    <string name="ota_notif_big">الإصدار %1$s جاهز للتثبيت.\n\n%2$s</string>
+</resources>

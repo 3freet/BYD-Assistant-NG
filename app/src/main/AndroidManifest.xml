@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Never granted at install: only by `pm grant` over the loopback ADB connection (see
+         WheelKeys.enableService), so the app can switch its own accessibility service on. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- The car's HAL refuses a device call from an app that doesn't hold these ("[getInt] permission
+         deny!"). Only the domains in vehicle_commands.json are declared: the safety-denylisted ones
+         (engine, gearbox, ADAS, radar, ...) are deliberately never requested, so the app couldn't
+         reach them even if the code gate were bypassed. _GET/_SET are signature-level on paper, but
+         this firmware grants them to a declaring app. -->
+    <uses-permission android:name="android.permission.BYDAUTO_BODYWORK_COMMON" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_BODYWORK_GET" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_BODYWORK_SET" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_AC_COMMON" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_AC_GET" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_AC_SET" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_AUDIO_COMMON" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_AUDIO_GET" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_AUDIO_SET" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_SETTING_COMMON" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_SETTING_GET" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BYDAUTO_SETTING_SET" tools:ignore="ProtectedPermissions" />
+
+    <!-- Lets the app see which maps apps can handle a navigation request (package visibility). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="google.navigation" />
+        </intent>
+        <!-- Every app with a launcher icon, so "open <app>" can find it by name. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".AssistantApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:largeHeap="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:theme="@style/Theme.BydAssistantNg">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Steering-wheel mic button. The system binds this itself once the user switches it on in
+             Accessibility settings, including after a reboot. -->
+        <service
+            android:name=".service.WheelKeyService"
+            android:exported="true"
+            android:label="@string/wheel_key_service_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/wheel_key_service_config" />
+        </service>
+
+        <!-- Re-enables the wheel-button service after boot / wake / update — see BootReceiver. Exported
+             because QUICKBOOT_POWERON is sent by another app, not by the system. -->
+        <receiver
+            android:name=".service.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

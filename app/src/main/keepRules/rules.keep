@@ -1,0 +1,5 @@
+
+# No custom keep rules needed yet: Hilt ships its own consumer rules, and kotlinx.serialization's
+# compiler plugin generates serializers at compile time rather than relying on reflection, so
+# neither needs help surviving R8. Add rules here the moment a new dependency needs them (typically
+# one that looks up a class or field by its literal name, which R8 would otherwise rename).

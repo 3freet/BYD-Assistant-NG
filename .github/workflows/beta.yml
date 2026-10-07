@@ -1,0 +1,85 @@
+name: Build Beta
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.head_commit.message, 'beta:')
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Grant execute permission
+        run: chmod +x ./gradlew
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/keystore.jks
+      - name: Create signing.properties
+        run: |
+          echo "STORE_FILE=keystore.jks" >> app/signing.properties
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> app/signing.properties
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> app/signing.properties
+      - name: Build beta APK
+        run: ./gradlew assembleBeta --no-daemon -Passistant.updateRepo=${{ github.repository }}
+
+      - name: Get APK path
+        id: apk-path
+        run: echo "path=$(find app/build/outputs/apk/beta -name '*.apk' | head -n1)" >> "$GITHUB_OUTPUT"
+
+      - name: Get APK info
+        id: apk-info
+        uses: hkusu/apk-info-action@v1
+        with:
+          apk-path: ${{ steps.apk-path.outputs.path }}
+
+      - name: Generate tag
+        id: tag
+        run: echo "tag=v${{ steps.apk-info.outputs.version-name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: beta-apk
+          path: ${{ steps.apk-path.outputs.path }}
+          if-no-files-found: error
+
+      - name: Upload R8 mapping
+        uses: actions/upload-artifact@v7
+        with:
+          name: beta-mapping
+          path: app/build/outputs/mapping/beta/mapping.txt
+          if-no-files-found: warn
+
+      - name: Create PreRelease
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          generate_release_notes: true
+          files: ${{ steps.apk-path.outputs.path }}

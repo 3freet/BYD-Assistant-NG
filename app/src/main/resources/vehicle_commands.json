@@ -1,0 +1,884 @@
+[
+  {
+    "id": "ac.power",
+    "domain": "CLIMATE",
+    "displayName": "A/C power",
+    "label": "A/C power",
+    "labelAr": "تشغيل المكيف",
+    "deviceType": 1000,
+    "featureId": 501219364,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 101,
+      "area": 256
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "on": 1,
+        "off": 0
+      }
+    }
+  },
+  {
+    "id": "ac.temperature",
+    "domain": "CLIMATE",
+    "displayName": "A/C temperature",
+    "label": "A/C temperature",
+    "labelAr": "درجة حرارة المكيف",
+    "deviceType": 1000,
+    "featureId": 501219368,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 102,
+      "area": 256
+    },
+    "parameter": {
+      "type": "range",
+      "min": 17,
+      "max": 33,
+      "unit": "°C"
+    }
+  },
+  {
+    "id": "ac.fan",
+    "domain": "CLIMATE",
+    "displayName": "A/C fan level",
+    "label": "A/C fan speed",
+    "labelAr": "سرعة مروحة المكيف",
+    "deviceType": 1000,
+    "featureId": 501219340,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 103,
+      "area": 256
+    },
+    "parameter": {
+      "type": "range",
+      "min": 0,
+      "max": 7
+    }
+  },
+  {
+    "id": "ac.windMode",
+    "domain": "CLIMATE",
+    "displayName": "A/C air direction",
+    "label": "Air direction",
+    "labelAr": "اتجاه الهواء",
+    "deviceType": 1000,
+    "featureId": 501219336,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 113,
+      "area": 256
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "face": 1,
+        "faceAndFeet": 2,
+        "feet": 3,
+        "feetAndDefrost": 4,
+        "defrost": 5
+      }
+    }
+  },
+  {
+    "id": "window.driver",
+    "domain": "BODYWORK",
+    "displayName": "Driver window",
+    "label": "Driver window",
+    "labelAr": "نافذة السائق",
+    "deviceType": 1001,
+    "featureId": 1125122104,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "open": 1,
+        "close": 2,
+        "stop": 3,
+        "half": 4,
+        "breath": 5
+      }
+    }
+  },
+  {
+    "id": "window.passenger",
+    "domain": "BODYWORK",
+    "displayName": "Passenger window",
+    "label": "Passenger window",
+    "labelAr": "نافذة الراكب",
+    "deviceType": 1001,
+    "featureId": 1125122107,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "open": 1,
+        "close": 2,
+        "stop": 3,
+        "half": 4,
+        "breath": 5
+      }
+    }
+  },
+  {
+    "id": "window.rearLeft",
+    "domain": "BODYWORK",
+    "displayName": "Rear-left window",
+    "label": "Rear-left window",
+    "labelAr": "النافذة الخلفية اليسرى",
+    "deviceType": 1001,
+    "featureId": 1125122112,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "open": 1,
+        "close": 2,
+        "stop": 3,
+        "half": 4,
+        "breath": 5
+      }
+    }
+  },
+  {
+    "id": "window.rearRight",
+    "domain": "BODYWORK",
+    "displayName": "Rear-right window",
+    "label": "Rear-right window",
+    "labelAr": "النافذة الخلفية اليمنى",
+    "deviceType": 1001,
+    "featureId": 1125122115,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "open": 1,
+        "close": 2,
+        "stop": 3,
+        "half": 4,
+        "breath": 5
+      }
+    }
+  },
+  {
+    "id": "sunroof",
+    "domain": "BODYWORK",
+    "displayName": "Sunroof",
+    "label": "Sunroof",
+    "labelAr": "فتحة السقف",
+    "deviceType": 1001,
+    "featureId": 1125122056,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "close": 0,
+        "open": 252,
+        "breath": 253
+      }
+    }
+  },
+  {
+    "id": "sunroof.openPercent",
+    "domain": "BODYWORK",
+    "displayName": "Sunroof open percent",
+    "label": "Sunroof position",
+    "labelAr": "وضع فتحة السقف",
+    "deviceType": 1001,
+    "featureId": 1330642976,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    }
+  },
+  {
+    "id": "sunshade.percent",
+    "domain": "BODYWORK",
+    "displayName": "Sunshade",
+    "label": "Sunshade",
+    "labelAr": "الستارة الشمسية",
+    "deviceType": 1001,
+    "featureId": 1330642984,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    }
+  },
+  {
+    "id": "audio.volume",
+    "domain": "AUDIO",
+    "displayName": "Volume",
+    "label": "Volume",
+    "labelAr": "مستوى الصوت",
+    "deviceType": 1002,
+    "featureId": 1309020176,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": 0,
+      "max": 30
+    }
+  },
+  {
+    "id": "trunk",
+    "domain": "SETTING",
+    "displayName": "Trunk",
+    "label": "Trunk",
+    "labelAr": "صندوق السيارة",
+    "deviceType": 1023,
+    "featureId": 1125122080,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "open": 1,
+        "stop": 2,
+        "close": 3
+      }
+    }
+  },
+  {
+    "id": "screen.rotation",
+    "domain": "SETTING",
+    "displayName": "Screen rotation",
+    "label": "Screen rotation",
+    "labelAr": "تدوير الشاشة",
+    "invocation": {
+      "type": "namedMethod",
+      "deviceClass": "setting",
+      "methodName": "setPadRotation",
+      "paramTypes": [
+        "int"
+      ],
+      "argsTemplate": [
+        null
+      ]
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "horizontal": 1,
+        "vertical": 2
+      }
+    }
+  },
+  {
+    "id": "light.ambientBrightness",
+    "domain": "SETTING",
+    "displayName": "Ambient light brightness",
+    "label": "Ambient light",
+    "labelAr": "الإضاءة المحيطة",
+    "invocation": {
+      "type": "namedMethod",
+      "deviceClass": "setting",
+      "methodName": "setIALBrightness",
+      "paramTypes": [
+        "int",
+        "int",
+        "int"
+      ],
+      "argsTemplate": [
+        1,
+        null,
+        1
+      ]
+    },
+    "parameter": {
+      "type": "range",
+      "min": 1,
+      "max": 3
+    }
+  },
+  {
+    "id": "fridge.mode",
+    "domain": "SETTING",
+    "displayName": "Fridge mode: off, cooling or heating",
+    "label": "Fridge",
+    "labelAr": "الثلاجة",
+    "deviceType": 1023,
+    "featureId": 850427920,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 3,
+        "cool": 1,
+        "heat": 2
+      }
+    },
+    "stateFeatureId": 1220542488
+  },
+  {
+    "id": "fridge.cool.temperature",
+    "domain": "SETTING",
+    "displayName": "Fridge cooling temperature (only while the fridge is cooling; switch it to cooling first)",
+    "label": "Fridge cooling temperature",
+    "labelAr": "درجة تبريد الثلاجة",
+    "deviceType": 1023,
+    "featureId": 850427928,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": -6,
+      "max": 6,
+      "unit": "°C"
+    },
+    "stateFeatureId": 1220542480,
+    "valueOffset": 19,
+    "requires": {
+      "featureId": 1220542488,
+      "equals": 1,
+      "message": "The fridge isn't cooling. Switch it to cooling mode first."
+    }
+  },
+  {
+    "id": "seat.driver.heating",
+    "domain": "SETTING",
+    "displayName": "Driver seat heating",
+    "label": "Driver seat heating",
+    "labelAr": "تدفئة مقعد السائق",
+    "deviceType": 1023,
+    "featureId": 1125122068,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "low": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1335885835
+  },
+  {
+    "id": "seat.driver.ventilation",
+    "domain": "SETTING",
+    "displayName": "Driver seat ventilation",
+    "label": "Driver seat ventilation",
+    "labelAr": "تهوية مقعد السائق",
+    "deviceType": 1023,
+    "featureId": 1125122064,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "low": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1335885832
+  },
+  {
+    "id": "seat.passenger.heating",
+    "domain": "SETTING",
+    "displayName": "Front passenger seat heating",
+    "label": "Passenger seat heating",
+    "labelAr": "تدفئة مقعد الراكب",
+    "deviceType": 1023,
+    "featureId": 1125122076,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "low": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1335885843
+  },
+  {
+    "id": "seat.passenger.ventilation",
+    "domain": "SETTING",
+    "displayName": "Front passenger seat ventilation",
+    "label": "Passenger seat ventilation",
+    "labelAr": "تهوية مقعد الراكب",
+    "deviceType": 1023,
+    "featureId": 1125122072,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "low": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1335885840
+  },
+  {
+    "id": "seat.rearLeft.heating",
+    "domain": "SETTING",
+    "displayName": "Rear-left seat heating",
+    "label": "Rear-left seat heating",
+    "labelAr": "تدفئة المقعد الخلفي الأيسر",
+    "deviceType": 1023,
+    "featureId": 1125122091,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "low": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1214251019
+  },
+  {
+    "id": "seat.rearLeft.ventilation",
+    "domain": "SETTING",
+    "displayName": "Rear-left seat ventilation",
+    "label": "Rear-left seat ventilation",
+    "labelAr": "تهوية المقعد الخلفي الأيسر",
+    "deviceType": 1023,
+    "featureId": 1125122088,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "low": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1214251016
+  },
+  {
+    "id": "seat.rearRight.heating",
+    "domain": "SETTING",
+    "displayName": "Rear-right seat heating",
+    "label": "Rear-right seat heating",
+    "labelAr": "تدفئة المقعد الخلفي الأيمن",
+    "deviceType": 1023,
+    "featureId": 1125122099,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "low": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1214251027
+  },
+  {
+    "id": "seat.rearRight.ventilation",
+    "domain": "SETTING",
+    "displayName": "Rear-right seat ventilation",
+    "label": "Rear-right seat ventilation",
+    "labelAr": "تهوية المقعد الخلفي الأيمن",
+    "deviceType": 1023,
+    "featureId": 1125122096,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "low": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1214251024
+  },
+  {
+    "id": "steeringWheel.heating",
+    "domain": "SETTING",
+    "displayName": "Steering wheel heating",
+    "label": "Steering wheel heating",
+    "labelAr": "تدفئة المقود",
+    "deviceType": 1023,
+    "featureId": 944767029,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "on": 2
+      }
+    },
+    "stateFeatureId": 1116733454
+  },
+  {
+    "id": "fridge.heat.temperature",
+    "domain": "SETTING",
+    "displayName": "Fridge heating temperature (only while the fridge is heating; switch it to heating first)",
+    "label": "Fridge heating temperature",
+    "labelAr": "درجة تسخين الثلاجة",
+    "deviceType": 1023,
+    "featureId": 850427928,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": 35,
+      "max": 50,
+      "unit": "°C"
+    },
+    "stateFeatureId": 1220542480,
+    "requires": {
+      "featureId": 1220542488,
+      "equals": 2,
+      "message": "The fridge isn't heating. Switch it to heating mode first."
+    }
+  },
+  {
+    "id": "window.driver.position",
+    "domain": "BODYWORK",
+    "displayName": "Driver window position, in percent open (0 = closed, 100 = fully open)",
+    "label": "Driver window position",
+    "labelAr": "وضع نافذة السائق",
+    "deviceType": 1001,
+    "featureId": 1276219408,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    "stateFeatureId": 947912728,
+    "stateTolerance": 3,
+    "gradual": true
+  },
+  {
+    "id": "window.passenger.position",
+    "domain": "BODYWORK",
+    "displayName": "Passenger window position, in percent open (0 = closed, 100 = fully open)",
+    "label": "Passenger window position",
+    "labelAr": "وضع نافذة الراكب",
+    "deviceType": 1001,
+    "featureId": 1276219424,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    "stateFeatureId": 1267728400,
+    "stateTolerance": 3,
+    "gradual": true
+  },
+  {
+    "id": "window.rearLeft.position",
+    "domain": "BODYWORK",
+    "displayName": "Rear-left window position, in percent open (0 = closed, 100 = fully open)",
+    "label": "Rear-left window position",
+    "labelAr": "وضع النافذة الخلفية اليسرى",
+    "deviceType": 1001,
+    "featureId": 1276219416,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    "stateFeatureId": 947912736,
+    "stateTolerance": 3,
+    "gradual": true
+  },
+  {
+    "id": "window.rearRight.position",
+    "domain": "BODYWORK",
+    "displayName": "Rear-right window position, in percent open (0 = closed, 100 = fully open)",
+    "label": "Rear-right window position",
+    "labelAr": "وضع النافذة الخلفية اليمنى",
+    "deviceType": 1001,
+    "featureId": 1276219432,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    "stateFeatureId": 947912752,
+    "stateTolerance": 3,
+    "gradual": true
+  },
+  {
+    "id": "seat.driver.massage",
+    "domain": "SETTING",
+    "displayName": "Driver seat massage",
+    "label": "Driver seat massage",
+    "labelAr": "تدليك مقعد السائق",
+    "deviceType": 1023,
+    "featureId": 1276190736,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 0,
+        "low": 1,
+        "medium": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1335885876,
+    "overrides": [
+      {
+        "whenValue": 0,
+        "featureId": 1276190752,
+        "sendValue": 1
+      }
+    ]
+  },
+  {
+    "id": "seat.passenger.massage",
+    "domain": "SETTING",
+    "displayName": "Front passenger seat massage",
+    "label": "Passenger seat massage",
+    "labelAr": "تدليك مقعد الراكب",
+    "deviceType": 1023,
+    "featureId": 1276190739,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 0,
+        "low": 1,
+        "medium": 2,
+        "high": 3
+      }
+    },
+    "stateFeatureId": 1335885884,
+    "overrides": [
+      {
+        "whenValue": 0,
+        "featureId": 1276190756,
+        "sendValue": 1
+      }
+    ]
+  },
+  {
+    "id": "cabin.light",
+    "domain": "SETTING",
+    "displayName": "Cabin ceiling light",
+    "label": "Cabin light",
+    "labelAr": "إضاءة المقصورة",
+    "deviceType": 1023,
+    "featureId": 1330643002,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "on": 2
+      }
+    },
+    "stateFeatureId": 1121976365
+  },
+  {
+    "id": "ac.airSource",
+    "domain": "CLIMATE",
+    "displayName": "A/C air source: outside (fresh) air or inside (recirculated) air",
+    "label": "Air source",
+    "labelAr": "مصدر الهواء",
+    "deviceType": 1000,
+    "featureId": 1077936148,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 109,
+      "area": 256
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "outside": 0,
+        "inside": 1
+      }
+    }
+  },
+  {
+    "id": "ac.ventilation",
+    "domain": "CLIMATE",
+    "displayName": "A/C ventilation mode (fan only with outside air, no cooling)",
+    "label": "A/C ventilation",
+    "labelAr": "تهوية المكيف",
+    "deviceType": 1000,
+    "featureId": 1314914314,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 105,
+      "area": 256
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "on": 1,
+        "off": 0
+      }
+    }
+  },
+  {
+    "id": "ac.compressor",
+    "domain": "CLIMATE",
+    "displayName": "A/C cooling (the A/C compressor button)",
+    "label": "A/C cooling",
+    "labelAr": "تبريد المكيف",
+    "deviceType": 1000,
+    "featureId": 1077936137,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 104,
+      "area": 256
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "on": 1,
+        "off": 0
+      }
+    }
+  },
+  {
+    "id": "ac.auto",
+    "domain": "CLIMATE",
+    "displayName": "A/C automatic mode",
+    "label": "A/C auto mode",
+    "labelAr": "الوضع التلقائي للمكيف",
+    "deviceType": 1000,
+    "featureId": 1077936146,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 114,
+      "area": 256
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "auto": 0
+      }
+    }
+  },
+  {
+    "id": "ac.frontDefrost",
+    "domain": "CLIMATE",
+    "displayName": "Windshield defrost",
+    "label": "Windshield defrost",
+    "labelAr": "إزالة الضباب عن الزجاج الأمامي",
+    "deviceType": 1000,
+    "featureId": 1077936150,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 107,
+      "area": 256
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "on": 1,
+        "off": 0
+      }
+    }
+  },
+  {
+    "id": "ac.rearDefrost",
+    "domain": "CLIMATE",
+    "displayName": "Rear window defrost",
+    "label": "Rear window defrost",
+    "labelAr": "إزالة الضباب عن الزجاج الخلفي",
+    "deviceType": 1000,
+    "featureId": 1128267825,
+    "invocation": {
+      "type": "acBinderProperty",
+      "subServiceKey": "AC_AIRCONDITIONER_SERVICE",
+      "interfaceDescriptor": "com.byd.ac.IAcAirConditioner",
+      "propertyId": 108,
+      "area": 256
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "on": 1,
+        "off": 0
+      }
+    }
+  }
+]

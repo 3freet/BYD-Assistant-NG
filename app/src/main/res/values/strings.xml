@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BYD Assistant NG</string>
+    <string name="wheel_key_service_name">BYD Assistant NG steering-wheel button</string>
+    <string name="wheel_key_service_description">Lets BYD Assistant NG start listening when you press the microphone button on the steering wheel. It only watches that one button; it does not read the screen or anything you type.</string>
+
+    <!-- Shared actions -->
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_enable">Enable</string>
+    <string name="action_save">Save</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_share">Share</string>
+
+    <!-- Home -->
+    <string name="home_settings">Settings</string>
+    <string name="home_vehicle_armed">Vehicle control armed</string>
+    <string name="home_talk">Talk</string>
+    <string name="home_tap_to_talk">Tap to talk</string>
+    <string name="home_connecting">Connecting…</string>
+    <string name="home_listening">Listening… tap to end</string>
+    <string name="home_thinking">Thinking…</string>
+
+    <!-- Status banner -->
+    <string name="banner_connecting">Connecting…</string>
+    <string name="banner_listening">Listening…</string>
+    <string name="banner_thinking">Thinking…</string>
+    <string name="banner_speaking">Speaking…</string>
+    <string name="banner_error">Something went wrong</string>
+    <string name="banner_listening_press_to_stop">Listening… press to stop</string>
+    <string name="banner_navigating">Navigating to %1$s</string>
+    <string name="banner_opening_app">Opening %1$s</string>
+    <string name="banner_media">Media: %1$s</string>
+    <string name="media_play">play</string>
+    <string name="media_pause">pause</string>
+    <string name="media_next">next</string>
+    <string name="media_previous">previous</string>
+    <string name="media_stop">stop</string>
+
+    <!-- Errors shown to the user -->
+    <string name="err_no_audio">No audio captured</string>
+    <string name="err_cant_record">Could not start recording</string>
+    <string name="err_mic_off">Microphone permission is off — open BYD Assistant NG to grant it</string>
+    <string name="err_finish_setup">Finish setting up BYD Assistant NG first</string>
+    <string name="fail_no_network">No internet connection — check your network or phone hotspot</string>
+    <string name="fail_api_key">Gemini rejected the request — check the API key in Settings</string>
+    <string name="fail_busy">Gemini is busy or over its limit — try again in a moment</string>
+    <string name="fail_generic">The voice connection failed — try again</string>
+    <string name="fail_no_key">Add your Gemini API key in the BYD Assistant NG settings</string>
+    <string name="err_mic_reopen">Could not reopen the microphone.</string>
+    <string name="fail_lost">The voice connection was lost</string>
+    <string name="classic_no_key">No Gemini API key configured yet — add one in Settings.</string>
+    <string name="classic_cant_read">Could not read the recording.</string>
+    <string name="classic_empty_reply">Empty reply from Gemini.</string>
+    <string name="classic_key_rejected">Gemini rejected the API key — check it in Settings.</string>
+    <string name="classic_permission_denied">Google denied access for this key\'s project%1$s. Re-entering the key won\'t help — use a key from a different project or check AI Studio.</string>
+    <string name="classic_rate_limited">Gemini is rate-limiting requests — try again shortly.</string>
+    <string name="classic_network">Couldn\'t reach Gemini — check the connection.</string>
+    <string name="classic_provider_error">Gemini returned an error.</string>
+    <string name="classic_empty_response">Gemini returned an empty response.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="app_language_title">App language</string>
+    <string name="app_language_hint">The language of the screens and messages. It does not change the language the assistant speaks.</string>
+    <string name="app_language_system">System default</string>
+    <string name="app_language_english">English</string>
+    <string name="app_language_arabic">العربية</string>
+    <string name="assistant_language_title">Assistant language</string>
+    <string name="assistant_language_hint">The language the assistant answers in.</string>
+    <string name="language_auto">Auto</string>
+    <string name="language_english">English</string>
+    <string name="language_arabic">Arabic</string>
+    <string name="dialect_title">Arabic dialect</string>
+    <string name="dialect_hint">Which Arabic it speaks when it answers in Arabic. “Match me” follows how you talk. Takes effect on the next conversation.</string>
+    <string name="dialect_match">Match me</string>
+    <string name="dialect_gulf">Gulf</string>
+    <string name="dialect_egyptian">Egyptian</string>
+    <string name="dialect_levantine">Levantine</string>
+    <string name="dialect_maghrebi">Maghrebi</string>
+    <string name="dialect_msa">Modern Standard</string>
+    <string name="voice_title">Voice</string>
+    <string name="voice_default">Default</string>
+    <string name="voice_hint">The assistant\'s voice. Takes effect on the next conversation — start one and listen.</string>
+    <string name="web_search_title">Web search</string>
+    <string name="web_search_desc">Lets the assistant look things up on Google — news, weather, scores, prices — when you ask something it can\'t answer itself. What you ask is sent to Google Search. Takes effect on the next conversation.</string>
+    <string name="web_search_note">Requires a paid Gemini plan (billing enabled on your API key). On a free key Google refuses it, and the assistant carries on without searching.</string>
+    <string name="wheel_title">Steering-wheel button</string>
+    <string name="wheel_off">Off. Turn it on to start listening with the mic button on the wheel. It only watches that one button.</string>
+    <string name="wheel_turning_on">Turning on…</string>
+    <string name="wheel_turn_on">Turn on</string>
+    <string name="wheel_press_now">Press the button on the wheel now…</string>
+    <string name="wheel_on">On. %1$s starts and stops listening.</string>
+    <string name="wheel_use_different">Use a different button</string>
+    <string name="wheel_back_to_mic">Back to the mic button</string>
+    <string name="wheel_conflict_note">If another app (a button mapper, for instance) already uses this button, remove its mapping there — both would otherwise react.</string>
+    <string name="wheel_failure_hint">Couldn\'t turn it on automatically — that needs ADB debugging switched on for this head unit. Or, once from a computer: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS, then try again.</string>
+    <string name="barge_title">Talk over the assistant</string>
+    <string name="barge_desc">Start speaking while it is talking and it stops and listens. Turn off if it ever cuts itself off by mistake.</string>
+    <string name="vehicle_title">Vehicle control (experimental)</string>
+    <string name="vehicle_desc">Lets the assistant actually operate car controls, not just talk about them.</string>
+    <string name="vehicle_warning_title">Enable experimental vehicle control?</string>
+    <string name="vehicle_warning_body">This lets the assistant actually operate the car\'s climate, windows, seats and similar controls when asked. It is experimental: use it only while parked, and at your own risk.</string>
+    <string name="autostart_title">Auto-start after reboot</string>
+    <string name="autostart_confirmed">You\'ve opened the head unit\'s auto-start screen since the last update. If the steering-wheel button stops responding after the car sleeps or restarts, make sure this app is switched on there.</string>
+    <string name="autostart_unconfirmed">Not confirmed. Switch this app on in the head unit\'s auto-start screen: otherwise it can close the app when the car sleeps or restarts, which turns the steering-wheel button off until you open the app again.</string>
+    <string name="autostart_open">Open auto-start settings</string>
+    <string name="api_key_title">Gemini API key</string>
+    <string name="api_key_saved">A key is currently saved.</string>
+    <string name="api_key_none">No key saved — the assistant can\'t talk to Gemini yet.</string>
+    <string name="api_key_new_label">New API key</string>
+    <string name="updates_title">Updates</string>
+    <string name="updates_current_version">Current version: %1$s</string>
+    <string name="view_app_log">View app log</string>
+    <string name="view_crash_log">View crash log</string>
+    <string name="ota_check">Check for updates</string>
+    <string name="ota_checking">Checking…</string>
+    <string name="ota_up_to_date">You\'re up to date.</string>
+    <string name="ota_available">Version %1$s is available.</string>
+    <string name="ota_download_install">Download and install</string>
+    <string name="ota_downloading">Downloading update…</string>
+    <string name="ota_download_failed">Download failed.</string>
+    <string name="key_cannot_use">%1$s can\'t be used — it\'s needed for navigating the head unit.</string>
+    <string name="key_now_using">Now using: %1$s</string>
+    <string name="key_no_press">No button press was seen — try again.</string>
+    <string name="key_service_not_running">The steering-wheel button service isn\'t running — switch it on in Accessibility settings first.</string>
+    <string name="api_enter_key">Enter a key first.</string>
+    <string name="api_saved">API key saved.</string>
+    <string name="api_save_failed">Could not save the API key — try again.</string>
+    <string name="api_cleared">API key cleared.</string>
+
+    <!-- Onboarding -->
+    <string name="onb_welcome">Welcome</string>
+    <string name="onb_intro">A few things this assistant needs before it can talk back.</string>
+    <string name="onb_mic_title">Microphone</string>
+    <string name="onb_mic_desc">Required — your voice is sent to Gemini for a spoken reply. Choose “While using the app” (or “Allow”): “Only this time” expires and the assistant silently stops working.</string>
+    <string name="onb_notif_title">Notifications</string>
+    <string name="onb_notif_desc">Recommended — lets the app tell you when a new version is available.</string>
+    <string name="onb_wheel_title">Steering-wheel mic button</string>
+    <string name="onb_wheel_desc">Recommended — lets the mic button on the steering wheel start listening. It only watches that one button. Needs ADB debugging switched on for this head unit.</string>
+    <string name="onb_api_title">Gemini API key</string>
+    <string name="onb_api_label">API key</string>
+    <string name="onb_api_note">From Google AI Studio. Stored encrypted on-device, never sent anywhere but Google\'s API.</string>
+    <string name="onb_get_started">Get started</string>
+    <string name="onb_granted">Granted</string>
+    <string name="onb_grant">Grant</string>
+    <string name="onb_enter_key">Enter a Gemini API key.</string>
+
+    <!-- Logs -->
+    <string name="log_app_title">App log</string>
+    <string name="log_crash_title">Crash log</string>
+
+    <!-- Steering-wheel key names -->
+    <string name="key_mic_short">Steering-wheel mic button, short press (key %1$d)</string>
+    <string name="key_mic_long">Steering-wheel mic button, long press (key %1$d)</string>
+    <string name="key_generic">Key %1$d</string>
+    <string name="key_named">%1$s (key %2$d)</string>
+
+    <!-- Update notification -->
+    <string name="ota_channel_name">App updates</string>
+    <string name="ota_channel_desc">Notifications for BYD Assistant NG updates</string>
+    <string name="ota_notif_title">Update available: %1$s</string>
+    <string name="ota_notif_text">Version %1$s is available. Tap to update.</string>
+    <string name="ota_notif_big">Version %1$s is ready to install.\n\n%2$s</string>
+</resources>

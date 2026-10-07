@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Debug builds only: lets `adb shell am broadcast` show/hide the status banner so its look can
+             be checked on the real screen without a steering-wheel press. -->
+        <receiver
+            android:name="com.bydassistantng.debug.DebugBannerReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.BANNER" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.bydassistantng.debug.DebugRebindReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.REBIND" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.bydassistantng.debug.DebugEchoTestReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.ECHO_TEST" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.bydassistantng.debug.DebugOfflineReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.OFFLINE" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.bydassistantng.debug.DebugToolReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.TOOL" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
