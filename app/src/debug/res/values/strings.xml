@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Distinguishes the side-by-side local test build from the real app in the head unit's launcher. -->
-    <string name="app_name">BYD Assistant NG (dev)</string>
+    <string name="app_name" translatable="false">BYD Assistant NG (dev)</string>
 </resources>

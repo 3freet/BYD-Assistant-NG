@@ -14,6 +14,8 @@ plugins {
 // pass -Passistant.updateRepo=owner/repo (or set ASSISTANT_UPDATE_REPO) when building. Empty = no update checks.
 val updateRepo: String = (findProperty("assistant.updateRepo") as String?) ?: System.getenv("ASSISTANT_UPDATE_REPO") ?: ""
 
+val sourceUrl: String = if (updateRepo.isBlank()) "" else "https://github.com/$updateRepo"
+
 val appVersionCode = 1
 val appVersionName = "1.0.0"
 
@@ -48,6 +50,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
+        buildConfigField("String", "SOURCE_URL", "\"$sourceUrl\"")
     }
 
     signingConfigs {

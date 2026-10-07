@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">BYD Assistant NG</string>
+    <string name="app_name" translatable="false">BYD Assistant NG</string>
     <string name="wheel_key_service_name">BYD Assistant NG steering-wheel button</string>
     <string name="wheel_key_service_description">Lets BYD Assistant NG start listening when you press the microphone button on the steering wheel. It only watches that one button; it does not read the screen or anything you type.</string>
 
@@ -113,6 +113,7 @@
     <string name="updates_current_version">Current version: %1$s</string>
     <string name="view_app_log">View app log</string>
     <string name="view_crash_log">View crash log</string>
+    <string name="view_about">About</string>
     <string name="ota_check">Check for updates</string>
     <string name="ota_checking">Checking…</string>
     <string name="ota_up_to_date">You\'re up to date.</string>
@@ -162,4 +163,15 @@
     <string name="ota_notif_title">Update available: %1$s</string>
     <string name="ota_notif_text">Version %1$s is available. Tap to update.</string>
     <string name="ota_notif_big">Version %1$s is ready to install.\n\n%2$s</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_disclaimer_title">Disclaimer — your responsibility</string>
+    <string name="about_disclaimer_body">BYD Assistant NG is an independent project. It is not made, approved or supported by BYD or Google; the names BYD, DiLink and Gemini belong to their owners.\n\nThe app is provided “as is”, without any warranty. You use it entirely at your own responsibility — including everything it says and everything it does to your car. Vehicle control is experimental: use it only when it is safe to do so, never let it distract you from driving, and check that the car did what you asked.\n\nWhat you say is sent to Google\'s Gemini service, and to Google Search if you turn on web search.</string>
+    <string name="about_open_source_title">Open source</string>
+    <string name="about_open_source_body">BYD Assistant NG is free, open-source software. You can read the code, report problems and contribute improvements through the project page. Verified vehicle controls for other models are especially welcome.</string>
+    <string name="about_source_link">Open the project page</string>
+    <string name="about_libraries_title">Built with open-source software</string>
+    <string name="about_libraries_body">Kotlin and kotlinx.serialization, AndroidX and Jetpack Compose, OkHttp, Dagger Hilt and Dadb — all open source under the Apache License 2.0. The licence texts are available from each project.</string>
 </resources>

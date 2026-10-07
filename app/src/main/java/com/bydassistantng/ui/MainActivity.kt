@@ -25,6 +25,7 @@ import com.bydassistantng.ota.EXTRA_OTA_NAME
 import com.bydassistantng.ota.EXTRA_OTA_URL
 import com.bydassistantng.ota.EXTRA_OTA_VERSION
 import com.bydassistantng.ota.ReleaseInfo
+import com.bydassistantng.ui.about.AboutScreen
 import com.bydassistantng.ui.home.HomeScreen
 import com.bydassistantng.ui.onboarding.OnboardingScreen
 import com.bydassistantng.ui.settings.AppLogScreen
@@ -108,7 +109,9 @@ private fun AppRoot(pendingOtaRelease: ReleaseInfo?, viewModel: MainViewModel = 
             onBack = { viewModel.navigateTo(Screen.HOME) },
             onOpenCrashLog = { viewModel.navigateTo(Screen.CRASH_LOG) },
             onOpenAppLog = { viewModel.navigateTo(Screen.APP_LOG) },
+            onOpenAbout = { viewModel.navigateTo(Screen.ABOUT) },
         )
+        Screen.ABOUT -> AboutScreen(onBack = { viewModel.navigateTo(Screen.SETTINGS) })
         Screen.CRASH_LOG -> CrashLogScreen(onBack = { viewModel.navigateTo(Screen.SETTINGS) })
         Screen.APP_LOG -> AppLogScreen(onBack = { viewModel.navigateTo(Screen.SETTINGS) })
     }

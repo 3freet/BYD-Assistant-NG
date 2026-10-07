@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">مساعد BYD NG</string>
-    <string name="wheel_key_service_name">زر المقود لمساعد BYD NG</string>
-    <string name="wheel_key_service_description">يتيح لمساعد BYD NG بدء الاستماع عند الضغط على زر الميكروفون في المقود. يراقب هذا الزر فقط، ولا يقرأ الشاشة ولا ما تكتبه.</string>
+    <string name="wheel_key_service_name">زر المقود في BYD Assistant NG</string>
+    <string name="wheel_key_service_description">يتيح لتطبيق BYD Assistant NG بدء الاستماع عند الضغط على زر الميكروفون في المقود. يراقب هذا الزر فقط، ولا يقرأ الشاشة ولا ما تكتبه.</string>
 
     <!-- Shared actions -->
     <string name="action_back">رجوع</string>
@@ -40,13 +39,13 @@
     <!-- Errors shown to the user -->
     <string name="err_no_audio">لم يتم التقاط أي صوت</string>
     <string name="err_cant_record">تعذّر بدء التسجيل</string>
-    <string name="err_mic_off">إذن الميكروفون متوقف — افتح مساعد BYD NG لمنحه</string>
-    <string name="err_finish_setup">أكمل إعداد مساعد BYD NG أولاً</string>
+    <string name="err_mic_off">إذن الميكروفون متوقف — افتح تطبيق BYD Assistant NG لمنحه</string>
+    <string name="err_finish_setup">أكمل إعداد BYD Assistant NG أولاً</string>
     <string name="fail_no_network">لا يوجد اتصال بالإنترنت — تحقق من الشبكة أو من نقطة اتصال هاتفك</string>
     <string name="fail_api_key">رفض Gemini الطلب — تحقق من مفتاح API في الإعدادات</string>
     <string name="fail_busy">Gemini مشغول أو تجاوز الحد المسموح — حاول بعد قليل</string>
     <string name="fail_generic">فشل الاتصال الصوتي — حاول مرة أخرى</string>
-    <string name="fail_no_key">أضف مفتاح Gemini API في إعدادات مساعد BYD NG</string>
+    <string name="fail_no_key">أضف مفتاح Gemini API في إعدادات BYD Assistant NG</string>
     <string name="err_mic_reopen">تعذّرت إعادة تشغيل الميكروفون.</string>
     <string name="fail_lost">انقطع الاتصال الصوتي</string>
     <string name="classic_no_key">لم يُضبط مفتاح Gemini API بعد — أضفه في الإعدادات.</string>
@@ -113,6 +112,7 @@
     <string name="updates_current_version">الإصدار الحالي: %1$s</string>
     <string name="view_app_log">عرض سجل التطبيق</string>
     <string name="view_crash_log">عرض سجل الأعطال</string>
+    <string name="view_about">حول التطبيق</string>
     <string name="ota_check">التحقق من التحديثات</string>
     <string name="ota_checking">جارٍ التحقق…</string>
     <string name="ota_up_to_date">أنت على آخر إصدار.</string>
@@ -158,8 +158,19 @@
 
     <!-- Update notification -->
     <string name="ota_channel_name">تحديثات التطبيق</string>
-    <string name="ota_channel_desc">إشعارات تحديثات مساعد BYD NG</string>
+    <string name="ota_channel_desc">إشعارات تحديثات BYD Assistant NG</string>
     <string name="ota_notif_title">تحديث متاح: %1$s</string>
     <string name="ota_notif_text">الإصدار %1$s متاح. اضغط للتحديث.</string>
     <string name="ota_notif_big">الإصدار %1$s جاهز للتثبيت.\n\n%2$s</string>
+
+    <!-- About -->
+    <string name="about_title">حول التطبيق</string>
+    <string name="about_version">الإصدار %1$s</string>
+    <string name="about_disclaimer_title">إخلاء المسؤولية — مسؤوليتك</string>
+    <string name="about_disclaimer_body">BYD Assistant NG مشروع مستقل. ليس من إنتاج BYD أو Google ولا معتمداً أو مدعوماً منهما؛ وأسماء BYD وDiLink وGemini تعود لأصحابها.\n\nيُقدَّم التطبيق «كما هو» دون أي ضمان. استخدامك له على مسؤوليتك الكاملة — بما في ذلك كل ما يقوله وكل ما يفعله في سيارتك. التحكم بالسيارة تجريبي: استخدمه فقط عندما يكون ذلك آمناً، ولا تدعه يشتتك عن القيادة، وتأكد من أن السيارة نفذت ما طلبته.\n\nما تقوله يُرسل إلى خدمة Gemini من Google، وإلى بحث Google إذا فعّلت البحث على الويب.</string>
+    <string name="about_open_source_title">مفتوح المصدر</string>
+    <string name="about_open_source_body">BYD Assistant NG برنامج مجاني ومفتوح المصدر. يمكنك الاطلاع على الشيفرة والإبلاغ عن المشكلات والمساهمة في التحسين عبر صفحة المشروع. نرحّب خصوصاً بإضافة عناصر تحكم مؤكدة لطرازات أخرى.</string>
+    <string name="about_source_link">فتح صفحة المشروع</string>
+    <string name="about_libraries_title">مبني بمكوّنات مفتوحة المصدر</string>
+    <string name="about_libraries_body">Kotlin وkotlinx.serialization وAndroidX وJetpack Compose وOkHttp وDagger Hilt وDadb — جميعها مفتوحة المصدر بموجب رخصة Apache 2.0. نصوص التراخيص متاحة لدى كل مشروع.</string>
 </resources>

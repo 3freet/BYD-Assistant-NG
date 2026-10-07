@@ -12,11 +12,14 @@ import java.io.File
  */
 class StringResourcesTest {
     private val resDir = File("src/main/res")
-    private val entry = Regex("""<string name="([^"]+)"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+    private val entry = Regex("""<string name="([^"]+)"([^>]*)>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
     private val placeholder = Regex("""%\d\$[sd]""")
 
+    /** The strings of one folder; brand names marked `translatable="false"` are left out of the comparison. */
     private fun strings(folder: String): Map<String, String> =
-        entry.findAll(File(resDir, "$folder/strings.xml").readText()).associate { it.groupValues[1] to it.groupValues[2] }
+        entry.findAll(File(resDir, "$folder/strings.xml").readText())
+            .filter { !it.groupValues[2].contains("translatable=\"false\"") }
+            .associate { it.groupValues[1] to it.groupValues[3] }
 
     private val english get() = strings("values")
     private val arabic get() = strings("values-ar")
@@ -51,5 +54,14 @@ class StringResourcesTest {
             assertEquals("English", strings.getValue("app_language_english"))
             assertEquals("العربية", strings.getValue("app_language_arabic"))
         }
+    }
+
+    @Test
+    fun theAppNameIsABrandAndStaysLatinInEveryLanguage() {
+        val main = File(resDir, "values/strings.xml").readText()
+        assertTrue("app_name must be translatable=\"false\"", Regex("""<string name="app_name"[^>]*translatable="false"""").containsMatchIn(main))
+        assertTrue("Arabic must not override app_name", !File(resDir, "values-ar/strings.xml").readText().contains("name=\"app_name\""))
+        // ...and Arabic sentences that mention the app use the same Latin name.
+        assertTrue(arabic.values.none { "مساعد BYD" in it })
     }
 }

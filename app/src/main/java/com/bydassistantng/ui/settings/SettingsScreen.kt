@@ -53,6 +53,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenCrashLog: () -> Unit,
     onOpenAppLog: () -> Unit,
+    onOpenAbout: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -317,6 +318,10 @@ fun SettingsScreen(
 
             item {
                 OutlinedButton(onClick = onOpenCrashLog, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.view_crash_log)) }
+            }
+
+            item {
+                OutlinedButton(onClick = onOpenAbout, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.view_about)) }
             }
         }
     }
