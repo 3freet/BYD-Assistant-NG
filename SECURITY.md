@@ -45,7 +45,9 @@ safeguards. A modified build, or any other program using the same ADB access, is
 - **Voice** is streamed to Google's Gemini API over TLS and is not stored by the app. With *Web search* on, your
   questions also go to Google Search. Google's own terms apply to that data.
 - **The API key** is encrypted with an Android Keystore AES key before it is stored; the key never leaves the
-  Keystore. Cleartext network traffic is permitted only to the loopback addresses.
+  Keystore. Android backup is switched off for the app (`allowBackup="false"`), so neither the encrypted key nor
+  the settings are copied to a cloud backup or to a new device. Cleartext network traffic is permitted only to
+  the loopback addresses.
 - **Logs** stay on the device (`app_log.txt`, `crash_log.txt`) and leave it only when you press *Share*. The
   application log currently records what the assistant heard and the places you asked to navigate to, so read a
   log before you send it to anyone.
