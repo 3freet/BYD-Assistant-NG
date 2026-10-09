@@ -1,10 +1,12 @@
 name: Build Beta
 
-# Pushing to the `beta` branch builds, signs and publishes a pre-release (version suffix -beta.N, numbered automatically).
+# Builds, signs and publishes a pre-release from main (version suffix -beta.N, numbered automatically).
+# Start it by committing to main with a message that begins with "beta:", or press "Run workflow" for this
+# workflow in the Actions tab.
 on:
   push:
     branches:
-      - beta
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -13,6 +15,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'beta:')
     runs-on: ubuntu-24.04
 
     permissions:

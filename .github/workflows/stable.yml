@@ -1,15 +1,15 @@
-name: Build Live
+name: Build Stable
 
-# Pushing to the `live` branch builds, signs and publishes the release for appVersionName in app/build.gradle.kts.
+# Pushing to the `stable` branch builds, signs and publishes the release for appVersionName in app/build.gradle.kts.
 # A version can be published once: raise appVersionName and appVersionCode for the next one.
 on:
   push:
     branches:
-      - live
+      - stable
   workflow_dispatch:
 
 concurrency:
-  group: live-build
+  group: stable-build
   cancel-in-progress: false
 
 jobs:
@@ -36,6 +36,17 @@ jobs:
 
       - name: Grant execute permission
         run: chmod +x ./gradlew
+
+      # Fail in seconds, not after a five-minute build, when the version was not raised.
+      - name: Refuse to overwrite an existing release
+        run: |
+          VERSION=$(sed -n 's/^val appVersionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+          TAG="v${VERSION}"
+          if [ -z "$VERSION" ]; then echo "::error::Could not read appVersionName from app/build.gradle.kts."; exit 1; fi
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::Release ${TAG} already exists. Raise appVersionName and appVersionCode in app/build.gradle.kts before publishing a new stable build."
+            exit 1
+          fi
 
       # Never publish an APK signed with the throwaway debug key: it could not be updated later.
       - name: Require signing secrets
@@ -78,15 +89,6 @@ jobs:
       - name: Generate tag
         id: tag
         run: echo "tag=v${{ steps.apk-info.outputs.version-name }}" >> "$GITHUB_OUTPUT"
-
-      - name: Refuse to overwrite an existing release
-        env:
-          TAG: ${{ steps.tag.outputs.tag }}
-        run: |
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
-            echo "::error::Release ${TAG} already exists. Raise appVersionName and appVersionCode in app/build.gradle.kts before publishing a new live build."
-            exit 1
-          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7

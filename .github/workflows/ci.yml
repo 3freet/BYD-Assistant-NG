@@ -1,16 +1,17 @@
 name: CI
 
-# Unit tests and lint on every push (except the two release branches, which run them as part of
-# publishing) and on every pull request.
+# Unit tests and lint on every push (except the `stable` branch, which runs them as part of publishing) and
+# on every pull request.
 on:
   push:
     branches-ignore:
-      - beta
-      - live
+      - stable
   pull_request:
 
 jobs:
   test:
+    # A "beta:" commit on main is tested by beta.yml as part of its own build, so don't test it twice.
+    if: github.event_name != 'push' || github.ref != 'refs/heads/main' || !startsWith(github.event.head_commit.message, 'beta:')
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout

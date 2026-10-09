@@ -19,19 +19,29 @@ Thank you for helping. The most valuable contributions are **confirmations from 
 
 ## Branches and releases
 
-| Branch | Purpose | What happens on push |
-| --- | --- | --- |
-| `main` | Development. Open pull requests against it | Unit tests and lint ([ci.yml](.github/workflows/ci.yml)) |
-| `beta` | Pre-releases | Tests, lint, signed build, GitHub **pre-release** `v<version>-beta.N` ([beta.yml](.github/workflows/beta.yml)) |
-| `live` | Releases | Tests, lint, signed build, GitHub **release** `v<version>` ([live.yml](.github/workflows/live.yml)) |
+Two branches:
 
-To publish: fast-forward `beta` to `main` for a pre-release; fast-forward `live` to `beta` when it has been
-tested on a vehicle. A live version can be published once — raise both `appVersionName` and `appVersionCode` in
-`app/build.gradle.kts` first, or the workflow stops.
+| Branch | Purpose | What happens |
+| --- | --- | --- |
+| `main` | Development. Open pull requests against it | Every push runs unit tests and lint ([ci.yml](.github/workflows/ci.yml)) |
+| `stable` | What has been released | Pushing to it runs the tests and lint, builds and signs the app, and publishes a GitHub **release** `v<version>` ([stable.yml](.github/workflows/stable.yml)) |
+
+**Pre-releases** are built from `main` on request ([beta.yml](.github/workflows/beta.yml)): commit with a message
+that begins with `beta:`, or press *Run workflow* for "Build Beta" in the Actions tab. It tests, builds, signs and
+publishes `v<version>-beta.N`, numbered automatically.
+
+**To release:** test a beta on a vehicle, then fast-forward `stable` to the commit you tested:
+
+```bash
+git push origin main:stable
+```
+
+A version can be published once — raise both `appVersionName` and `appVersionCode` in `app/build.gradle.kts`
+first, or the workflow stops at once with a message saying so.
 
 ### Signing secrets (maintainers)
 
-The `beta` and `live` workflows refuse to run without these repository secrets, so a release can never be signed
+The `beta` and `stable` workflows refuse to run without these repository secrets, so a release can never be signed
 with the throwaway debug key:
 
 | Secret | Value |

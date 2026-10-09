@@ -99,8 +99,8 @@ Optional build settings:
 
 ## Branches
 
-`main` is development; pushing to `beta` publishes a pre-release and pushing to `live` publishes a release. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
+`main` is development; a commit starting with `beta:` (or a manual run) publishes a pre-release from it, and pushing to
+`stable` publishes a release. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project layout
 
