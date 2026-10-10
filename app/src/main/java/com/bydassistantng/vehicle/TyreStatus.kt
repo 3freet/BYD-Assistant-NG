@@ -8,7 +8,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlin.math.roundToInt
+import kotlin.math.floor
 
 /** Read-only questions the car can answer. The helper process answers them; none of them writes anything. */
 enum class VehicleQuery(val id: String) {
@@ -43,6 +43,8 @@ data class RawWheel(
     val signal: Int? = null,
     /** Degrees Celsius from the instrument cluster; null unless the cluster is set to Celsius. */
     val celsius: Int? = null,
+    /** The number the cluster shows for this wheel, in tenths of its display unit (155 is 15.5 psi when that unit is psi). */
+    val cluster: Int? = null,
 )
 
 @Serializable
@@ -88,7 +90,14 @@ object TyreStatusTool {
 
     fun bar(kpa: Int): Double = kpa / 100.0
 
-    fun psi(kpa: Int): Double = (kpa * 0.145038 * 10).roundToInt() / 10.0
+    /** kPa as psi to one decimal, cut off rather than rounded: that is what the cluster does, so the two agree. */
+    fun psi(kpa: Int): Double = floor(kpa * 0.145038 * 10 + 1e-9) / 10.0
+
+    /** The psi to tell the user: the cluster's own figure when it shows psi, else the conversion (which matches it). */
+    fun psiShown(raw: RawWheel, clusterUnit: Int?, kpa: Int): Double {
+        val shown = raw.cluster
+        return if (clusterUnit == PSI_UNIT_CODE && shown != null) shown / 10.0 else psi(kpa)
+    }
 
     /** The answer given back to the model. */
     fun report(snapshot: RawTyreSnapshot): JsonObject = buildJsonObject {
@@ -103,11 +112,11 @@ object TyreStatusTool {
         snapshot.system?.let { code -> systemState(code)?.let { put("system", it) } }
 
         val reported = Wheel.entries.mapNotNull { wheel -> snapshot.wheels.find { it.wheel == wheel.key }?.let { wheel to it } }
-        put("wheels", buildJsonArray { reported.forEach { (wheel, raw) -> add(wheelReport(wheel, raw)) } })
+        put("wheels", buildJsonArray { reported.forEach { (wheel, raw) -> add(wheelReport(wheel, raw, snapshot.clusterPressureUnit)) } })
         put("warnings", buildJsonArray { warnings(reported).forEach { add(JsonPrimitive(it)) } })
     }
 
-    private fun wheelReport(wheel: Wheel, raw: RawWheel): JsonObject = buildJsonObject {
+    private fun wheelReport(wheel: Wheel, raw: RawWheel, clusterUnit: Int?): JsonObject = buildJsonObject {
         put("position", wheel.spoken)
         val kpa = raw.kpa
         if (raw.signal == 1 || kpa == null) {
@@ -115,7 +124,7 @@ object TyreStatusTool {
         } else {
             put("kpa", kpa)
             put("bar", bar(kpa))
-            put("psi", psi(kpa))
+            put("psi", psiShown(raw, clusterUnit, kpa))
         }
         put(
             "pressure_state",

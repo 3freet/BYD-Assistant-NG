@@ -60,12 +60,16 @@ matched by comparing the same wheel's values on both devices.
 The tyre device returns small integers (107, 112, 120, 117 on the unit this was built on). The cluster returns
 155, 162, 174, 169 for the same wheels, and `getUnit(2)` (the cluster's *pressure unit*) answered `2`.
 
-- 107, 112, 120, 117 **kPa** are 15.5, 16.2, 17.4 and 17.0 **psi** (× 0.145038).
-- The cluster values are exactly those psi figures × 10, **cut off, not rounded** (16.97 psi shows as 169).
+- 107, 112, 120, 117 **kPa** are 15.5, 16.2, 17.4 and 16.97 **psi** (× 0.145038).
+- The cluster values are exactly those psi figures × 10, **cut off, not rounded**: 16.97 psi shows as 16.9. A later
+  reading of 110, 115, 120, 117 kPa showed 15.9, 16.6, 17.4, 16.9. Rounding instead would put three of the four
+  wheels 0.1 psi above the cluster, which a driver notices.
 
 So the tyre device reports kilopascals, and the cluster reports tenths of its display unit, with unit code `2`
 meaning psi. Only code `2` has been confirmed; other codes (bar, kPa) were not observed, so the app names the
-car's display unit only when the code is `2`.
+car's display unit only when the code is `2`. When it is, the app reports the cluster's own number
+(`getWheelPressure`, divided by ten) rather than converting, so what the assistant says is what the screen shows;
+the conversion, cut off the same way, is the fallback.
 
 Temperatures are whole degrees from `getWheelTemperature(area)` and agreed with the outside temperature from
 `getOutCarTemperature()` while parked; they are in the cluster's temperature unit (`getUnit(1)`, `1` observed),

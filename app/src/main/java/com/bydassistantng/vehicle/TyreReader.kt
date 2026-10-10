@@ -28,6 +28,7 @@ internal class TyreReader(private val context: Context) {
                     leak = callInt(tyre, "getTyreAirLeakState", wheel.tyreArea).asState(),
                     signal = callInt(tyre, "getTyreSignalState", wheel.tyreArea).asState(),
                     celsius = if (celsius) cluster?.let { callInt(it, "getWheelTemperature", wheel.clusterArea) }?.takeIf { it in TEMP_MIN..TEMP_MAX } else null,
+                    cluster = cluster?.let { callInt(it, "getWheelPressure", wheel.clusterArea) }?.takeIf { it in CLUSTER_PRESSURE_MIN..CLUSTER_PRESSURE_MAX },
                 )
             }
             Result.success(
@@ -74,6 +75,9 @@ internal class TyreReader(private val context: Context) {
 
         const val PRESSURE_MIN = 0
         const val PRESSURE_MAX = 4094
+        // BYDAutoInstrumentDevice.PRESSURE_MIN / PRESSURE_MAX.
+        const val CLUSTER_PRESSURE_MIN = 0
+        const val CLUSTER_PRESSURE_MAX = 1000
         const val TEMP_MIN = -40
         const val TEMP_MAX = 250
 

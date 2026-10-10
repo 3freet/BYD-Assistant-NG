@@ -14,6 +14,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.roundToInt
 
 class TyreStatusTest {
     // What the car answered on the unit this was built on: 107/112/120/117 kPa, all under-pressure, cluster in psi.
@@ -32,14 +33,34 @@ class TyreStatusTest {
         assertEquals(15.5, TyreStatusTool.psi(107), 1e-9)
         assertEquals(16.2, TyreStatusTool.psi(112), 1e-9)
         assertEquals(17.4, TyreStatusTool.psi(120), 1e-9)
-        assertEquals(17.0, TyreStatusTool.psi(117), 1e-9)
-        assertEquals(36.3, TyreStatusTool.psi(250), 1e-9)
+        assertEquals(36.2, TyreStatusTool.psi(250), 1e-9)
+    }
+
+    @Test
+    fun psiIsCutOffLikeTheClusterDoesNotRounded() {
+        // 117 kPa is 16.97 psi: the cluster shows 16.9, so the app must not say 17.0.
+        assertEquals(16.9, TyreStatusTool.psi(117), 1e-9)
+        // The same car a little later: 110 -> 15.95 (cluster 15.9), 115 -> 16.68 (cluster 16.6).
+        assertEquals(15.9, TyreStatusTool.psi(110), 1e-9)
+        assertEquals(16.6, TyreStatusTool.psi(115), 1e-9)
+    }
+
+    @Test
+    fun theClustersOwnFigureWinsWhenItShowsPsi() {
+        val raw = wheel(Wheel.FRONT_LEFT, 110).copy(cluster = 159)
+        assertEquals(15.9, TyreStatusTool.psiShown(raw, TyreStatusTool.PSI_UNIT_CODE, 110), 1e-9)
+        // A cluster in another unit is not read as psi.
+        assertEquals(15.9, TyreStatusTool.psiShown(raw, 3, 110), 1e-9)
+        assertEquals(15.9, TyreStatusTool.psiShown(raw.copy(cluster = null), TyreStatusTool.PSI_UNIT_CODE, 110), 1e-9)
+        val other = raw.copy(cluster = 160)
+        assertEquals(16.0, TyreStatusTool.psiShown(other, TyreStatusTool.PSI_UNIT_CODE, 110), 1e-9)
     }
 
     @Test
     fun theClusterNumbersFollowFromTheTyreDeviceOnes() {
         // The cluster shows tenths of psi, cut off rather than rounded: 155, 162, 174, 169 for 107, 112, 120, 117 kPa.
-        assertEquals(listOf(155, 162, 174, 169), listOf(107, 112, 120, 117).map { (it * 0.145038 * 10).toInt() })
+        assertEquals(listOf(155, 162, 174, 169), listOf(107, 112, 120, 117).map { (TyreStatusTool.psi(it) * 10).roundToInt() })
+        assertEquals(listOf(159, 166, 174, 169), listOf(110, 115, 120, 117).map { (TyreStatusTool.psi(it) * 10).roundToInt() })
     }
 
     @Test
