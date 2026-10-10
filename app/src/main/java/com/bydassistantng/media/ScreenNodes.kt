@@ -122,12 +122,13 @@ object FirstResult {
     const val SETTLED_ENTRIES = 4
 
     /**
-     * Whether Spotify is showing a playlist, album or artist page rather than the search results: the page has its
-     * own root view and the results list is gone from the hierarchy.
+     * Whether Spotify has left the search results for a page of its own (a playlist, album or artist, possibly
+     * still loading): the app is on screen and the results list is gone from its hierarchy. The page's own root
+     * view is not a reliable sign, since on a slow connection it appears late or not at all.
      */
-    fun spotifyEntityPageOpen(nodes: List<ViewNode>): Boolean {
+    fun spotifyResultsLeft(nodes: List<ViewNode>): Boolean {
         val mine = nodes.filter { it.activityPackage == SPOTIFY }
-        return mine.any { it.resourceId.endsWith("id/list_entity_root") } && mine.none { it.resourceId.endsWith("id/search_content_recyclerview") }
+        return mine.isNotEmpty() && mine.none { it.resourceId.endsWith("id/search_content_recyclerview") }
     }
 
     private val PLAY_BUTTON = Regex("""(?i)^play( playlist| album| artist| podcast| show)?$""")

@@ -114,16 +114,16 @@ class ViewHierarchyTest {
     }
 
     @Test
-    fun anOpenedPageIsToldApartFromTheResultsList() {
+    fun leavingTheResultsListIsToldApartFromBeingOnIt() {
         val page = """
             ACTIVITY com.spotify.music/.SpotifyMainActivity 1 pid=1
               View Hierarchy:
-                p.Root{a VFED..... ........ 0,0-2528,1208 #7f app:id/list_entity_root}
+                p.Root{a VFED..... ........ 0,0-2528,1208 #7f app:id/content}
                   p.Compose{b VFED..... ........ 0,0-2528,900 #7f app:id/compose_view}
         """.trimIndent()
-        assertTrue(FirstResult.spotifyEntityPageOpen(ViewHierarchy.parse(page)))
-        assertEquals(false, FirstResult.spotifyEntityPageOpen(ViewHierarchy.parse(playlistResults())))
-        assertEquals(false, FirstResult.spotifyEntityPageOpen(emptyList()))
+        assertTrue(FirstResult.spotifyResultsLeft(ViewHierarchy.parse(page)))
+        assertEquals(false, FirstResult.spotifyResultsLeft(ViewHierarchy.parse(playlistResults())))
+        assertEquals(false, FirstResult.spotifyResultsLeft(emptyList()))
     }
 
     @Test

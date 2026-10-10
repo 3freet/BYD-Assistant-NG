@@ -22,7 +22,9 @@ private const val CONFIRM_ATTEMPTS = 10
 // A song starts within a second or two; a press that has not changed the track by then opened a page instead.
 private const val PAGE_CONFIRM_ATTEMPTS = 3
 private const val SAME_TRACK_ACCEPT_ATTEMPTS = 4
-private const val PAGE_LOOKS = 3
+private const val PAGE_OPEN_WAIT_MS = 6_000L
+private const val QUICK_PRESSES = 9
+private const val QUICK_PRESS_INTERVAL_MS = 1_300L
 private const val KNOWN_SCREEN_WIDTH = 2560
 private const val KNOWN_SCREEN_HEIGHT = 1440
 private const val KNOWN_PLAY_X = 1864
@@ -181,20 +183,33 @@ class UiPlayStarter(private val context: Context) {
     private suspend fun pressKnownPlayButton(adb: Dadb, packageName: String): Boolean {
         if (packageName != FirstResult.SPOTIFY) return false
         val size = adb.shell("wm size").output
-        if (!size.contains("${KNOWN_SCREEN_WIDTH}x$KNOWN_SCREEN_HEIGHT")) return false
+        if (!size.contains("${KNOWN_SCREEN_WIDTH}x$KNOWN_SCREEN_HEIGHT")) {
+            AppLogger.log(TAG, "Quick press skipped: screen is ${size.trim().take(60)}")
+            return false
+        }
+        // The page appears about three seconds after the press, longer on a slow connection.
         var open = false
-        repeat(PAGE_LOOKS) {
+        var waited = 0L
+        while (!open && waited <= PAGE_OPEN_WAIT_MS) {
+            open = FirstResult.spotifyResultsLeft(ViewHierarchy.parse(adb.shell("dumpsys activity top").output))
             if (!open) {
-                open = FirstResult.spotifyEntityPageOpen(ViewHierarchy.parse(adb.shell("dumpsys activity top").output))
-                if (!open) delay(LOOK_INTERVAL_MS)
+                delay(LOOK_INTERVAL_MS)
+                waited += LOOK_INTERVAL_MS
             }
         }
-        if (!open) return false
+        if (!open) {
+            AppLogger.log(TAG, "Quick press skipped: the page was not open")
+            return false
+        }
         val before = sessionState(adb, packageName)
-        adb.shell("input tap $KNOWN_PLAY_X $KNOWN_PLAY_Y")
-        repeat(PAGE_CONFIRM_ATTEMPTS + 1) {
-            delay(LOOK_INTERVAL_MS)
-            if (SessionState.startedSince(before, sessionState(adb, packageName), waitedLong = false)) return true
+        // The page loads over the network and looks the same to the view dump before and after, so press until it
+        // takes: a press on the spinner does nothing, and the first press after it has loaded starts the playlist.
+        repeat(QUICK_PRESSES) { attempt ->
+            adb.shell("input tap $KNOWN_PLAY_X $KNOWN_PLAY_Y")
+            delay(QUICK_PRESS_INTERVAL_MS)
+            val after = sessionState(adb, packageName)
+            AppLogger.log(TAG, "Quick press ${attempt + 1}: ${after.state} ${after.title?.take(30)}")
+            if (SessionState.startedSince(before, after, waitedLong = false)) return true
         }
         return false
     }
