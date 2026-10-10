@@ -21,6 +21,7 @@ import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.data.SecureCredentials
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.media.PlayMediaTool
+import com.bydassistantng.media.PlaybackFollowUp
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.ShellHelperVehicleController
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -227,6 +228,11 @@ class LiveConversationController @Inject constructor(
      * assistant speaking. This, not [isListening], is what decides whether a button press means "end it"
      * or "start one". */
     val inConversation: Boolean get() = conversationActive
+
+    init {
+        // A "play X" whose last step could not start anything says so with the error tone.
+        PlaybackFollowUp.onNotStarted = { earcons.play(Earcon.ERROR) }
+    }
 
     /** Attempts to open a Live session and start the conversation. Returns false if the session
      * couldn't be established at all (model unavailable, access denied, network error, timeout) —
@@ -627,6 +633,8 @@ class LiveConversationController @Inject constructor(
         recorder.stop()
         gate = Gate.BLOCKED
         endDip()
+        // A "play X" that was asked for during this conversation gets its last step now that nothing is listening.
+        PlaybackFollowUp.startPending(context)
         holdJob?.cancel()
         holdJob = null
         utteranceHold.discard()

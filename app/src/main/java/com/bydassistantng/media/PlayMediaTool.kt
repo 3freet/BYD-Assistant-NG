@@ -73,7 +73,7 @@ object PlayMediaTool {
             "about <topic> on YouTube\", \"put on some music\". When the user leaves the choice to you " +
             "(\"something moody\", \"surprise me\"), pick one specific, well-known title and artist yourself " +
             "and pass them as the query. It cannot pick from an app's home screen: it always needs a search " +
-            "phrase. It searches and presses the top result, which takes a few seconds. After it succeeds, " +
+            "phrase. It searches and starts the top result, which takes a few seconds. After it succeeds, " +
             "confirm in one short sentence; the conversation ends so the music does not get picked up by the " +
             "microphone.",
         parameters = GeminiSchema(
@@ -151,6 +151,14 @@ object PlayMediaTool {
         AppLogger.log(TAG, "Asked ${app.label} to play \"${request.query}\" (${request.kind.word})")
 
         // The apps answer the request by showing their results; the top result still has to be pressed.
+        if (!FirstResult.hasRule(app.packageName)) {
+            return partial("${app.label} is showing results for \"${request.query}\"; it cannot be started automatically. Tell the user to tap the first result.")
+        }
+        if (FirstResult.needsUiAutomation(app.packageName)) {
+            // Reading this app's screen switches accessibility off for a while, so it waits until the conversation is over.
+            PlaybackFollowUp.schedule(PendingPlayback(app.packageName, app.label, request.query, request.kind))
+            return ok("${app.label} is opening results for \"${request.query}\" and will start the top one in a few seconds. Confirm in one short sentence.")
+        }
         return when (val outcome = UiPlayStarter(context).startFirstResult(app.packageName, request.kind)) {
             is StartOutcome.Playing -> ok("${app.label} is now playing ${outcome.label.ifBlank { "\"${request.query}\"" }}.")
             is StartOutcome.Pressed -> ok("${app.label} was told to play ${outcome.label.ifBlank { "\"${request.query}\"" }} and starts in a moment.")

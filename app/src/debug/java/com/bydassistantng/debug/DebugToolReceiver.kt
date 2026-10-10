@@ -7,6 +7,7 @@ import com.bydassistantng.apps.AppLauncherTool
 import com.bydassistantng.gemini.GeminiFunctionCall
 import com.bydassistantng.media.MediaControlTool
 import com.bydassistantng.media.PlayMediaTool
+import com.bydassistantng.media.PlaybackFollowUp
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.ShellHelperVehicleController
 import com.bydassistantng.vehicle.OutsideTemperatureTool
@@ -51,7 +52,13 @@ class DebugToolReceiver : BroadcastReceiver() {
                             else -> answer
                         }
                     }
-                    PlayMediaTool.FUNCTION_NAME -> runBlocking { PlayMediaTool.handle(app, call) { } }
+                    PlayMediaTool.FUNCTION_NAME -> runBlocking {
+                        val answer = PlayMediaTool.handle(app, call) { }
+                        // No conversation here, so the second half runs straight away and its outcome is logged too.
+                        val outcome = PlaybackFollowUp.runPendingNow(app)
+                        AppLogger.log("DebugTool", "play_media follow-up -> $outcome")
+                        answer
+                    }
                     TyreStatusTool.FUNCTION_NAME -> {
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
                         when (val answer = runBlocking { controller.query(VehicleQuery.TYRES) }) {
