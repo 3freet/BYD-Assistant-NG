@@ -12,7 +12,7 @@ A short tour for contributors. For the vehicle side, see [byd-internals](byd-int
 | `gemini/GeminiLiveClient` | The wire protocol only: setup, audio frames, tool calls, events |
 | `gemini/ConversationShared` | The system prompt, the tool list, and the dispatcher that routes a function call |
 | `audio/` | Microphone and speaker I/O, end-of-speech detection, talk-over detection |
-| `vehicle/` | The command registry, the safety gate, and the helper process (see byd-internals) |
+| `vehicle/` | The command registry, the safety gate, the helper process, and the read-only queries such as tyre pressure (see byd-internals) |
 | `apps/`, `media/`, `navigation/` | The non-vehicle tools: open an app, media keys, navigation |
 | `ui/` | The screens: home, onboarding, settings, about (Jetpack Compose) |
 | `util/AppLanguage` | In-app language and layout direction |
@@ -55,6 +55,10 @@ offered. **Vehicle commands are offered only when the user has switched vehicle 
 a non-blocked domain are in the registry at all, so the model has no function it could call for anything that
 affects driving. The helper process re-checks every command, value and domain, and a dispatch refuses a
 blocked domain again. Every command that has a state id is confirmed by reading it back.
+
+Read-only questions (`get_tyre_pressure`) travel the same way as `query <id>` to the helper, which has a fixed list
+of them (`VehicleQuery`) and calls only getters. They are offered under the same switch, since the helper is the
+same ADB-shell power either way.
 
 ## When the connection fails
 

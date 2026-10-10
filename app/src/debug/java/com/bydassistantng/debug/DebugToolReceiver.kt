@@ -7,9 +7,23 @@ import com.bydassistantng.apps.AppLauncherTool
 import com.bydassistantng.gemini.GeminiFunctionCall
 import com.bydassistantng.media.MediaControlTool
 import com.bydassistantng.util.AppLogger
+import com.bydassistantng.vehicle.ShellHelperVehicleController
+import com.bydassistantng.vehicle.TyreStatusTool
+import com.bydassistantng.vehicle.VehicleDispatchResult
+import com.bydassistantng.vehicle.VehicleQuery
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+internal interface VehicleReadEntryPoint {
+    fun vehicleController(): ShellHelperVehicleController
+}
 
 /**
  * `am broadcast -a com.bydassistantng.debug.TOOL -n <pkg>/com.bydassistantng.debug.DebugToolReceiver --es tool open_app --es args '{"name":"camera"}'`
@@ -28,6 +42,13 @@ class DebugToolReceiver : BroadcastReceiver() {
                 val result = when (tool) {
                     AppLauncherTool.FUNCTION_NAME -> runBlocking { AppLauncherTool.handle(app, call) { } }
                     MediaControlTool.FUNCTION_NAME -> MediaControlTool.handle(app, call)
+                    TyreStatusTool.FUNCTION_NAME -> {
+                        val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
+                        when (val answer = runBlocking { controller.query(VehicleQuery.TYRES) }) {
+                            is VehicleDispatchResult.Success -> answer.note?.let { TyreStatusTool.parse(it) }?.let { TyreStatusTool.report(it) } ?: answer
+                            else -> answer
+                        }
+                    }
                     else -> null
                 }
                 AppLogger.log("DebugTool", "$tool($args) -> $result")

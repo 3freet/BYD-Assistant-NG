@@ -25,6 +25,7 @@ data or from leaked documents**, and contributions should keep it that way (see
 | --- | --- |
 | [hal-and-permissions.md](hal-and-permissions.md) | The `android.hardware.bydauto` classes, device types, control vs state ids, the permission model and why a helper process running as the ADB shell user is needed |
 | [ac-service.md](ac-service.md) | The air-conditioning Binder service: wire format, property ids, areas, observed values and side effects |
+| [tyres.md](tyres.md) | Reading tyre pressure: the tyre and instrument devices, wheel areas, how the units were worked out |
 | [steering-wheel-button.md](steering-wheel-button.md) | How the steering-wheel microphone button reaches Android, and keeping it alive across sleep and wake |
 | [research-method.md](research-method.md) | How to find a control and learn what its values mean, with the read-only probes in [`tools/probes`](../../tools/probes) |
 | [findings-and-dead-ends.md](findings-and-dead-ends.md) | Quirks that cost time, and the things that could **not** be done (the horn, the security group) |

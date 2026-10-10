@@ -15,7 +15,7 @@ Each has a static `getInstance(Context)`. Many also expose typed getters (the sy
 `BYDAutoStatisticDevice.getElecPercentageValue`, `getEVMileageValue`, `getElecDrivingRangeValue`,
 `getFuelDrivingRangeValue`, `getTotalMileageValue` and `BYDAutoSpeedDevice.getCurrentSpeed`) — so battery,
 fuel, range, odometer and speed are readable, which is the basis for "how much range do I have?" style
-features. Those typed getters are not used by this project yet.
+features. Of these, [tyre pressure](tyres.md) is used by the app; the others are not used by this project yet.
 
 ## Device types
 

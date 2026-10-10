@@ -45,6 +45,21 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         return result
     }
 
+    override suspend fun query(query: VehicleQuery): VehicleDispatchResult = withContext(Dispatchers.IO) {
+        when (query) {
+            VehicleQuery.TYRES -> TyreReader(context).read().fold(
+                onSuccess = { VehicleDispatchResult.Success(TyreStatusTool.encode(it)) },
+                onFailure = {
+                    val missing = it is ClassNotFoundException || it is NoSuchMethodException
+                    VehicleDispatchResult.Failure(
+                        if (missing) VehicleDispatchError.CLASS_NOT_FOUND else VehicleDispatchError.INVOCATION_FAILED,
+                        it.toString(),
+                    )
+                },
+            )
+        }
+    }
+
     private fun tryNamedMethod(invocation: VehicleInvocation.NamedMethod, value: Int): VehicleDispatchResult {
         val className = "android.hardware.bydauto.${invocation.deviceClass}.BYDAuto${invocation.deviceClass.replaceFirstChar { it.uppercase() }}Device"
         return try {

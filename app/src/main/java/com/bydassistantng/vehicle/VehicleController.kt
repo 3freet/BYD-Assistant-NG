@@ -3,6 +3,13 @@ package com.bydassistantng.vehicle
 interface VehicleController {
     /** Implementations MUST call [VehicleSafety.assertDispatchAllowed] as their first statement. */
     suspend fun dispatch(command: VehicleCommand, value: Int): VehicleDispatchResult
+
+    /**
+     * Asks the car a read-only question; on success the note carries the answer. Nothing is written. Controllers
+     * that cannot reach the car say so.
+     */
+    suspend fun query(query: VehicleQuery): VehicleDispatchResult =
+        VehicleDispatchResult.Failure(VehicleDispatchError.HELPER_UNAVAILABLE, "This controller cannot read the car.")
 }
 
 sealed interface VehicleDispatchResult {

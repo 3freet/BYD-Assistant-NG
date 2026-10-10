@@ -24,6 +24,9 @@ open apps, control the media player — and, optionally, operate the car's comfo
   ventilation, compressor, auto, defrost), windows (open/close or any position), sunroof, sunshade, trunk,
   volume, seat heating / ventilation / massage, steering-wheel heating, the cabin light and the fridge. The
   full list, with ids and what is verified, is in [vehicle-commands.md](docs/byd-internals/vehicle-commands.md).
+- **Tyre pressure** ("how are my tyres?"): reads each wheel's pressure, the car's own low/high and leak warnings
+  and the temperature, and answers in the unit you ask for. Read-only, but it uses the same switch as vehicle
+  control. See [tyres.md](docs/byd-internals/tyres.md).
 - **English and Arabic**: the whole app is translated, including full right-to-left layout. *App language*
   (screens and messages) and *Assistant language* (what it speaks) are separate settings, as are the
   assistant's voice and, for Arabic, its dialect.

@@ -18,6 +18,8 @@ public class Feat {
         DEVICES.put("Audio", new String[]{"android.hardware.bydauto.audio.BYDAutoAudioDevice", "1002"});
         DEVICES.put("Light", new String[]{"android.hardware.bydauto.light.BYDAutoLightDevice", "1004"});
         DEVICES.put("Setting", new String[]{"android.hardware.bydauto.setting.BYDAutoSettingDevice", "1023"});
+        DEVICES.put("Tyre", new String[]{"android.hardware.bydauto.tyre.BYDAutoTyreDevice", "1016"});
+        DEVICES.put("Instrument", new String[]{"android.hardware.bydauto.instrument.BYDAutoInstrumentDevice", "1007"});
     }
 
     public static void main(String[] args) {

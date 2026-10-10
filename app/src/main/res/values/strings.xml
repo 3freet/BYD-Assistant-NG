@@ -30,6 +30,7 @@
     <string name="banner_listening_press_to_stop">Listening… press to stop</string>
     <string name="banner_navigating">Navigating to %1$s</string>
     <string name="banner_opening_app">Opening %1$s</string>
+    <string name="banner_tyres">Reading tyre pressure</string>
     <string name="banner_media">Media: %1$s</string>
     <string name="media_play">play</string>
     <string name="media_pause">pause</string>

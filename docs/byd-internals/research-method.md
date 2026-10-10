@@ -19,7 +19,7 @@ Phone-hotspot links drop without warning; see "Record on the device" below.
 
 ## 2. The probes
 
-[`tools/probes`](../../tools/probes) holds three small read-only programs. `build.sh` compiles them with
+[`tools/probes`](../../tools/probes) holds four small read-only programs. `build.sh` compiles them with
 `javac --release 8`, converts them with `d8` and pushes `probes.dex` to `/data/local/tmp`. They run as the
 shell user, which the vehicle services accept:
 
@@ -32,9 +32,11 @@ adb shell "CLASSPATH=/data/local/tmp/probes.dex app_process /system/bin <Probe> 
 | --- | --- | --- |
 | `Feat <regex> [read]` | Lists the ids in `BYDAutoFeatureIds` whose names match, and with `read` the value each state holds right now | `Feat 'FRIDGE' read` |
 | `Members <class> <regex>` | Lists a class's constants (with values) and method signatures; never calls anything | `Members android.hardware.bydauto.security.BYDAutoSecurityDevice '.'` |
+| `Getters <class> [maxArg]` | Calls the public getters (`get…`/`has…`/`is…`) of one device class and prints the answers; a one-int getter is tried for 0..maxArg (wheel, door and seat positions). Skips `getAllStatus` | `Getters android.hardware.bydauto.tyre.BYDAutoTyreDevice 4` |
 | `Watch <regex> <seconds> [sweepMs]` | Polls every readable state (about 3,700 across the main devices) and prints each change with a time | `Watch . 240 0` |
 
-None of them can write: they contain no call to `set`. Remove the dex afterwards
+None of them can write: they contain no call to `set` (`Getters` only invokes methods whose names start with
+`get`, `has` or `is`). Remove the dex afterwards
 (`adb shell rm /data/local/tmp/probes.dex`).
 
 ## 3. Record while you operate the native screen

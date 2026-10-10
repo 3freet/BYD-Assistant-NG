@@ -90,12 +90,29 @@ class ShellHelperVehicleController @Inject constructor(
         }
     }
 
+    override suspend fun query(query: VehicleQuery): VehicleDispatchResult = mutex.withLock {
+        try {
+            sendLine("query ${query.id}") ?: run {
+                AppLogger.log(TAG, "Helper connection was lost — restarting it")
+                closeSession()
+                sendLine("query ${query.id}")
+            } ?: VehicleDispatchResult.Failure(
+                VehicleDispatchError.HELPER_UNAVAILABLE,
+                "Could not reach the head unit's ADB connection — ADB debugging must be on and authorized.",
+            )
+        } finally {
+            armIdleClose()
+        }
+    }
+
     /** @return null if the helper couldn't be started or its stream was dead; a result otherwise. */
-    private suspend fun send(command: VehicleCommand, value: Int): VehicleDispatchResult? {
+    private suspend fun send(command: VehicleCommand, value: Int): VehicleDispatchResult? = sendLine("${command.id} $value")
+
+    private suspend fun sendLine(line: String): VehicleDispatchResult? {
         val helper = ensureSession() ?: return null
-        AppLogger.log(TAG, "Helper: ${command.id}=$value")
+        AppLogger.log(TAG, "Helper: $line")
         val reply = try {
-            helper.write("${command.id} $value")
+            helper.write(line)
             helper.readLineStartingWith(HelperProtocol.RESULT_PREFIX.trim(), COMMAND_TIMEOUT_MS)
         } catch (e: IOException) {
             null

@@ -77,6 +77,11 @@ object VehicleShellHelper {
     }
 
     private fun execute(args: List<String>, controller: () -> ReflectionVehicleController): VehicleDispatchResult {
+        // Read-only questions: "query <id>". Only the queries in VehicleQuery exist; nothing else is readable this way.
+        if (args.firstOrNull() == "query") {
+            val query = args.getOrNull(1)?.let { VehicleQuery.byId(it) } ?: return invalid("unknown query '${args.getOrNull(1)}'")
+            return runBlocking { controller().query(query) }
+        }
         if (args.size != 2) return invalid("expected <commandId> <value>")
         val command = VehicleCommandRegistry.byId(args[0]) ?: return invalid("unknown or blocked command '${args[0]}'")
         val value = args[1].toIntOrNull() ?: return invalid("value '${args[1]}' is not an integer")

@@ -10,10 +10,12 @@ import com.bydassistantng.navigation.NavigationTool
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.LoggingVehicleController
+import com.bydassistantng.vehicle.TyreStatusTool
 import com.bydassistantng.vehicle.VehicleCommandRegistry
 import com.bydassistantng.vehicle.VehicleController
 import com.bydassistantng.vehicle.VehicleDispatchError
 import com.bydassistantng.vehicle.VehicleDispatchResult
+import com.bydassistantng.vehicle.VehicleQuery
 import com.bydassistantng.vehicle.labelFor
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -42,7 +44,10 @@ fun assistantTools(vehicleControlEnabled: Boolean, conversation: Boolean = false
         add(AppLauncherTool.declaration)
         add(MediaControlTool.declaration)
         if (conversation) add(endConversationDeclaration)
-        if (vehicleControlEnabled) addAll(VehicleCommandRegistry.functionDeclarations())
+        if (vehicleControlEnabled) {
+            addAll(VehicleCommandRegistry.functionDeclarations())
+            add(TyreStatusTool.declaration)
+        }
     }
     return buildList {
         add(GeminiTool(functionDeclarations = declarations))
@@ -76,6 +81,11 @@ object VehicleFunctionDispatcher {
             return MediaControlTool.handle(context, functionCall)
         }
 
+        if (functionCall.name == TyreStatusTool.FUNCTION_NAME) {
+            onDispatching(AppLanguage.string(context, R.string.banner_tyres))
+            return readTyres(vehicleControlEnabled, reflectionController)
+        }
+
         val command = VehicleCommandRegistry.byFunctionName(functionCall.name)
             ?: return buildJsonObject { put("error", "Unknown command '${functionCall.name}'") }
 
@@ -102,6 +112,30 @@ object VehicleFunctionDispatcher {
         }
         AppLogger.log(TAG, "dispatch ${command.id}(value=$rawValue -> $resolvedValue) -> $result")
         return result.toResponseJson()
+    }
+
+    /** Reading is gated by the same switch as control: the helper is the same ADB-shell power either way. */
+    private suspend fun readTyres(vehicleControlEnabled: Boolean, controller: VehicleController): JsonObject {
+        if (!vehicleControlEnabled) {
+            return buildJsonObject {
+                put("status", "error")
+                put("error", "Vehicle features are switched off in the app's settings.")
+            }
+        }
+        return when (val result = controller.query(VehicleQuery.TYRES)) {
+            is VehicleDispatchResult.Success -> {
+                val snapshot = result.note?.let { TyreStatusTool.parse(it) }
+                AppLogger.log(TAG, "tyres -> ${result.note}")
+                snapshot?.let { TyreStatusTool.report(it) } ?: buildJsonObject {
+                    put("status", "error")
+                    put("error", "The car's answer could not be read.")
+                }
+            }
+            else -> {
+                AppLogger.log(TAG, "tyres -> $result")
+                result.toResponseJson()
+            }
+        }
     }
 
     private fun VehicleDispatchResult.toResponseJson(): JsonObject = buildJsonObject {
@@ -156,7 +190,7 @@ fun voiceAssistantSystemPrompt(
     // so an unclear word is heard as the car command it most likely was.
     val listeningHint = " The user speaks Arabic (in any dialect) and English, and sometimes mixes " +
         "both in one sentence. Most requests are about the car — windows, seats (heating, ventilation, massage), " +
-        "the fridge, the A/C, lights, navigation, music — so when a word is unclear, prefer the reading that is a " +
+        "the fridge, the A/C, lights, tyre pressure, navigation, music — so when a word is unclear, prefer the reading that is a " +
         "car or assistant request over an unrelated phrase."
     val searchInstruction = if (webSearch) {
         " For questions about current information — news, weather, sports results, prices, opening hours — " +
