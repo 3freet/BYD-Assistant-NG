@@ -121,6 +121,15 @@ object FirstResult {
     /** How many entries make a results list worth pressing: a list that is still filling in has fewer. */
     const val SETTLED_ENTRIES = 4
 
+    /**
+     * Whether Spotify is showing a playlist, album or artist page rather than the search results: the page has its
+     * own root view and the results list is gone from the hierarchy.
+     */
+    fun spotifyEntityPageOpen(nodes: List<ViewNode>): Boolean {
+        val mine = nodes.filter { it.activityPackage == SPOTIFY }
+        return mine.any { it.resourceId.endsWith("id/list_entity_root") } && mine.none { it.resourceId.endsWith("id/search_content_recyclerview") }
+    }
+
     private val PLAY_BUTTON = Regex("""(?i)^play( playlist| album| artist| podcast| show)?$""")
 
     /**

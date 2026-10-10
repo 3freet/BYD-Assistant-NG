@@ -114,6 +114,19 @@ class ViewHierarchyTest {
     }
 
     @Test
+    fun anOpenedPageIsToldApartFromTheResultsList() {
+        val page = """
+            ACTIVITY com.spotify.music/.SpotifyMainActivity 1 pid=1
+              View Hierarchy:
+                p.Root{a VFED..... ........ 0,0-2528,1208 #7f app:id/list_entity_root}
+                  p.Compose{b VFED..... ........ 0,0-2528,900 #7f app:id/compose_view}
+        """.trimIndent()
+        assertTrue(FirstResult.spotifyEntityPageOpen(ViewHierarchy.parse(page)))
+        assertEquals(false, FirstResult.spotifyEntityPageOpen(ViewHierarchy.parse(playlistResults())))
+        assertEquals(false, FirstResult.spotifyEntityPageOpen(emptyList()))
+    }
+
+    @Test
     fun youtubeIsTheOnlyAppThatNeedsUiAutomation() {
         assertTrue(FirstResult.needsUiAutomation(FirstResult.YOUTUBE))
         assertEquals(false, FirstResult.needsUiAutomation(FirstResult.SPOTIFY))

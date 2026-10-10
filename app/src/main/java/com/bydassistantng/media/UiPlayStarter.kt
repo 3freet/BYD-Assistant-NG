@@ -14,10 +14,19 @@ private const val TAG = "UiPlayStarter"
 private const val CONNECT_TIMEOUT_MS = 6_000L
 private const val SOCKET_TIMEOUT_MS = 20_000
 private const val SETTLE_DELAY_MS = 2_000L
+// After a press that opens a page: the second step only needs the page to have drawn.
+private const val PAGE_SETTLE_DELAY_MS = 700L
 private const val RESULTS_WAIT_MS = 14_000L
 private const val LOOK_INTERVAL_MS = 700L
 private const val CONFIRM_ATTEMPTS = 10
+// A song starts within a second or two; a press that has not changed the track by then opened a page instead.
+private const val PAGE_CONFIRM_ATTEMPTS = 3
 private const val SAME_TRACK_ACCEPT_ATTEMPTS = 4
+private const val PAGE_LOOKS = 3
+private const val KNOWN_SCREEN_WIDTH = 2560
+private const val KNOWN_SCREEN_HEIGHT = 1440
+private const val KNOWN_PLAY_X = 1864
+private const val KNOWN_PLAY_Y = 950
 private const val DUMP_PATH = "/data/local/tmp/byd_assistant_ui.xml"
 private val PACKAGE_NAME = Regex("[A-Za-z0-9._]+")
 
@@ -97,14 +106,20 @@ class UiPlayStarter(private val context: Context) {
             // A song asked for again may already be the one playing, so it counts after a wait. A playlist, album or
             // artist opens its page instead, and the old track simply carrying on is not success.
             val opensPage = packageName == FirstResult.SPOTIFY && kind != MediaKind.SONG
-            repeat(CONFIRM_ATTEMPTS) { attempt ->
+            repeat(if (opensPage) PAGE_CONFIRM_ATTEMPTS else CONFIRM_ATTEMPTS) { attempt ->
                 delay(LOOK_INTERVAL_MS)
                 val waitedLong = !opensPage && attempt >= SAME_TRACK_ACCEPT_ATTEMPTS
                 if (SessionState.startedSince(before, sessionState(adb, packageName), waitedLong)) {
                     return@withContext StartOutcome.Playing(target.label)
                 }
             }
-            if (opensPage) StartOutcome.PageOpened(target.label) else StartOutcome.Pressed(target.label)
+            if (opensPage) {
+                // Quick path for a screen whose layout is known; anything else waits for the labelled press.
+                if (pressKnownPlayButton(adb, packageName)) return@withContext StartOutcome.Playing(target.label)
+                StartOutcome.PageOpened(target.label)
+            } else {
+                StartOutcome.Pressed(target.label)
+            }
         } catch (e: IOException) {
             AppLogger.logError(TAG, "Lost the ADB connection while starting playback", e)
             StartOutcome.NoAdb
@@ -129,7 +144,7 @@ class UiPlayStarter(private val context: Context) {
         try {
             val before = sessionState(adb, packageName)
             if (before.isPlaying) pausePlayback(adb)
-            delay(SETTLE_DELAY_MS)
+            delay(PAGE_SETTLE_DELAY_MS)
             var target: TapPoint? = null
             repeat(3) {
                 if (target == null) {
@@ -155,6 +170,33 @@ class UiPlayStarter(private val context: Context) {
         } finally {
             runCatching { adb.close() }
         }
+    }
+
+    /**
+     * On the head unit this was built on, Spotify's playlist, album and artist pages put the green play control at
+     * the same place, so it can be pressed without reading the page through UI automation (which needs accessibility
+     * switched off and the screen idle, and takes seconds). Only used when the page is verifiably open and the
+     * screen is the size the position was measured on; success is judged by the track actually changing.
+     */
+    private suspend fun pressKnownPlayButton(adb: Dadb, packageName: String): Boolean {
+        if (packageName != FirstResult.SPOTIFY) return false
+        val size = adb.shell("wm size").output
+        if (!size.contains("${KNOWN_SCREEN_WIDTH}x$KNOWN_SCREEN_HEIGHT")) return false
+        var open = false
+        repeat(PAGE_LOOKS) {
+            if (!open) {
+                open = FirstResult.spotifyEntityPageOpen(ViewHierarchy.parse(adb.shell("dumpsys activity top").output))
+                if (!open) delay(LOOK_INTERVAL_MS)
+            }
+        }
+        if (!open) return false
+        val before = sessionState(adb, packageName)
+        adb.shell("input tap $KNOWN_PLAY_X $KNOWN_PLAY_Y")
+        repeat(PAGE_CONFIRM_ATTEMPTS + 1) {
+            delay(LOOK_INTERVAL_MS)
+            if (SessionState.startedSince(before, sessionState(adb, packageName), waitedLong = false)) return true
+        }
+        return false
     }
 
     /** Presses the app's own pause control (found in its view dump) so the screen can go idle. */
