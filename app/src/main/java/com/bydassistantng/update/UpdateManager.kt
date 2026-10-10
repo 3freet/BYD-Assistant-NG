@@ -168,9 +168,9 @@ class UpdateManager @Inject constructor(
                 _state.value = UpdateState.Installing(release)
                 installer.verify(file, installed.versionCode)
                 refuseDuringConversation() // the download takes a while; the user may have started talking meanwhile
-                preferences.setPendingInstall(release.version.toString())
+                preferences.setPendingInstall(release.version.code.toString())
                 notifier.clear()
-                when (installer.install(file)) {
+                when (installer.install(file, release.version.code.toLong())) {
                     InstallHandoff.SYSTEM_INSTALLER -> _state.value = UpdateState.AwaitingSystemInstaller(release)
                 }
             } catch (e: CancellationException) {
@@ -249,14 +249,14 @@ class UpdateManager @Inject constructor(
         }
     }
 
-    /** After an install the process is new: if the version it was waiting for is the one now running, say so. */
+    /** After an install the process is new: if the build it was waiting for is the one now running, say so. */
     private suspend fun noteFinishedInstall() {
         val pending = preferences.pendingInstall.first()
         if (pending.isEmpty()) return
         preferences.setPendingInstall("")
-        if (pending == installed.versionName) {
-            AppLogger.log(TAG, "Updated to $pending")
-            _justUpdatedTo.value = pending
+        if (pending == installed.versionCode.toString()) {
+            AppLogger.log(TAG, "Updated to ${installed.versionName}")
+            _justUpdatedTo.value = installed.versionName
             notifier.clear()
         }
     }

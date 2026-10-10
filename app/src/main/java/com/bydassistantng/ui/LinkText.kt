@@ -3,7 +3,9 @@ package com.bydassistantng.ui
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -23,18 +25,33 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.bydassistantng.R
+import com.bydassistantng.util.AppLanguage
 
 /** Where a Gemini API key is created. */
 const val AI_STUDIO_KEYS_URL = "https://aistudio.google.com/apikey"
 
-/** Opens [url] in whatever browser the device has; false when there is none (a head unit may not ship one). */
-fun openWebPage(context: Context, url: String): Boolean = try {
-    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    true
-} catch (_: ActivityNotFoundException) {
-    false
-} catch (_: SecurityException) {
-    false
+/**
+ * Opens [url] in a browser. When more than one app can open web links the system's "Open with" list is shown, so
+ * the user picks the browser instead of always getting the default one; with a single candidate it opens at once.
+ * False when the device has no browser (a head unit may not ship one).
+ */
+fun openWebPage(context: Context, url: String): Boolean {
+    val view = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
+    val candidates = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        context.packageManager.queryIntentActivities(view, PackageManager.ResolveInfoFlags.of(0))
+    } else {
+        @Suppress("DEPRECATION")
+        context.packageManager.queryIntentActivities(view, 0)
+    }
+    val intent = if (candidates.size > 1) Intent.createChooser(view, AppLanguage.string(context, R.string.open_with)) else view
+    return try {
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: SecurityException) {
+        false
+    }
 }
 
 /**

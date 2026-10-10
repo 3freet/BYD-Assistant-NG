@@ -112,6 +112,7 @@
     <!-- Updates, advanced settings and the API-key link -->
     <string name="api_key_get_text">لإنشاء مفتاح Google AI Studio الخاص بك، %1$s.</string>
     <string name="api_key_get_link">اضغط هنا</string>
+    <string name="open_with">فتح باستخدام</string>
     <string name="api_key_open_failed">تعذّر فتح المتصفح هنا. من جهاز آخر، افتح aistudio.google.com/apikey.</string>
     <string name="updates_status_unchecked">اضغط للتحقق من التحديثات</string>
     <string name="updates_status_checking">جارٍ التحقق من التحديثات…</string>

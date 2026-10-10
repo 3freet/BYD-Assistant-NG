@@ -57,7 +57,7 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val AUTO_CHECK_UPDATES = booleanPreferencesKey("auto_check_updates")
         val LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
         val NOTIFIED_UPDATE_TAG = stringPreferencesKey("notified_update_tag")
-        val PENDING_INSTALL = stringPreferencesKey("pending_install_version")
+        val PENDING_INSTALL = stringPreferencesKey("pending_install_code")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -146,9 +146,9 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.edit { it[Keys.NOTIFIED_UPDATE_TAG] = tag }
     }
 
-    /** The version an install is under way for, so the next start can tell that it went through. Empty when none. */
+    /** The version code an install is under way for, so the next start can tell that it went through. Empty when none. */
     val pendingInstall: Flow<String> = dataStore.data.map { it[Keys.PENDING_INSTALL] ?: "" }
-    suspend fun setPendingInstall(version: String) {
-        dataStore.edit { it[Keys.PENDING_INSTALL] = version }
+    suspend fun setPendingInstall(versionCode: String) {
+        dataStore.edit { it[Keys.PENDING_INSTALL] = versionCode }
     }
 }

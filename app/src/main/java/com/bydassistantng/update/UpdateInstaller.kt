@@ -39,6 +39,7 @@ private const val MAX_APK_BYTES = 200L * 1024 * 1024
 private const val SPARE_BYTES = 64L * 1024 * 1024
 private const val ADB_CONNECT_TIMEOUT_MS = 10_000L
 private const val RESTART_WAIT_MS = 25_000L
+private const val RELAUNCH_WATCH_SECONDS = 90
 private const val APK_MIME = "application/vnd.android.package-archive"
 private val SAFE_PATH = Regex("[A-Za-z0-9/._-]+")
 
@@ -55,8 +56,9 @@ enum class InstallHandoff {
  * the user has switched on, where `pm install` is allowed to replace the app without a confirmation screen
  * (there is no usable one on the head unit). The APK is streamed into `pm` rather than named to it, because
  * the system installer process can't open a file under this app's storage by path. Replacing the app kills
- * this process, so the same command line starts the app again afterwards. Without an ADB connection the
- * system installer is opened instead.
+ * this process and drops the ADB connection, taking any command chained after the install down with it, so a
+ * small detached watcher on the device starts the app again once the new version shows up. Without an ADB
+ * connection the system installer is opened instead.
  */
 @Singleton
 class UpdateInstaller @Inject constructor(@ApplicationContext private val context: Context) {
@@ -159,25 +161,27 @@ class UpdateInstaller @Inject constructor(@ApplicationContext private val contex
     }
 
     /**
-     * Installs the verified [file]. When the install goes through silently this never returns, because the
-     * system replaces the app and ends this process; it returns only when the system installer was opened
-     * instead, and throws [UpdateFailure] when nothing worked.
+     * Installs the verified [file], which carries [expectedVersionCode]. When the install goes through silently
+     * this never returns, because the system replaces the app and ends this process; it returns only when the
+     * system installer was opened instead, and throws [UpdateFailure] when nothing worked.
      */
-    suspend fun install(file: File): InstallHandoff {
+    suspend fun install(file: File, expectedVersionCode: Long): InstallHandoff {
         val adb = AdbHelper.connect(context, ADB_CONNECT_TIMEOUT_MS, socketTimeoutMs = 0)
-        if (adb != null) installSilently(adb, file) // only ever leaves by throwing
+        if (adb != null) installSilently(adb, file, expectedVersionCode) // only ever leaves by throwing
         AppLogger.log(TAG, "No local ADB connection, falling back to the system installer")
         return openSystemInstaller(file)
     }
 
-    private suspend fun installSilently(adb: Dadb, file: File): Nothing {
+    private suspend fun installSilently(adb: Dadb, file: File, expectedVersionCode: Long): Nothing {
         val path = file.absolutePath
         if (!SAFE_PATH.matches(path)) throw UpdateFailure(UpdateFailure.Kind.INSTALL_REJECTED, "unexpected download path")
-        val start = "${context.packageName}/${MainActivity::class.java.name}"
-        val command = "cat $path | pm install -r -S ${file.length()} && am start -n $start"
+        val component = "${context.packageName}/${MainActivity::class.java.name}"
         AppLogger.log(TAG, "Installing ${file.length()} bytes over local ADB")
         val response = try {
-            withContext(Dispatchers.IO) { adb.shell(command) }
+            withContext(Dispatchers.IO) {
+                adb.shell(relaunchWatcher(component, expectedVersionCode))
+                adb.shell("cat $path | pm install -r -S ${file.length()}")
+            }
         } catch (e: IOException) {
             // The connection dropping is what a successful install looks like from here: the system has just
             // replaced the app and killed this process. If we are still alive, wait to find out which it was.
@@ -193,6 +197,20 @@ class UpdateInstaller @Inject constructor(@ApplicationContext private val contex
         }
         delay(RESTART_WAIT_MS)
         throw UpdateFailure(UpdateFailure.Kind.INSTALL_TIMEOUT)
+    }
+
+    /**
+     * A shell command that starts a detached background process on the device, which waits (up to
+     * [RELAUNCH_WATCH_SECONDS]) for the package to report [versionCode] and then opens [component]. Detached so it
+     * outlives the ADB connection, which closes when the system replaces this app; bounded so a failed install
+     * never pops the app open later. The command itself returns at once.
+     */
+    private fun relaunchWatcher(component: String, versionCode: Long): String {
+        val pkg = context.packageName
+        val watch = "i=0; while [ \$i -lt $RELAUNCH_WATCH_SECONDS ]; do " +
+            "if dumpsys package $pkg | grep -q versionCode=$versionCode; then sleep 1; am start -n $component; exit 0; fi; " +
+            "sleep 1; i=\$((i+1)); done"
+        return "setsid nohup sh -c '$watch' > /dev/null 2>&1 < /dev/null &"
     }
 
     private fun openSystemInstaller(file: File): InstallHandoff {

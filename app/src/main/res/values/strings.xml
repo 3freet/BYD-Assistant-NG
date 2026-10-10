@@ -113,6 +113,7 @@
     <!-- Updates, advanced settings and the API-key link -->
     <string name="api_key_get_text">To generate your Google AI Studio key, %1$s.</string>
     <string name="api_key_get_link">click here</string>
+    <string name="open_with">Open with</string>
     <string name="api_key_open_failed">Couldn\'t open a browser here. On another device, go to aistudio.google.com/apikey.</string>
     <string name="updates_status_unchecked">Tap to check for updates</string>
     <string name="updates_status_checking">Checking for updates…</string>

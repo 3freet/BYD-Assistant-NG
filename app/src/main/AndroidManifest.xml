@@ -38,6 +38,12 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="google.navigation" />
         </intent>
+        <!-- Apps that open web links, so a link can offer a choice of browser when there is more than one. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
         <!-- Every app with a launcher icon, so "open <app>" can find it by name. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
