@@ -131,3 +131,8 @@ Keep commits small and the messages plain.
 Open an issue with: the vehicle model and year, the head-unit software version, the app version (*About*), what
 you did and what happened. Do **not** attach the app log without reading it first: it can contain what you said
 and where you asked to navigate. Security problems: see [SECURITY.md](SECURITY.md).
+
+## Licence
+
+The project is licensed under the GNU General Public License, version 3 ([LICENSE](LICENSE)). By contributing you agree
+that your contribution is licensed the same way.

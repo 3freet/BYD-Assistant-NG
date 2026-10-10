@@ -129,3 +129,9 @@ Optional build settings:
 | `service/` | The steering-wheel accessibility service and the status banner |
 | `apps/`, `media/`, `navigation/` | The open-app, media and navigation tools |
 | `res/values`, `res/values-ar` | English and Arabic strings — a unit test keeps the two in step |
+
+## License
+
+BYD Assistant NG is free software, licensed under the **GNU General Public License, version 3** ([LICENSE](LICENSE)).
+You may use, study, change and share it under those terms; changes you distribute must stay under the same licence.
+It comes with no warranty — see [Safety](#safety).

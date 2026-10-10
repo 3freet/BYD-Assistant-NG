@@ -226,7 +226,7 @@
     <string name="about_disclaimer_title">Disclaimer — your responsibility</string>
     <string name="about_disclaimer_body">BYD Assistant NG is an independent project. It is not made, approved or supported by BYD or Google; the names BYD, DiLink and Gemini belong to their owners.\n\nThe app is provided “as is”, without any warranty. You use it entirely at your own responsibility — including everything it says and everything it does to your car. Vehicle control is experimental: use it only when it is safe to do so, never let it distract you from driving, and check that the car did what you asked.\n\nWhat you say is sent to Google\'s Gemini service, and to Google Search if you turn on web search.</string>
     <string name="about_open_source_title">Open source</string>
-    <string name="about_open_source_body">BYD Assistant NG is free, open-source software. You can read the code, report problems and contribute improvements through the project page. Verified vehicle controls for other models are especially welcome.</string>
+    <string name="about_open_source_body">BYD Assistant NG is free, open-source software, licensed under the GNU General Public License, version 3. You can read the code, report problems and contribute improvements through the project page. Verified vehicle controls for other models are especially welcome.</string>
     <string name="about_source_link">Open the project page</string>
     <string name="about_libraries_title">Built with open-source software</string>
     <string name="about_libraries_body">Kotlin and kotlinx.serialization, AndroidX and Jetpack Compose, OkHttp, Dagger Hilt and Dadb — all open source under the Apache License 2.0. The licence texts are available from each project.</string>
