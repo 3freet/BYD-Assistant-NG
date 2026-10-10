@@ -162,6 +162,11 @@ object PlayMediaTool {
         return when (val outcome = UiPlayStarter(context).startFirstResult(app.packageName, request.kind)) {
             is StartOutcome.Playing -> ok("${app.label} is now playing ${outcome.label.ifBlank { "\"${request.query}\"" }}.")
             is StartOutcome.Pressed -> ok("${app.label} was told to play ${outcome.label.ifBlank { "\"${request.query}\"" }} and starts in a moment.")
+            is StartOutcome.PageOpened -> {
+                // A playlist, album or artist opened its page; its play control is pressed once the conversation is over.
+                PlaybackFollowUp.schedule(PendingPlayback(app.packageName, app.label, request.query, request.kind, pressPlayOnPage = true))
+                ok("${app.label} opened \"${request.query}\" and will start it in a few seconds. Confirm in one short sentence.")
+            }
             StartOutcome.NoResults -> partial("${app.label} opened but its results did not appear. Say you could not start it.")
             StartOutcome.NoRule -> partial("${app.label} is showing results for \"${request.query}\"; it cannot be started automatically. Tell the user to tap the first result.")
             StartOutcome.NoAdb -> partial("${app.label} is showing results for \"${request.query}\", but the car's debugging connection is not available to start it. Tell the user to tap the first result.")

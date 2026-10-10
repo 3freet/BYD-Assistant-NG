@@ -29,6 +29,9 @@ sealed interface StartOutcome {
     /** The first result was pressed, but playback was not confirmed in time. */
     data class Pressed(val label: String) : StartOutcome
 
+    /** The first result was pressed and opened a page (a playlist, album or artist) whose play control is still to be pressed. */
+    data class PageOpened(val label: String) : StartOutcome
+
     /** The app's results never showed up on screen. */
     data object NoResults : StartOutcome
 
@@ -91,13 +94,17 @@ class UiPlayStarter(private val context: Context) {
             val before = sessionState(adb, packageName)
             AppLogger.log(TAG, "Pressing the first result of $packageName: ${target.label.take(60)}")
             adb.shell("input tap ${target.x} ${target.y}")
+            // A song asked for again may already be the one playing, so it counts after a wait. A playlist, album or
+            // artist opens its page instead, and the old track simply carrying on is not success.
+            val opensPage = packageName == FirstResult.SPOTIFY && kind != MediaKind.SONG
             repeat(CONFIRM_ATTEMPTS) { attempt ->
                 delay(LOOK_INTERVAL_MS)
-                if (SessionState.startedSince(before, sessionState(adb, packageName), waitedLong = attempt >= SAME_TRACK_ACCEPT_ATTEMPTS)) {
+                val waitedLong = !opensPage && attempt >= SAME_TRACK_ACCEPT_ATTEMPTS
+                if (SessionState.startedSince(before, sessionState(adb, packageName), waitedLong)) {
                     return@withContext StartOutcome.Playing(target.label)
                 }
             }
-            StartOutcome.Pressed(target.label)
+            if (opensPage) StartOutcome.PageOpened(target.label) else StartOutcome.Pressed(target.label)
         } catch (e: IOException) {
             AppLogger.logError(TAG, "Lost the ADB connection while starting playback", e)
             StartOutcome.NoAdb
@@ -112,6 +119,51 @@ class UiPlayStarter(private val context: Context) {
         }
     }
 
+    /**
+     * The second step for a page that opened: press its play control. Reads the screen through UI automation, which
+     * needs the screen idle, so anything still playing is paused first (from the app's own view dump).
+     */
+    suspend fun pressPlayOnPage(packageName: String): StartOutcome = withContext(Dispatchers.IO) {
+        if (!PACKAGE_NAME.matches(packageName)) return@withContext StartOutcome.NoRule
+        val adb = AdbHelper.connect(context, CONNECT_TIMEOUT_MS, SOCKET_TIMEOUT_MS) ?: return@withContext StartOutcome.NoAdb
+        try {
+            val before = sessionState(adb, packageName)
+            if (before.isPlaying) pausePlayback(adb)
+            delay(SETTLE_DELAY_MS)
+            var target: TapPoint? = null
+            repeat(3) {
+                if (target == null) {
+                    val xml = adb.shell("uiautomator dump $DUMP_PATH >/dev/null 2>&1; cat $DUMP_PATH; rm -f $DUMP_PATH").output
+                    if (xml.contains("<hierarchy")) target = FirstResult.playButtonOnPage(ScreenDump.parse(xml), packageName)
+                }
+            }
+            val button = target ?: return@withContext StartOutcome.NoResults
+            AppLogger.log(TAG, "Pressing play on the opened page of $packageName")
+            adb.shell("input tap ${button.x} ${button.y}")
+            repeat(CONFIRM_ATTEMPTS) { attempt ->
+                delay(LOOK_INTERVAL_MS)
+                if (SessionState.startedSince(before.copy(state = 2), sessionState(adb, packageName), waitedLong = attempt >= SAME_TRACK_ACCEPT_ATTEMPTS)) {
+                    return@withContext StartOutcome.Playing(button.label)
+                }
+            }
+            StartOutcome.Pressed(button.label)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError(TAG, "Could not press play on the opened page", e)
+            StartOutcome.NoResults
+        } finally {
+            runCatching { adb.close() }
+        }
+    }
+
+    /** Presses the app's own pause control (found in its view dump) so the screen can go idle. */
+    private fun pausePlayback(adb: Dadb) {
+        val nodes = ViewHierarchy.parse(adb.shell("dumpsys activity top").output)
+        val button = nodes.firstOrNull { it.resourceId.endsWith("id/nowplaying_elements_playpause_button") && it.width > 0 } ?: return
+        adb.shell("input tap ${(button.left + button.right) / 2} ${button.centerY}")
+    }
+
     /** Finds the point to press, polling until the results are laid out (up to [RESULTS_WAIT_MS]). */
     private suspend fun findTarget(adb: Dadb, packageName: String, kind: MediaKind): TapPoint? {
         if (FirstResult.needsUiAutomation(packageName)) {
@@ -119,13 +171,19 @@ class UiPlayStarter(private val context: Context) {
             return readWithUiAutomation(adb, packageName, kind)
         }
         var waited = 0L
+        var previous: TapPoint? = null
         while (waited <= RESULTS_WAIT_MS) {
-            val dump = adb.shell("dumpsys activity top").output
-            FirstResult.spotifyFromViews(ViewHierarchy.parse(dump), kind)?.let { return it }
+            val nodes = ViewHierarchy.parse(adb.shell("dumpsys activity top").output)
+            val point = FirstResult.spotifyFromViews(nodes, kind)
+            // Press only once the list has filled in and the target has stayed put for two looks in a row: the
+            // top card is drawn late, and a press on a list that is still moving lands on nothing.
+            val settled = point != null && FirstResult.spotifyResultEntries(nodes).size >= FirstResult.SETTLED_ENTRIES
+            if (settled && point == previous) return point
+            previous = if (settled) point else null
             delay(LOOK_INTERVAL_MS)
             waited += LOOK_INTERVAL_MS
         }
-        return null
+        return previous
     }
 
     /** One look at the screen through UI automation (the one moment accessibility is off), then the point to press. */

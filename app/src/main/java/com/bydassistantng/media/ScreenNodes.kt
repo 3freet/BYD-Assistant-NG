@@ -87,16 +87,49 @@ object FirstResult {
      */
     fun needsUiAutomation(packageName: String): Boolean = packageName == YOUTUBE
 
-    /** Spotify from [ViewHierarchy] nodes: the first result row of the search list. */
+    /**
+     * Spotify from [ViewHierarchy] nodes. For a song, the first row that is a song (its "more options" button says
+     * so). For anything else, the first entry of the results list, which is a differently drawn top-result card
+     * when the best match is a playlist, album or artist (it has no identifier, so it is taken by position).
+     */
     fun spotifyFromViews(nodes: List<ViewNode>, kind: MediaKind): TapPoint? {
-        val mine = nodes.filter { it.activityPackage == SPOTIFY }
-        val list = mine.firstOrNull { it.resourceId.endsWith("id/search_content_recyclerview") } ?: return null
-        val rows = mine.filter { it.resourceId.endsWith("id/row_root") && list.contains(it) }.sortedBy { it.top }
-        val menus = mine.filter { it.resourceId.endsWith("id/context_menu_button") && it.width > 0 && it.height > 0 }
-        // Song rows carry a "more options" button; artists, albums and playlists in the results do not.
-        val chosen = if (kind == MediaKind.SONG) rows.firstOrNull { row -> menus.any { row.contains(it) } } else rows.firstOrNull()
+        val children = spotifyResultEntries(nodes)
+        val menus = nodes.filter { it.activityPackage == SPOTIFY && it.resourceId.endsWith("id/context_menu_button") && it.width > 0 && it.height > 0 }
+        val chosen = if (kind == MediaKind.SONG) children.firstOrNull { row -> menus.any { row.contains(it) } } else children.firstOrNull()
         chosen ?: return null
         return TapPoint(chosen.left + chosen.width / 4, chosen.centerY, "")
+    }
+
+    /** The entries of Spotify's search results list, top to bottom (empty when the list is not on screen). */
+    fun spotifyResultEntries(nodes: List<ViewNode>): List<ViewNode> {
+        val listIndex = nodes.indices.firstOrNull {
+            nodes[it].activityPackage == SPOTIFY && nodes[it].resourceId.endsWith("id/search_content_recyclerview")
+        } ?: return emptyList()
+        val list = nodes[listIndex]
+        // The list's direct children, in order: the deeper level that follows it, until the nesting comes back out.
+        val children = mutableListOf<ViewNode>()
+        var childIndent = -1
+        for (i in listIndex + 1 until nodes.size) {
+            val node = nodes[i]
+            if (node.indent <= list.indent) break
+            if (childIndent < 0) childIndent = node.indent
+            if (node.indent == childIndent && node.height > 0 && node.width > 0) children.add(node)
+        }
+        return children
+    }
+
+    /** How many entries make a results list worth pressing: a list that is still filling in has fewer. */
+    const val SETTLED_ENTRIES = 4
+
+    private val PLAY_BUTTON = Regex("""(?i)^play( playlist| album| artist| podcast| show)?$""")
+
+    /**
+     * The green play control of a playlist, album or artist page, found by its accessibility label (those pages
+     * are drawn without view identifiers).
+     */
+    fun playButtonOnPage(nodes: List<ScreenNode>, packageName: String): TapPoint? {
+        val button = nodes.firstOrNull { it.packageName == packageName && PLAY_BUTTON.matches(it.description.trim()) } ?: return null
+        return TapPoint(button.centerX, button.centerY, button.description)
     }
 
     /**

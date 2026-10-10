@@ -11,7 +11,14 @@ import kotlinx.coroutines.launch
 private const val TAG = "PlaybackFollowUp"
 
 /** A play request whose search is on screen and whose top result still has to be pressed. */
-data class PendingPlayback(val packageName: String, val appLabel: String, val query: String, val kind: MediaKind)
+data class PendingPlayback(
+    val packageName: String,
+    val appLabel: String,
+    val query: String,
+    val kind: MediaKind,
+    /** True when the search is already pressed and a page is open: only its play control remains. */
+    val pressPlayOnPage: Boolean = false,
+)
 
 /**
  * The second half of "play X on Spotify", run after the conversation has ended.
@@ -42,9 +49,10 @@ object PlaybackFollowUp {
         synchronized(lock) {
             running?.cancel()
             running = scope.launch {
-                val outcome = UiPlayStarter(appContext).startFirstResult(request.packageName, request.kind)
+                val starter = UiPlayStarter(appContext)
+                val outcome = if (request.pressPlayOnPage) starter.pressPlayOnPage(request.packageName) else starter.startFirstResult(request.packageName, request.kind)
                 AppLogger.log(TAG, "${request.appLabel} \"${request.query}\" -> $outcome")
-                if (outcome !is StartOutcome.Playing && outcome !is StartOutcome.Pressed) onNotStarted?.invoke()
+                if (outcome !is StartOutcome.Playing && outcome !is StartOutcome.Pressed && outcome !is StartOutcome.PageOpened) onNotStarted?.invoke()
             }
         }
     }
@@ -52,6 +60,7 @@ object PlaybackFollowUp {
     /** For tests on the device: runs the scheduled press now and waits for its outcome. */
     suspend fun runPendingNow(context: Context): StartOutcome? {
         val request = synchronized(lock) { pending.also { pending = null } } ?: return null
-        return UiPlayStarter(context.applicationContext).startFirstResult(request.packageName, request.kind)
+        val starter = UiPlayStarter(context.applicationContext)
+        return if (request.pressPlayOnPage) starter.pressPlayOnPage(request.packageName) else starter.startFirstResult(request.packageName, request.kind)
     }
 }

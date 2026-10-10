@@ -71,6 +71,48 @@ class ViewHierarchyTest {
         assertNull(FirstResult.spotifyFromViews(ViewHierarchy.parse(homeScreen), MediaKind.ANY))
     }
 
+    private fun playlistResults() = """
+        ACTIVITY com.spotify.music/.SpotifyMainActivity 1 pid=1
+          View Hierarchy:
+            android.widget.FrameLayout{a V.E...... ........ 16,112-2544,1320}
+              androidx.recyclerview.widget.RecyclerView{b VFED..... ........ 0,224-2528,1208 #7f0b0e9c app:id/search_content_recyclerview}
+                androidx.compose.ui.platform.ComposeView{c VFED..... ........ 0,0-2528,136}
+                  p.Inner{d VFED..... ........ 0,0-2528,136 aid=1}
+                p.row{e VFE...CL. ........ 0,136-2528,264 #7f0b0e3e app:id/row_root}
+    """.trimIndent()
+
+    @Test
+    fun forAPlaylistTheTopCardWithoutAnIdIsTheFirstResult() {
+        val point = FirstResult.spotifyFromViews(ViewHierarchy.parse(playlistResults()), MediaKind.PLAYLIST)!!
+        assertEquals(16 + 2528 / 4, point.x)
+        assertEquals(336 + 68, point.y)
+    }
+
+    @Test
+    fun theTopCardIsAlsoTheFirstResultForAnyKind() {
+        val point = FirstResult.spotifyFromViews(ViewHierarchy.parse(playlistResults()), MediaKind.ANY)!!
+        assertEquals(404, point.y)
+    }
+
+    @Test
+    fun forASongThePlaylistCardIsSkipped() {
+        // Neither entry here has a song menu button, so there is nothing to press for a song.
+        assertNull(FirstResult.spotifyFromViews(ViewHierarchy.parse(playlistResults()), MediaKind.SONG))
+    }
+
+    @Test
+    fun theOpenedPagesPlayControlIsFoundByItsLabel() {
+        fun n(desc: String, b: String): String {
+            val (l, t, r, bt) = Regex("""\d+""").findAll(b).map { it.value }.toList()
+            return """<node text="" resource-id="" package="com.spotify.music" content-desc="$desc" clickable="false" bounds="[$l,$t][$r,$bt]" />"""
+        }
+        val xml = """<?xml version='1.0' ?><hierarchy>${n("Add playlist to Your Library", "728,902,824,998")}${n("Play playlist", "1796,882,1932,1018")}${n("Video preview playing", "48,1282,548,1320")}</hierarchy>"""
+        val point = FirstResult.playButtonOnPage(ScreenDump.parse(xml), "com.spotify.music")!!
+        assertEquals(1864, point.x)
+        assertEquals(950, point.y)
+        assertNull(FirstResult.playButtonOnPage(ScreenDump.parse(xml.replace("Play playlist", "Shuffle")), "com.spotify.music"))
+    }
+
     @Test
     fun youtubeIsTheOnlyAppThatNeedsUiAutomation() {
         assertTrue(FirstResult.needsUiAutomation(FirstResult.YOUTUBE))

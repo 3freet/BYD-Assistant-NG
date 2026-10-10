@@ -4,6 +4,8 @@ package com.bydassistantng.media
 data class ViewNode(
     val activityPackage: String,
     val resourceId: String,
+    /** Nesting depth as printed (the dump indents each level), to tell a view's children from its descendants. */
+    val indent: Int,
     val left: Int,
     val top: Int,
     val right: Int,
@@ -55,7 +57,7 @@ object ViewHierarchy {
             val offsetX = ancestors.sumOf { it.second }
             val offsetY = ancestors.sumOf { it.third }
             ancestors.add(Triple(indent, left, top))
-            nodes.add(ViewNode(activity, view.groupValues[6], offsetX + left, offsetY + top, offsetX + right, offsetY + bottom))
+            nodes.add(ViewNode(activity, view.groupValues[6], indent, offsetX + left, offsetY + top, offsetX + right, offsetY + bottom))
         }
         return nodes
     }
