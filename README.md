@@ -19,11 +19,15 @@ open apps, control the media player — and, optionally, operate the car's comfo
 - **Steering-wheel button** starts and ends a conversation (an accessibility service that watches that one key).
 - **Status banner** on screen shows whether the mic is live, the assistant is thinking, or it is speaking.
 - **Navigation** ("take me to …"), **open any installed app** by name, and **play / pause / next / previous**.
+- **Play something in an app**: "play <song> on Spotify", "a video about <topic> on YouTube", or "put on something
+  moody" and it picks one. It uses Android's standard play-from-search request, so it works with any installed
+  app that supports it; it cannot pick from an app's home screen.
 - **Web search** through Google Search (optional; needs a paid Gemini plan — see below).
 - **Vehicle control** (experimental, off by default): A/C (power, temperature, fan, air direction, air source,
   ventilation, compressor, auto, defrost), windows (open/close or any position), sunroof, sunshade, trunk,
   volume, seat heating / ventilation / massage, steering-wheel heating, the cabin light and the fridge. The
   full list, with ids and what is verified, is in [vehicle-commands.md](docs/byd-internals/vehicle-commands.md).
+- **Outside temperature** ("how hot is it outside?"), read from the instrument cluster; same switch as vehicle control.
 - **Tyre pressure** ("how are my tyres?"): reads each wheel's pressure, the car's own low/high and leak warnings
   and the temperature, and answers in the unit you ask for. Read-only, but it uses the same switch as vehicle
   control. See [tyres.md](docs/byd-internals/tyres.md).

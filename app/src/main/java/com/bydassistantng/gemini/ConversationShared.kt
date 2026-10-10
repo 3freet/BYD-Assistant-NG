@@ -6,10 +6,12 @@ import com.bydassistantng.apps.AppLauncherTool
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.media.MediaControlTool
+import com.bydassistantng.media.PlayMediaTool
 import com.bydassistantng.navigation.NavigationTool
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.LoggingVehicleController
+import com.bydassistantng.vehicle.OutsideTemperatureTool
 import com.bydassistantng.vehicle.TyreStatusTool
 import com.bydassistantng.vehicle.VehicleCommandRegistry
 import com.bydassistantng.vehicle.VehicleController
@@ -43,10 +45,12 @@ fun assistantTools(vehicleControlEnabled: Boolean, conversation: Boolean = false
         add(NavigationTool.declaration)
         add(AppLauncherTool.declaration)
         add(MediaControlTool.declaration)
+        add(PlayMediaTool.declaration)
         if (conversation) add(endConversationDeclaration)
         if (vehicleControlEnabled) {
             addAll(VehicleCommandRegistry.functionDeclarations())
             add(TyreStatusTool.declaration)
+            add(OutsideTemperatureTool.declaration)
         }
     }
     return buildList {
@@ -75,6 +79,9 @@ object VehicleFunctionDispatcher {
         if (functionCall.name == AppLauncherTool.FUNCTION_NAME) {
             return AppLauncherTool.handle(context, functionCall, onDispatching)
         }
+        if (functionCall.name == PlayMediaTool.FUNCTION_NAME) {
+            return PlayMediaTool.handle(context, functionCall, onDispatching)
+        }
         if (functionCall.name == MediaControlTool.FUNCTION_NAME) {
             val action = (functionCall.args["action"] as? JsonPrimitive)?.content.orEmpty()
             onDispatching(AppLanguage.string(context, R.string.banner_media, mediaActionText(context, action)))
@@ -84,6 +91,10 @@ object VehicleFunctionDispatcher {
         if (functionCall.name == TyreStatusTool.FUNCTION_NAME) {
             onDispatching(AppLanguage.string(context, R.string.banner_tyres))
             return readTyres(vehicleControlEnabled, reflectionController)
+        }
+        if (functionCall.name == OutsideTemperatureTool.FUNCTION_NAME) {
+            onDispatching(AppLanguage.string(context, R.string.banner_outside_temperature))
+            return readOutsideTemperature(vehicleControlEnabled, reflectionController)
         }
 
         val command = VehicleCommandRegistry.byFunctionName(functionCall.name)
@@ -133,6 +144,28 @@ object VehicleFunctionDispatcher {
             }
             else -> {
                 AppLogger.log(TAG, "tyres -> $result")
+                result.toResponseJson()
+            }
+        }
+    }
+
+    private suspend fun readOutsideTemperature(vehicleControlEnabled: Boolean, controller: VehicleController): JsonObject {
+        if (!vehicleControlEnabled) {
+            return buildJsonObject {
+                put("status", "error")
+                put("error", "Vehicle features are switched off in the app's settings.")
+            }
+        }
+        return when (val result = controller.query(VehicleQuery.OUTSIDE_TEMPERATURE)) {
+            is VehicleDispatchResult.Success -> {
+                AppLogger.log(TAG, "outside temperature -> ${result.note}")
+                result.note?.let { OutsideTemperatureTool.parse(it) }?.let { OutsideTemperatureTool.report(it) } ?: buildJsonObject {
+                    put("status", "error")
+                    put("error", "The car's answer could not be read.")
+                }
+            }
+            else -> {
+                AppLogger.log(TAG, "outside temperature -> $result")
                 result.toResponseJson()
             }
         }

@@ -6,8 +6,10 @@ import android.content.Intent
 import com.bydassistantng.apps.AppLauncherTool
 import com.bydassistantng.gemini.GeminiFunctionCall
 import com.bydassistantng.media.MediaControlTool
+import com.bydassistantng.media.PlayMediaTool
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.ShellHelperVehicleController
+import com.bydassistantng.vehicle.OutsideTemperatureTool
 import com.bydassistantng.vehicle.TyreStatusTool
 import com.bydassistantng.vehicle.VehicleDispatchResult
 import com.bydassistantng.vehicle.VehicleQuery
@@ -42,6 +44,14 @@ class DebugToolReceiver : BroadcastReceiver() {
                 val result = when (tool) {
                     AppLauncherTool.FUNCTION_NAME -> runBlocking { AppLauncherTool.handle(app, call) { } }
                     MediaControlTool.FUNCTION_NAME -> MediaControlTool.handle(app, call)
+                    OutsideTemperatureTool.FUNCTION_NAME -> {
+                        val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
+                        when (val answer = runBlocking { controller.query(VehicleQuery.OUTSIDE_TEMPERATURE) }) {
+                            is VehicleDispatchResult.Success -> answer.note?.let { OutsideTemperatureTool.parse(it) }?.let { OutsideTemperatureTool.report(it) } ?: answer
+                            else -> answer
+                        }
+                    }
+                    PlayMediaTool.FUNCTION_NAME -> runBlocking { PlayMediaTool.handle(app, call) { } }
                     TyreStatusTool.FUNCTION_NAME -> {
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
                         when (val answer = runBlocking { controller.query(VehicleQuery.TYRES) }) {

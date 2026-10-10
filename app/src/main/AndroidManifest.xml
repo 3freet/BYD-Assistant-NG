@@ -44,6 +44,10 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="https" />
         </intent>
+        <!-- Apps that can start music or a video from a search phrase ("play X on Spotify"). -->
+        <intent>
+            <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+        </intent>
         <!-- Every app with a launcher icon, so "open <app>" can find it by name. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />

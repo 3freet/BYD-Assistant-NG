@@ -13,6 +13,7 @@ import kotlin.math.floor
 /** Read-only questions the car can answer. The helper process answers them; none of them writes anything. */
 enum class VehicleQuery(val id: String) {
     TYRES("tyres"),
+    OUTSIDE_TEMPERATURE("outside_temperature"),
     ;
 
     companion object {

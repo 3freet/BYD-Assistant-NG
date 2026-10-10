@@ -47,17 +47,23 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
 
     override suspend fun query(query: VehicleQuery): VehicleDispatchResult = withContext(Dispatchers.IO) {
         when (query) {
+            VehicleQuery.OUTSIDE_TEMPERATURE -> OutsideTemperatureTool.read(context).fold(
+                onSuccess = { VehicleDispatchResult.Success(OutsideTemperatureTool.encode(it)) },
+                onFailure = { queryFailure(it) },
+            )
             VehicleQuery.TYRES -> TyreReader(context).read().fold(
                 onSuccess = { VehicleDispatchResult.Success(TyreStatusTool.encode(it)) },
-                onFailure = {
-                    val missing = it is ClassNotFoundException || it is NoSuchMethodException
-                    VehicleDispatchResult.Failure(
-                        if (missing) VehicleDispatchError.CLASS_NOT_FOUND else VehicleDispatchError.INVOCATION_FAILED,
-                        it.toString(),
-                    )
-                },
+                onFailure = { queryFailure(it) },
             )
         }
+    }
+
+    private fun queryFailure(t: Throwable): VehicleDispatchResult {
+        val missing = t is ClassNotFoundException || t is NoSuchMethodException
+        return VehicleDispatchResult.Failure(
+            if (missing) VehicleDispatchError.CLASS_NOT_FOUND else VehicleDispatchError.INVOCATION_FAILED,
+            t.toString(),
+        )
     }
 
     private fun tryNamedMethod(invocation: VehicleInvocation.NamedMethod, value: Int): VehicleDispatchResult {

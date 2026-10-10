@@ -20,6 +20,7 @@ import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.data.SecureCredentials
 import com.bydassistantng.util.AppLanguage
+import com.bydassistantng.media.PlayMediaTool
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.ShellHelperVehicleController
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -32,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import javax.inject.Inject
@@ -757,6 +759,12 @@ class LiveConversationController @Inject constructor(
                     } else {
                         VehicleFunctionDispatcher.dispatch(call, vehicleControlEnabledForSession, vehicleController, context) { displayName ->
                             report(TurnStatus.DispatchingCommand(displayName))
+                        }.also { answer ->
+                            // Music or a video is about to play through the speakers: the microphone would
+                            // only hear it, so the conversation ends once the short confirmation is spoken.
+                            if (call.name == PlayMediaTool.FUNCTION_NAME && (answer["status"] as? JsonPrimitive)?.content == "ok") {
+                                endAfterReply = true
+                            }
                         }
                     }
                     LiveFunctionResponse(id = call.id, name = call.name, response = result)
