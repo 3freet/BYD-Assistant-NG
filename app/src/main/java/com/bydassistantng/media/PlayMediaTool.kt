@@ -73,8 +73,9 @@ object PlayMediaTool {
             "about <topic> on YouTube\", \"put on some music\". When the user leaves the choice to you " +
             "(\"something moody\", \"surprise me\"), pick one specific, well-known title and artist yourself " +
             "and pass them as the query. It cannot pick from an app's home screen: it always needs a search " +
-            "phrase. After it succeeds, confirm in one short sentence; the conversation ends so the music " +
-            "does not get picked up by the microphone.",
+            "phrase. It searches and presses the top result, which takes a few seconds. After it succeeds, " +
+            "confirm in one short sentence; the conversation ends so the music does not get picked up by the " +
+            "microphone.",
         parameters = GeminiSchema(
             type = "OBJECT",
             properties = mapOf(
@@ -132,26 +133,41 @@ object PlayMediaTool {
         return found.map { InstalledApp(it.loadLabel(pm).toString(), it.activityInfo.packageName) }.distinctBy { it.packageName }
     }
 
-    private fun play(context: Context, app: InstalledApp, request: PlayRequest): JsonObject {
+    private suspend fun play(context: Context, app: InstalledApp, request: PlayRequest): JsonObject {
         val intent = Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
             .setPackage(app.packageName)
             .putExtra(SearchManager.QUERY, request.query)
             .putExtra(MediaStore.EXTRA_MEDIA_FOCUS, request.kind.focus)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        return try {
+        try {
             context.startActivity(intent)
-            AppLogger.log(TAG, "Asked ${app.label} to play \"${request.query}\" (${request.kind.word})")
-            buildJsonObject {
-                put("status", "ok")
-                put("note", "${app.label} was asked to play \"${request.query}\" and starts in a moment.")
-            }
         } catch (e: ActivityNotFoundException) {
             AppLogger.logError(TAG, "${app.label} could not play from a search", e)
-            error("${app.label} could not play that.")
+            return error("${app.label} could not play that.")
         } catch (e: SecurityException) {
             AppLogger.logError(TAG, "Not allowed to start ${app.label}", e)
-            error("Not allowed to start ${app.label}.")
+            return error("Not allowed to start ${app.label}.")
         }
+        AppLogger.log(TAG, "Asked ${app.label} to play \"${request.query}\" (${request.kind.word})")
+
+        // The apps answer the request by showing their results; the top result still has to be pressed.
+        return when (val outcome = UiPlayStarter(context).startFirstResult(app.packageName, request.kind)) {
+            is StartOutcome.Playing -> ok("${app.label} is now playing ${outcome.label.ifBlank { "\"${request.query}\"" }}.")
+            is StartOutcome.Pressed -> ok("${app.label} was told to play ${outcome.label.ifBlank { "\"${request.query}\"" }} and starts in a moment.")
+            StartOutcome.NoResults -> partial("${app.label} opened but its results did not appear. Say you could not start it.")
+            StartOutcome.NoRule -> partial("${app.label} is showing results for \"${request.query}\"; it cannot be started automatically. Tell the user to tap the first result.")
+            StartOutcome.NoAdb -> partial("${app.label} is showing results for \"${request.query}\", but the car's debugging connection is not available to start it. Tell the user to tap the first result.")
+        }
+    }
+
+    private fun ok(note: String) = buildJsonObject {
+        put("status", "ok")
+        put("note", note)
+    }
+
+    private fun partial(note: String) = buildJsonObject {
+        put("status", "partial")
+        put("note", note)
     }
 
     private fun error(message: String) = buildJsonObject {
