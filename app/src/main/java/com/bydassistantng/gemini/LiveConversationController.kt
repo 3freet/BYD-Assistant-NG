@@ -232,6 +232,7 @@ class LiveConversationController @Inject constructor(
     init {
         // A "play X" whose last step could not start anything says so with the error tone.
         PlaybackFollowUp.onNotStarted = { earcons.play(Earcon.ERROR) }
+        PlaybackFollowUp.isConversationActive = { conversationActive }
     }
 
     /** Attempts to open a Live session and start the conversation. Returns false if the session
@@ -239,6 +240,8 @@ class LiveConversationController @Inject constructor(
      * no audio is lost in that case, since capture only starts after setup succeeds, so the caller
      * can fall back to the classic pipeline for this turn with a clean slate. */
     suspend fun start(onStatus: suspend (TurnStatus) -> Unit): Boolean {
+        // Before close(), which would otherwise start a press that is waiting for the conversation to end.
+        PlaybackFollowUp.cancel()
         close()
         // close() deliberately lets queued audio finish, but starting means the user pressed over any
         // previous reply and wants it to stop.

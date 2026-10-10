@@ -147,13 +147,9 @@ class UiPlayStarter(private val context: Context) {
             val before = sessionState(adb, packageName)
             if (before.isPlaying) pausePlayback(adb)
             delay(PAGE_SETTLE_DELAY_MS)
-            var target: TapPoint? = null
-            repeat(3) {
-                if (target == null) {
-                    val xml = adb.shell("uiautomator dump $DUMP_PATH >/dev/null 2>&1; cat $DUMP_PATH; rm -f $DUMP_PATH").output
-                    if (xml.contains("<hierarchy")) target = FirstResult.playButtonOnPage(ScreenDump.parse(xml), packageName)
-                }
-            }
+            // One look (see readWithUiAutomation): it switches the wheel button off while it runs.
+            val xml = adb.shell("uiautomator dump $DUMP_PATH >/dev/null 2>&1; cat $DUMP_PATH; rm -f $DUMP_PATH").output
+            val target = if (xml.contains("<hierarchy")) FirstResult.playButtonOnPage(ScreenDump.parse(xml), packageName) else null
             val button = target ?: return@withContext StartOutcome.NoResults
             AppLogger.log(TAG, "Pressing play on the opened page of $packageName")
             adb.shell("input tap ${button.x} ${button.y}")
@@ -245,13 +241,11 @@ class UiPlayStarter(private val context: Context) {
 
     /** One look at the screen through UI automation (the one moment accessibility is off), then the point to press. */
     private fun readWithUiAutomation(adb: Dadb, packageName: String, kind: MediaKind): TapPoint? {
-        repeat(3) {
-            val xml = adb.shell("uiautomator dump $DUMP_PATH >/dev/null 2>&1; cat $DUMP_PATH; rm -f $DUMP_PATH").output
-            if (xml.contains("<hierarchy")) {
-                FirstResult.forPackage(packageName, ScreenDump.parse(xml), kind)?.let { return it }
-            }
-        }
-        return null
+        // One look only: each one switches the accessibility services (and with them the wheel button) off for
+        // several seconds, and a screen that would not go idle the first time will not the second.
+        val xml = adb.shell("uiautomator dump $DUMP_PATH >/dev/null 2>&1; cat $DUMP_PATH; rm -f $DUMP_PATH").output
+        if (!xml.contains("<hierarchy")) return null
+        return FirstResult.forPackage(packageName, ScreenDump.parse(xml), kind)
     }
 
     private fun sessionState(adb: Dadb, packageName: String): SessionState {

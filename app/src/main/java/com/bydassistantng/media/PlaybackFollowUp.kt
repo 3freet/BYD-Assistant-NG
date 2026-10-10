@@ -38,13 +38,32 @@ object PlaybackFollowUp {
     /** Called with the outcome when the press did not end in something playing (to say so with a tone). */
     @Volatile var onNotStarted: (() -> Unit)? = null
 
+    /** Whether a conversation is going; the screen is never read then, since that would cut it off. */
+    @Volatile var isConversationActive: () -> Boolean = { false }
+
     fun schedule(request: PendingPlayback) {
         synchronized(lock) { pending = request }
+    }
+
+    /**
+     * Drops a press that has not started, and one that is waiting to. A person pressing the wheel button again is
+     * more important than finishing a song that was asked for before: reading the screen would switch the button off.
+     */
+    fun cancel() {
+        synchronized(lock) {
+            pending = null
+            running?.cancel()
+            running = null
+        }
     }
 
     /** Starts the press for a scheduled request, if there is one. Safe to call at any time. */
     fun startPending(context: Context) {
         val request = synchronized(lock) { pending.also { pending = null } } ?: return
+        if (isConversationActive()) {
+            AppLogger.log(TAG, "Not starting ${request.appLabel}: a conversation is going")
+            return
+        }
         val appContext = context.applicationContext
         synchronized(lock) {
             running?.cancel()
