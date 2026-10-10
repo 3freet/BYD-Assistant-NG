@@ -36,8 +36,28 @@ publishes `v<version>-beta.N`, numbered automatically.
 git push origin main:stable
 ```
 
-A version can be published once — raise both `appVersionName` and `appVersionCode` in `app/build.gradle.kts`
-first, or the workflow stops at once with a message saying so.
+A version can be published once: raise `appVersionName` in `app/build.gradle.kts` first (`major.minor.patch`, each
+0-99), or the workflow stops at once with a message saying so. The Android `versionCode` is computed from the name, so
+it always rises with the version and a beta (`1.2.0-beta.3`) always sorts below the release it leads up to
+(`1.2.0`). Raise the version **right after** publishing a stable release, before the next beta: the beta workflow
+refuses to build a beta of a version that is already released.
+
+### How the app updates itself
+
+The app checks the GitHub releases of the repository it was built for (`-Passistant.updateRepo`) and offers the newest
+build on the **channel** the user follows (Settings → Advanced): *Stable* sees only releases, *Beta* sees betas and
+releases alike, whichever is newer. It never offers a build that is not newer than the installed one, so switching
+channel cannot downgrade.
+
+- The release notes shown under *What's new* are the commit subjects since the previous release, written by
+  [`tools/release_notes.sh`](tools/release_notes.sh) — so write commit subjects a user could read.
+- An update is downloaded only from the repository's own release assets, checked against the size and SHA-256 GitHub
+  recorded for the file, and checked to be the same package signed by the same key as the installed app, before it is
+  handed to the installer.
+- It installs over the same loopback ADB connection the vehicle helper uses (`cat apk | pm install -r -S <size>`),
+  then starts the app again; without ADB it opens the system installer.
+- A local `assembleDebug` build installs as `com.bydassistantng.dev` and does not update itself. To try the whole flow
+  without publishing anything, use the debug-only `DebugUpdateReceiver` (see its header comment).
 
 ### Signing secrets (maintainers)
 

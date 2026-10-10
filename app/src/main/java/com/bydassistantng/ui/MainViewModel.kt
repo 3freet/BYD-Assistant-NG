@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class Screen { ONBOARDING, HOME, SETTINGS, ABOUT, CRASH_LOG, APP_LOG }
+enum class Screen { ONBOARDING, HOME, SETTINGS, ADVANCED, UPDATES, ABOUT, CRASH_LOG, APP_LOG }
 
 @HiltViewModel
 class MainViewModel @Inject constructor(

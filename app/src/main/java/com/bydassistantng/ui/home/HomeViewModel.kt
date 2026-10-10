@@ -12,6 +12,8 @@ import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.gemini.ConversationController
 import com.bydassistantng.gemini.LiveConversationController
 import com.bydassistantng.gemini.TurnStatus
+import com.bydassistantng.update.UpdateManager
+import com.bydassistantng.update.UpdateState
 import com.bydassistantng.util.AppLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +52,7 @@ class HomeViewModel @Inject constructor(
     private val liveConversationController: LiveConversationController,
     private val ttsEngine: TextToSpeechEngine,
     preferencesRepository: PreferencesRepository,
+    private val updateManager: UpdateManager,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Idle)
@@ -57,6 +60,12 @@ class HomeViewModel @Inject constructor(
 
     val vehicleControlEnabled: StateFlow<Boolean> =
         preferencesRepository.vehicleControlEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val updateState: StateFlow<UpdateState> = updateManager.state
+
+    /** The version just installed, until the note about it is dismissed. */
+    val justUpdatedTo: StateFlow<String?> = updateManager.justUpdatedTo
+    fun dismissJustUpdated() = updateManager.dismissJustUpdated()
 
     fun onMicTapped() {
         when {

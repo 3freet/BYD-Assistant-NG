@@ -8,9 +8,9 @@ import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.data.SecureCredentials
-import com.bydassistantng.ota.OtaUpdater
-import com.bydassistantng.ota.ReleaseInfo
 import com.bydassistantng.service.WheelKeyService
+import com.bydassistantng.update.UpdateManager
+import com.bydassistantng.update.UpdateState
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLanguageChoice
 import com.bydassistantng.util.WheelKeys
@@ -28,21 +28,12 @@ import javax.inject.Inject
 
 private const val KEY_CAPTURE_TIMEOUT_MS = 60_000L
 
-sealed interface OtaCheckState {
-    data object Idle : OtaCheckState
-    data object Checking : OtaCheckState
-    data object UpToDate : OtaCheckState
-    data class Available(val release: ReleaseInfo) : OtaCheckState
-    data class Downloading(val progress: Float) : OtaCheckState
-    data class Failed(val message: String) : OtaCheckState
-}
-
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val secureCredentials: SecureCredentials,
     private val preferencesRepository: PreferencesRepository,
-    private val otaUpdater: OtaUpdater,
+    private val updateManager: UpdateManager,
 ) : ViewModel() {
     private val _appLanguage = MutableStateFlow(AppLanguage.choice(context))
     /** The language of the app's own screens (not the one the assistant speaks). */
@@ -157,13 +148,12 @@ class SettingsViewModel @Inject constructor(
     private val _apiKeyMessage = MutableStateFlow<String?>(null)
     val apiKeyMessage: StateFlow<String?> = _apiKeyMessage.asStateFlow()
 
-    private val _otaState = MutableStateFlow<OtaCheckState>(OtaCheckState.Idle)
-    val otaState: StateFlow<OtaCheckState> = _otaState.asStateFlow()
+    /** What the Updates row shows; the Updates screen has the detail. */
+    val updateState: StateFlow<UpdateState> = updateManager.state
+    val installedVersionName: String get() = updateManager.installed.versionName
 
-    val currentVersionName: String get() = otaUpdater.getCurrentVersionName()
-
-    /** Whether this build was told where to look for updates (see `assistant.updateRepo` in the build file). */
-    val updatesConfigured: Boolean get() = otaUpdater.isConfigured
+    /** Whether this build can update itself at all (a local developer build can't). */
+    val updatesSupported: Boolean get() = updateManager.isSupported
 
     init {
         viewModelScope.launch { _hasApiKey.value = secureCredentials.hasApiKey() }
@@ -195,29 +185,5 @@ class SettingsViewModel @Inject constructor(
             _hasApiKey.value = false
             _apiKeyMessage.value = text(R.string.api_cleared)
         }
-    }
-
-    fun checkForUpdate() {
-        _otaState.value = OtaCheckState.Checking
-        viewModelScope.launch {
-            val release = otaUpdater.checkForUpdate(force = true)
-            _otaState.value = if (release != null) OtaCheckState.Available(release) else OtaCheckState.UpToDate
-        }
-    }
-
-    /** Pre-populates the "update available" state directly from a notification tap, skipping a
-     * redundant network check since the notification already carried everything needed. */
-    fun showPendingRelease(release: ReleaseInfo) {
-        _otaState.value = OtaCheckState.Available(release)
-    }
-
-    fun installUpdate(release: ReleaseInfo) {
-        _otaState.value = OtaCheckState.Downloading(0f)
-        otaUpdater.downloadAndInstall(
-            downloadUrl = release.downloadUrl,
-            fileName = release.apkName,
-            onProgress = { progress -> _otaState.value = OtaCheckState.Downloading(progress) },
-            onComplete = { success -> if (!success) _otaState.value = OtaCheckState.Failed(text(R.string.ota_download_failed)) },
-        )
     }
 }

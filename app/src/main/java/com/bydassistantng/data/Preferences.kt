@@ -53,8 +53,11 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val WEB_SEARCH_ENABLED = booleanPreferencesKey("web_search_enabled")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val AUTO_START_VISITED_AT = longPreferencesKey("auto_start_visited_at")
-        val LAST_OTA_CHECK_TIME = longPreferencesKey("last_ota_check_time")
-        val LATEST_OTA_VERSION = stringPreferencesKey("latest_ota_version")
+        val UPDATE_CHANNEL = stringPreferencesKey("update_channel")
+        val AUTO_CHECK_UPDATES = booleanPreferencesKey("auto_check_updates")
+        val LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
+        val NOTIFIED_UPDATE_TAG = stringPreferencesKey("notified_update_tag")
+        val PENDING_INSTALL = stringPreferencesKey("pending_install_version")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -120,14 +123,32 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.edit { it[Keys.AUTO_START_VISITED_AT] = time }
     }
 
-    val lastOtaCheckTime: Flow<Long> = dataStore.data.map { it[Keys.LAST_OTA_CHECK_TIME] ?: 0L }
-    suspend fun getLastOtaCheckTime(): Long = lastOtaCheckTime.first()
-    suspend fun setLastOtaCheckTime(time: Long) {
-        dataStore.edit { it[Keys.LAST_OTA_CHECK_TIME] = time }
+    /** The update channel's id (see UpdateChannel), or null until the user picks one, which means "the channel this build came from". */
+    val updateChannel: Flow<String?> = dataStore.data.map { it[Keys.UPDATE_CHANNEL] }
+    suspend fun setUpdateChannel(id: String) {
+        dataStore.edit { it[Keys.UPDATE_CHANNEL] = id }
     }
 
-    suspend fun getLatestOtaVersion(): String = dataStore.data.map { it[Keys.LATEST_OTA_VERSION] ?: "" }.first()
-    suspend fun setLatestOtaVersion(version: String) {
-        dataStore.edit { it[Keys.LATEST_OTA_VERSION] = version }
+    /** Whether the app looks for a new version by itself now and then. On by default; nothing is ever installed without a tap. */
+    val autoCheckUpdates: Flow<Boolean> = dataStore.data.map { it[Keys.AUTO_CHECK_UPDATES] ?: true }
+    suspend fun setAutoCheckUpdates(enabled: Boolean) {
+        dataStore.edit { it[Keys.AUTO_CHECK_UPDATES] = enabled }
+    }
+
+    val lastUpdateCheck: Flow<Long> = dataStore.data.map { it[Keys.LAST_UPDATE_CHECK] ?: 0L }
+    suspend fun setLastUpdateCheck(time: Long) {
+        dataStore.edit { it[Keys.LAST_UPDATE_CHECK] = time }
+    }
+
+    /** The release the "update available" notification was last shown for, so each one is announced once. */
+    val notifiedUpdateTag: Flow<String> = dataStore.data.map { it[Keys.NOTIFIED_UPDATE_TAG] ?: "" }
+    suspend fun setNotifiedUpdateTag(tag: String) {
+        dataStore.edit { it[Keys.NOTIFIED_UPDATE_TAG] = tag }
+    }
+
+    /** The version an install is under way for, so the next start can tell that it went through. Empty when none. */
+    val pendingInstall: Flow<String> = dataStore.data.map { it[Keys.PENDING_INSTALL] ?: "" }
+    suspend fun setPendingInstall(version: String) {
+        dataStore.edit { it[Keys.PENDING_INSTALL] = version }
     }
 }

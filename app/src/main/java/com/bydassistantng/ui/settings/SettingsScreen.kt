@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -23,7 +22,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,8 +35,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.bydassistantng.R
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantVoices
-import com.bydassistantng.ota.ReleaseInfo
+import com.bydassistantng.update.UpdateState
 import com.bydassistantng.ui.AppLanguageSelector
+import com.bydassistantng.ui.AiStudioKeyLink
 import com.bydassistantng.ui.AppTopBar
 import com.bydassistantng.ui.AssistantLanguageSelector
 import com.bydassistantng.ui.findActivity
@@ -49,10 +48,9 @@ import com.bydassistantng.util.WheelKeys
 
 @Composable
 fun SettingsScreen(
-    pendingOtaRelease: ReleaseInfo?,
     onBack: () -> Unit,
-    onOpenCrashLog: () -> Unit,
-    onOpenAppLog: () -> Unit,
+    onOpenUpdates: () -> Unit,
+    onOpenAdvanced: () -> Unit,
     onOpenAbout: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -70,17 +68,13 @@ fun SettingsScreen(
     val wheelSetup = rememberWheelServiceSetup()
     val hasApiKey by viewModel.hasApiKey.collectAsState()
     val apiKeyMessage by viewModel.apiKeyMessage.collectAsState()
-    val otaState by viewModel.otaState.collectAsState()
+    val updateState by viewModel.updateState.collectAsState()
     val autoStartVisitedAt by viewModel.autoStartVisitedAt.collectAsState()
 
     var apiKeyInput by remember { mutableStateOf("") }
     var showVehicleControlWarning by remember { mutableStateOf(false) }
     var showDialectChoice by remember { mutableStateOf(false) }
     var showVoiceChoice by remember { mutableStateOf(false) }
-
-    LaunchedEffect(pendingOtaRelease) {
-        pendingOtaRelease?.let { viewModel.showPendingRelease(it) }
-    }
 
     if (showVehicleControlWarning) {
         AlertDialog(
@@ -293,31 +287,31 @@ fun SettingsScreen(
                     OutlinedButton(onClick = { viewModel.clearApiKey() }, enabled = hasApiKey) { Text(stringResource(R.string.action_clear)) }
                 }
                 apiKeyMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp)) }
+                AiStudioKeyLink(modifier = Modifier.padding(top = 8.dp))
             }
 
-            // No update section unless this build was told where its updates are published.
-            if (viewModel.updatesConfigured) {
+            // Builds that can't update themselves (a local developer build) have nothing to show here.
+            if (viewModel.updatesSupported) {
                 item { HorizontalDivider() }
 
                 item {
-                    Text(stringResource(R.string.updates_title), style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        stringResource(R.string.updates_current_version, viewModel.currentVersionName),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
-                    )
-                    OtaSection(otaState, onCheck = { viewModel.checkForUpdate() }, onInstall = { viewModel.installUpdate(it) })
+                    Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenUpdates)) {
+                        Text(stringResource(R.string.updates_title), style = MaterialTheme.typography.titleMedium)
+                        val available = updateState is UpdateState.Available
+                        Text(
+                            updateStatusLine(updateState, viewModel.installedVersionName),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (available) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                 }
             }
 
             item { HorizontalDivider() }
 
             item {
-                OutlinedButton(onClick = onOpenAppLog, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.view_app_log)) }
-            }
-
-            item {
-                OutlinedButton(onClick = onOpenCrashLog, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.view_crash_log)) }
+                OutlinedButton(onClick = onOpenAdvanced, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.view_advanced)) }
             }
 
             item {
@@ -327,22 +321,17 @@ fun SettingsScreen(
     }
 }
 
+/** One line on the state of updates, for the Settings row; the Updates screen has the detail. */
 @Composable
-private fun OtaSection(state: OtaCheckState, onCheck: () -> Unit, onInstall: (ReleaseInfo) -> Unit) {
-    when (state) {
-        OtaCheckState.Idle -> OutlinedButton(onClick = onCheck) { Text(stringResource(R.string.ota_check)) }
-        OtaCheckState.Checking -> Text(stringResource(R.string.ota_checking), style = MaterialTheme.typography.bodySmall)
-        OtaCheckState.UpToDate -> Text(stringResource(R.string.ota_up_to_date), style = MaterialTheme.typography.bodySmall)
-        is OtaCheckState.Available -> Column {
-            Text(stringResource(R.string.ota_available, state.release.tagName), style = MaterialTheme.typography.bodyMedium)
-            Button(onClick = { onInstall(state.release) }, modifier = Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.ota_download_install)) }
-        }
-        is OtaCheckState.Downloading -> Column {
-            Text(stringResource(R.string.ota_downloading), style = MaterialTheme.typography.bodySmall)
-            LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-        }
-        is OtaCheckState.Failed -> Text(state.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-    }
+private fun updateStatusLine(state: UpdateState, installedVersion: String): String = when (state) {
+    UpdateState.Idle -> stringResource(R.string.updates_status_unchecked)
+    UpdateState.Checking -> stringResource(R.string.updates_status_checking)
+    is UpdateState.UpToDate -> stringResource(R.string.updates_status_up_to_date, installedVersion)
+    is UpdateState.Available -> stringResource(R.string.updates_status_available, state.release.version.toString())
+    is UpdateState.Downloading -> stringResource(R.string.updates_status_downloading, state.release.version.toString())
+    is UpdateState.Installing -> stringResource(R.string.updates_status_installing, state.release.version.toString())
+    is UpdateState.AwaitingSystemInstaller -> stringResource(R.string.updates_status_installing, state.release.version.toString())
+    is UpdateState.Failed -> stringResource(R.string.updates_status_failed)
 }
 
 /** A setting whose value is picked from a list in a dialog: the title, the current value, and a hint. */

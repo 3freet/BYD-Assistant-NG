@@ -49,11 +49,21 @@ open apps, control the media player — and, optionally, operate the car's comfo
    settings*). Without it the system can close the app when the car sleeps, which turns the button off.
 4. Optional: turn on *Vehicle control* in Settings. Read the warning first.
 
+### Updates
+
+The app looks for a newer version on GitHub about every six hours and shows a notice on the home screen (and a quiet
+notification) when there is one. *Settings → Updates* shows what is new and installs it when you confirm: the app
+downloads the file, checks it is this app, signed by the same key and intact, then installs it and starts again. Do it
+while parked, since a conversation in progress ends. *Settings → Advanced settings* switches between the **Stable**
+channel (tested releases) and the **Beta** channel (newest builds first), and turns the automatic check off.
+
 ## Privacy
 
 - What you say is streamed to the Gemini API to produce the reply. Nothing is sent anywhere else, and there is
   no analytics or tracking.
 - With **Web search** on, the questions you ask are also sent to Google Search.
+- The update check asks GitHub for the project's list of releases (nothing about you or the car is sent). Turn it
+  off under *Settings → Advanced settings*.
 - The API key is stored encrypted on the device. Logs stay on the device until you choose to share them — and
   can contain what you said, so read one before you send it.
 
@@ -94,7 +104,7 @@ Optional build settings:
 
 - `-Passistant.updateRepo=owner/repo` (or the `ASSISTANT_UPDATE_REPO` environment variable): the GitHub
   repository whose releases the in-app updater checks. Without it the app never checks for updates and hides
-  the Updates section.
+  the Updates section. (A debug build never updates itself.)
 - A release signing key goes in `app/signing.properties` (not tracked). Never commit keystores or passwords.
 
 ## Branches

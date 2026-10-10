@@ -17,20 +17,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.bydassistantng.ota.EXTRA_OTA_BODY
-import com.bydassistantng.ota.EXTRA_OTA_NAME
-import com.bydassistantng.ota.EXTRA_OTA_URL
-import com.bydassistantng.ota.EXTRA_OTA_VERSION
-import com.bydassistantng.ota.ReleaseInfo
 import com.bydassistantng.ui.about.AboutScreen
 import com.bydassistantng.ui.home.HomeScreen
 import com.bydassistantng.ui.onboarding.OnboardingScreen
+import com.bydassistantng.ui.settings.AdvancedSettingsScreen
 import com.bydassistantng.ui.settings.AppLogScreen
 import com.bydassistantng.ui.settings.CrashLogScreen
 import com.bydassistantng.ui.settings.SettingsScreen
+import com.bydassistantng.ui.settings.UpdatesScreen
 import com.bydassistantng.ui.theme.AppTheme
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.hasMicPermission
@@ -40,6 +40,9 @@ import dagger.hilt.android.AndroidEntryPoint
  * permission revoked: the service can't show a permission dialog itself, so it opens this activity
  * to do it. */
 const val EXTRA_REQUEST_MIC_PERMISSION = "EXTRA_REQUEST_MIC_PERMISSION"
+
+/** Set by the "update available" notification, to open straight onto the Updates screen. */
+const val EXTRA_OPEN_UPDATES = "EXTRA_OPEN_UPDATES"
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -56,7 +59,7 @@ class MainActivity : ComponentActivity() {
         // The window's layout direction comes from the *application* context, whose language was fixed when the
         // process started — so after a language switch it would keep the old direction. Say it outright.
         window.decorView.layoutDirection = TextUtils.getLayoutDirectionFromLocale(AppLanguage.locale(this))
-        val pendingOtaRelease = releaseInfoFromIntent(intent)
+        val openUpdates = intent.getBooleanExtra(EXTRA_OPEN_UPDATES, false)
 
         if (intent.getBooleanExtra(EXTRA_REQUEST_MIC_PERMISSION, false) && !hasMicPermission()) {
             micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -65,37 +68,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    AppRoot(pendingOtaRelease = pendingOtaRelease)
+                    AppRoot(openUpdates = openUpdates)
                 }
             }
         }
     }
-
-    /** The OTA update notification opens this activity with these extras (see [OtaUpdater]) —
-     * built directly from the notification's own data, no redundant network round-trip needed. */
-    private fun releaseInfoFromIntent(intent: Intent): ReleaseInfo? {
-        val version = intent.getStringExtra(EXTRA_OTA_VERSION) ?: return null
-        val url = intent.getStringExtra(EXTRA_OTA_URL) ?: return null
-        val name = intent.getStringExtra(EXTRA_OTA_NAME) ?: return null
-        val body = intent.getStringExtra(EXTRA_OTA_BODY) ?: ""
-        return ReleaseInfo(
-            tagName = version,
-            versionName = version.removePrefix("v").removePrefix("V"),
-            title = version,
-            body = body,
-            htmlUrl = "",
-            downloadUrl = url,
-            apkName = name,
-        )
-    }
 }
 
 @Composable
-private fun AppRoot(pendingOtaRelease: ReleaseInfo?, viewModel: MainViewModel = hiltViewModel()) {
+private fun AppRoot(openUpdates: Boolean, viewModel: MainViewModel = hiltViewModel()) {
     val screen by viewModel.screen.collectAsState()
+    // Where the Updates screen's back button leads: the Home banner and the notification open it from Home.
+    var updatesFrom by rememberSaveable { mutableStateOf(Screen.SETTINGS) }
+    var openedFromNotification by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(pendingOtaRelease, screen) {
-        if (pendingOtaRelease != null && screen != null && screen != Screen.SETTINGS) viewModel.navigateTo(Screen.SETTINGS)
+    LaunchedEffect(openUpdates, screen) {
+        if (openUpdates && !openedFromNotification && screen != null && screen != Screen.ONBOARDING) {
+            openedFromNotification = true
+            updatesFrom = Screen.HOME
+            viewModel.navigateTo(Screen.UPDATES)
+        }
     }
 
     when (screen) {
@@ -103,16 +95,33 @@ private fun AppRoot(pendingOtaRelease: ReleaseInfo?, viewModel: MainViewModel = 
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         }
         Screen.ONBOARDING -> OnboardingScreen(onFinished = { viewModel.onOnboardingFinished() })
-        Screen.HOME -> HomeScreen(onOpenSettings = { viewModel.navigateTo(Screen.SETTINGS) })
+        Screen.HOME -> HomeScreen(
+            onOpenSettings = { viewModel.navigateTo(Screen.SETTINGS) },
+            onOpenUpdates = {
+                updatesFrom = Screen.HOME
+                viewModel.navigateTo(Screen.UPDATES)
+            },
+        )
         Screen.SETTINGS -> SettingsScreen(
-            pendingOtaRelease = pendingOtaRelease,
             onBack = { viewModel.navigateTo(Screen.HOME) },
-            onOpenCrashLog = { viewModel.navigateTo(Screen.CRASH_LOG) },
-            onOpenAppLog = { viewModel.navigateTo(Screen.APP_LOG) },
+            onOpenUpdates = {
+                updatesFrom = Screen.SETTINGS
+                viewModel.navigateTo(Screen.UPDATES)
+            },
+            onOpenAdvanced = { viewModel.navigateTo(Screen.ADVANCED) },
             onOpenAbout = { viewModel.navigateTo(Screen.ABOUT) },
         )
+        Screen.ADVANCED -> AdvancedSettingsScreen(
+            onBack = { viewModel.navigateTo(Screen.SETTINGS) },
+            onOpenCrashLog = { viewModel.navigateTo(Screen.CRASH_LOG) },
+            onOpenAppLog = { viewModel.navigateTo(Screen.APP_LOG) },
+        )
+        Screen.UPDATES -> UpdatesScreen(
+            onBack = { viewModel.navigateTo(updatesFrom) },
+            onOpenAdvanced = { viewModel.navigateTo(Screen.ADVANCED) },
+        )
         Screen.ABOUT -> AboutScreen(onBack = { viewModel.navigateTo(Screen.SETTINGS) })
-        Screen.CRASH_LOG -> CrashLogScreen(onBack = { viewModel.navigateTo(Screen.SETTINGS) })
-        Screen.APP_LOG -> AppLogScreen(onBack = { viewModel.navigateTo(Screen.SETTINGS) })
+        Screen.CRASH_LOG -> CrashLogScreen(onBack = { viewModel.navigateTo(Screen.ADVANCED) })
+        Screen.APP_LOG -> AppLogScreen(onBack = { viewModel.navigateTo(Screen.ADVANCED) })
     }
 }

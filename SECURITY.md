@@ -53,7 +53,11 @@ safeguards. A modified build, or any other program using the same ADB access, is
   log before you send it to anyone.
 - **No analytics, telemetry or advertising** of any kind.
 - **Updates** are only checked when the build was told which GitHub repository publishes them
-  (`assistant.updateRepo`); Android will only install an update signed with the same key as the installed app.
+  (`assistant.updateRepo`), and only ever downloaded from that repository's release assets. Before an update is
+  installed the app checks the file against the size and SHA-256 GitHub recorded, and that it is the same package signed
+  with the same key as the installed app; Android enforces the signature again when it installs. Nothing is installed
+  without a tap, and never during a conversation. The installation uses the same local ADB connection as the vehicle
+  helper (see above), so it can replace the app without a confirmation screen.
 
 ## Responsible use
 

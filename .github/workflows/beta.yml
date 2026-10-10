@@ -39,6 +39,16 @@ jobs:
       - name: Grant execute permission
         run: chmod +x ./gradlew
 
+      # A beta of a version that already has its stable release would sort below it and never be offered as an update.
+      - name: Refuse a beta of an already-released version
+        run: |
+          VERSION=$(sed -n 's/^val appVersionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+          if [ -z "$VERSION" ]; then echo "::error::Could not read appVersionName from app/build.gradle.kts."; exit 1; fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::Version ${VERSION} is already released. Raise appVersionName in app/build.gradle.kts for the next version, then build the beta."
+            exit 1
+          fi
+
       # Never publish an APK signed with the throwaway debug key: it could not be updated later.
       - name: Require signing secrets
         env:
@@ -81,6 +91,10 @@ jobs:
         id: tag
         run: echo "tag=v${{ steps.apk-info.outputs.version-name }}" >> "$GITHUB_OUTPUT"
 
+      # The app shows these lines under "What's new" when it offers this build as an update.
+      - name: Write release notes
+        run: tools/release_notes.sh beta "${{ github.repository }}" "${{ steps.tag.outputs.tag }}" > release-notes.md
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
@@ -104,5 +118,5 @@ jobs:
           target_commitish: ${{ github.sha }}
           prerelease: true
           make_latest: false
-          generate_release_notes: true
+          body_path: release-notes.md
           files: ${{ steps.apk-path.outputs.path }}

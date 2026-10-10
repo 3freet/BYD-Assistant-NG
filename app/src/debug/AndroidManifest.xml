@@ -38,5 +38,12 @@
                 <action android:name="com.bydassistantng.debug.TOOL" />
             </intent-filter>
         </receiver>
+        <receiver
+            android:name="com.bydassistantng.debug.DebugUpdateReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.UPDATE" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

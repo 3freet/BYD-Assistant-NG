@@ -16,8 +16,18 @@ val updateRepo: String = (findProperty("assistant.updateRepo") as String?) ?: Sy
 
 val sourceUrl: String = if (updateRepo.isBlank()) "" else "https://github.com/$updateRepo"
 
-val appVersionCode = 1
-val appVersionName = "1.0.0"
+// The version of the next release: raise it (major.minor.patch, each 0-99) before publishing a new stable build.
+// Betas of that version are numbered automatically (1.1.0-beta.1, 1.1.0-beta.2, ...) and sort below it.
+val appVersionName = "1.1.0"
+
+// versionCode is computed from the version, so a newer version always has a higher code and Android never
+// refuses an update as a downgrade. AppVersion.code in the app uses the same formula (a unit test guards it).
+val versionParts = appVersionName.split(".").map { it.toInt() }
+require(versionParts.size == 3 && versionParts.all { it in 0..99 }) { "appVersionName must be major.minor.patch, each 0-99" }
+fun versionCodeFor(beta: Int?): Int {
+    require(beta == null || beta in 1..998) { "beta number out of range: $beta" }
+    return versionParts[0] * 10_000_000 + versionParts[1] * 100_000 + versionParts[2] * 1_000 + (beta ?: 999)
+}
 
 val betaTags = providers.provider {
     providers.exec {
@@ -42,7 +52,7 @@ android {
         applicationId = "com.bydassistantng"
         minSdk = 24
         targetSdk = 37
-        versionCode = appVersionCode
+        versionCode = versionCodeFor(null)
         versionName = appVersionName
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -112,6 +122,7 @@ android {
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
+            if (variant.buildType == "beta") output.versionCode.set(versionCodeFor(betaNumber.get()))
             val date = SimpleDateFormat("ddMMyyyyHHmmss").format(Date())
             output.outputFileName.set(
                 "${rootProject.name}-${output.versionName.get()}(${output.versionCode.get()})-${variant.name}-$date.apk"

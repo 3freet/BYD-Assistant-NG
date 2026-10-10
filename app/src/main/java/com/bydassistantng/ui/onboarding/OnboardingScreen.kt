@@ -42,6 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.bydassistantng.R
+import com.bydassistantng.ui.AiStudioKeyLink
 import com.bydassistantng.ui.AppLanguageSelector
 import com.bydassistantng.ui.AssistantLanguageSelector
 import com.bydassistantng.ui.findActivity
@@ -157,6 +158,7 @@ fun OnboardingScreen(onFinished: () -> Unit, viewModel: OnboardingViewModel = hi
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp),
             )
+            AiStudioKeyLink(modifier = Modifier.padding(top = 4.dp))
             errorMessage?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 4.dp))
             }

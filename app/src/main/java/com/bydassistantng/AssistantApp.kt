@@ -3,7 +3,7 @@ package com.bydassistantng
 import android.app.Application
 import android.content.Context
 import com.bydassistantng.audio.TextToSpeechEngine
-import com.bydassistantng.ota.OtaUpdater
+import com.bydassistantng.update.UpdateManager
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.util.CrashLogger
@@ -14,7 +14,7 @@ import javax.inject.Inject
 @HiltAndroidApp
 class AssistantApp : Application() {
 
-    @Inject lateinit var otaUpdater: OtaUpdater
+    @Inject lateinit var updateManager: UpdateManager
 
     // Just injecting this triggers TextToSpeechEngine's constructor, which starts the (now
     // bounded, but still worth starting early) async engine-init wait during idle app startup
@@ -34,6 +34,6 @@ class AssistantApp : Application() {
         // Whatever started this process (the system binding the service, a boot broadcast, the user opening
         // the app), make sure the wheel button is actually live. Waits a few seconds, so off the main thread.
         Thread { WheelKeys.ensureServiceRunning(this) }.start()
-        otaUpdater.checkUpdateInBackground(force = false)
+        updateManager.start()
     }
 }
