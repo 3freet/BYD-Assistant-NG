@@ -26,6 +26,20 @@ fun pcm16Rms(chunk: ByteArray): Int {
  *
  * Feed it one RMS value per chunk via [onChunk].
  */
+/**
+ * How long the assistant waits in silence, after speech, before it decides the user has finished: the one setting
+ * on the way the end of a sentence is found. Shorter answers sooner but cuts off a user who pauses mid-sentence.
+ */
+object EndOfSpeechWait {
+    const val MIN_MS = 400
+    const val MAX_MS = 1_500
+    const val STEP_MS = 100
+    const val DEFAULT_MS = 800
+
+    /** [ms] kept within the range and on a step, so a stored value from anywhere is always one the slider can show. */
+    fun clamp(ms: Int): Int = ((ms.coerceIn(MIN_MS, MAX_MS) + STEP_MS / 2) / STEP_MS * STEP_MS).coerceIn(MIN_MS, MAX_MS)
+}
+
 // Speech is over once the level falls below this fraction of how loud it was (but never above the cap).
 private const val RELATIVE_END_FRACTION = 0.2
 private const val RELATIVE_END_CAP = 900.0
@@ -42,8 +56,8 @@ class SpeechEndpointer(
     private val noiseMultiplier: Double = 3.0,
     /** How long the level has to stay up before it counts as speech rather than a bump. */
     private val speechStartMs: Int = 150,
-    /** How long it has to stay down after speech before the user counts as finished. */
-    private val silenceEndMs: Int = 800,
+    /** How long it has to stay down after speech before the user counts as finished (see [EndOfSpeechWait]). */
+    private val silenceEndMs: Int = EndOfSpeechWait.DEFAULT_MS,
 ) {
     var speechDetected = false
         private set

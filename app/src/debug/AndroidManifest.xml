@@ -39,6 +39,13 @@
             </intent-filter>
         </receiver>
         <receiver
+            android:name="com.bydassistantng.debug.DebugOutsideReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.OUTSIDE" />
+            </intent-filter>
+        </receiver>
+        <receiver
             android:name="com.bydassistantng.debug.DebugUpdateReceiver"
             android:exported="true">
             <intent-filter>

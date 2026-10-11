@@ -11,6 +11,11 @@
     <string name="action_save">Save</string>
     <string name="action_clear">Clear</string>
     <string name="action_share">Share</string>
+    <string name="action_change">Change</string>
+    <string name="action_open">Open</string>
+    <string name="action_close">Close</string>
+    <string name="action_add">Add</string>
+    <string name="action_manage">Manage</string>
 
     <!-- Home -->
     <string name="home_settings">Settings</string>
@@ -33,6 +38,11 @@
     <string name="banner_tyres">Reading tyre pressure</string>
     <string name="banner_playing">Playing: %1$s</string>
     <string name="banner_outside_temperature">Reading outside temperature</string>
+    <string name="banner_speak_outside">Speaking outside the car</string>
+    <string name="banner_play_sound_outside">Playing a sound outside the car</string>
+    <string name="banner_drive_mode">Drive mode: %1$s</string>
+    <string name="banner_remember">Remembering that</string>
+    <string name="banner_forget">Forgetting that</string>
     <string name="banner_media">Media: %1$s</string>
     <string name="media_play">play</string>
     <string name="media_pause">pause</string>
@@ -64,6 +74,14 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <string name="settings_section_assistant">Assistant</string>
+    <string name="settings_section_conversation">Conversation</string>
+    <string name="settings_section_memory">Memory</string>
+    <string name="settings_section_car">Car</string>
+    <string name="settings_section_gemini">Gemini</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_advanced_desc">Update channel, experimental features and logs.</string>
+    <string name="advanced_section_updates">Updates</string>
     <string name="app_language_title">App language</string>
     <string name="app_language_hint">The language of the screens and messages. It does not change the language the assistant speaks.</string>
     <string name="app_language_system">System default</string>
@@ -98,12 +116,32 @@
     <string name="wheel_back_to_mic">Back to the mic button</string>
     <string name="wheel_conflict_note">If another app (a button mapper, for instance) already uses this button, remove its mapping there — both would otherwise react.</string>
     <string name="wheel_failure_hint">Couldn\'t turn it on automatically — that needs ADB debugging switched on for this head unit. Or, once from a computer: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS, then try again.</string>
+    <string name="end_wait_title">Wait after you stop speaking</string>
+    <string name="end_wait_desc">How long the assistant waits in silence before it decides you have finished. A shorter wait answers sooner but may cut you off when you pause in the middle of a sentence.</string>
+    <string name="end_wait_value">%1$d ms</string>
+    <string name="end_wait_reset">Back to the default (%1$d ms)</string>
+    <string name="memory_short_title">Short-term memory</string>
+    <string name="memory_short_desc">Keeps the last few exchanges for ten minutes, so a follow-up such as \"do the same for the passenger\" works in the next conversation.</string>
+    <string name="memory_long_title">Long-term memory</string>
+    <string name="memory_long_desc">Lets the assistant remember things you ask it to, such as your home address or how you like to be addressed. Kept on this device only.</string>
+    <string name="memory_manage">What it remembers (%1$d)</string>
+    <string name="memory_dialog_title">What the assistant remembers</string>
+    <string name="memory_empty">Nothing yet. Say \"remember that …\" in a conversation, or add a note below.</string>
+    <string name="memory_add_hint">Add something to remember</string>
+    <string name="memory_add">Add</string>
+    <string name="memory_forget">Forget</string>
+    <string name="memory_close">Close</string>
+    <string name="memory_clear_all">Forget everything</string>
+    <string name="memory_clear_title">Forget everything?</string>
+    <string name="memory_clear_body">Everything the assistant remembers about you, and the recent exchanges it keeps, will be deleted.</string>
+    <string name="memory_full">The list is full (%1$d items). Forget something first.</string>
+    <string name="memory_duplicate">That is already remembered.</string>
     <string name="barge_title">Talk over the assistant</string>
     <string name="barge_desc">Start speaking while it is talking and it stops and listens. Turn off if it ever cuts itself off by mistake.</string>
-    <string name="vehicle_title">Vehicle control (experimental)</string>
+    <string name="vehicle_title">Vehicle control</string>
     <string name="vehicle_desc">Lets the assistant actually operate car controls, not just talk about them.</string>
-    <string name="vehicle_warning_title">Enable experimental vehicle control?</string>
-    <string name="vehicle_warning_body">This lets the assistant actually operate the car\'s climate, windows, seats and similar controls when asked. It is experimental: use it only while parked, and at your own risk.</string>
+    <string name="vehicle_warning_title">Enable vehicle control?</string>
+    <string name="vehicle_warning_body">This lets the assistant operate the car\'s climate, windows, seats and similar controls when you ask. Use it while parked or when it is safe to do so.</string>
     <string name="autostart_title">Auto-start after reboot</string>
     <string name="autostart_confirmed">You\'ve opened the head unit\'s auto-start screen since the last update. If the steering-wheel button stops responding after the car sleeps or restarts, make sure this app is switched on there.</string>
     <string name="autostart_unconfirmed">Not confirmed. Switch this app on in the head unit\'s auto-start screen: otherwise it can close the app when the car sleeps or restarts, which turns the steering-wheel button off until you open the app again.</string>
@@ -175,6 +213,21 @@
     <string name="advanced_beta_body">Beta builds are published before they are fully tested and may contain bugs. You can go back to Stable at any time.</string>
     <string name="advanced_auto_title">Check for updates automatically</string>
     <string name="advanced_auto_desc">Looks for a new version about every six hours while the internet is available, and shows a notification when there is one. Nothing is installed without your confirmation.</string>
+    <string name="advanced_experimental_title">Experimental features</string>
+    <string name="advanced_experimental_note">These functions are experimental. They use car functions this app was not designed for, have only been tried on one car model, and may stop working after a car software update. Use them at your own risk.</string>
+    <string name="advanced_exterior_enable_title">Exterior speaker</string>
+    <string name="advanced_exterior_enable_desc">Lets the assistant speak and play sounds through the car\'s exterior speaker, so people outside hear it. Off by default.</string>
+    <string name="advanced_drive_modes_title">Drive mode switching</string>
+    <string name="advanced_drive_modes_desc">Lets the assistant change the car\'s drive mode (snow, sand, mud, mountain, rock, auto, eco, sport) when you ask. The car still decides whether it accepts. Off by default.</string>
+    <string name="advanced_exterior_confirm_title">Enable the exterior speaker?</string>
+    <string name="advanced_exterior_confirm_body">This is an experimental feature. It sends the assistant\'s voice and sounds out of the car, which can startle or disturb people nearby, and it works through a car function this app was not made for. It has only been tried on one car model and may stop working after a car software update. You use it entirely at your own risk and remain responsible for how and where it is used.</string>
+    <string name="advanced_drive_modes_confirm_title">Enable drive mode switching?</string>
+    <string name="advanced_drive_modes_confirm_body">This is an experimental feature. Changing the drive mode changes how the car delivers power, handles and brakes, and it works through a car function this app was not made for. It has only been tried on one car model; it may not work, or may stop working after a car software update. Only use it when it is safe to do so. You use it entirely at your own risk and remain responsible for the safe operation of your car.</string>
+    <string name="advanced_exterior_title">Exterior speaker volume</string>
+    <string name="advanced_exterior_desc">How loud the assistant is when it speaks or plays a sound outside the car. You can also ask for a level by voice, for example \"say it loudly\".</string>
+    <string name="exterior_volume_low">Low</string>
+    <string name="exterior_volume_medium">Medium</string>
+    <string name="exterior_volume_high">High</string>
     <string name="advanced_diagnostics">Diagnostics</string>
     <string name="update_channel_name">App updates</string>
     <string name="update_channel_desc">Tells you when a new version of BYD Assistant NG is available</string>

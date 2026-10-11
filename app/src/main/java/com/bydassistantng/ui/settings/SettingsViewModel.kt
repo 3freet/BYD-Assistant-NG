@@ -4,10 +4,15 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bydassistantng.R
+import com.bydassistantng.audio.EndOfSpeechWait
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
+import com.bydassistantng.data.CoreFeatures
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.data.SecureCredentials
+import com.bydassistantng.memory.AddOutcome
+import com.bydassistantng.memory.MemoryFact
+import com.bydassistantng.memory.MemoryRepository
 import com.bydassistantng.service.WheelKeyService
 import com.bydassistantng.update.UpdateManager
 import com.bydassistantng.update.UpdateState
@@ -33,6 +38,7 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val secureCredentials: SecureCredentials,
     private val preferencesRepository: PreferencesRepository,
+    private val memory: MemoryRepository,
     private val updateManager: UpdateManager,
 ) : ViewModel() {
     private val _appLanguage = MutableStateFlow(AppLanguage.choice(context))
@@ -52,9 +58,51 @@ class SettingsViewModel @Inject constructor(
     val language: StateFlow<AssistantLanguage> = preferencesRepository.assistantLanguage
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AssistantLanguage.AUTO)
     val vehicleControlEnabled: StateFlow<Boolean> = preferencesRepository.vehicleControlEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CoreFeatures.VEHICLE_CONTROL_DEFAULT)
     val bargeInEnabled: StateFlow<Boolean> = preferencesRepository.bargeInEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    val endOfSpeechWaitMs: StateFlow<Int> = preferencesRepository.endOfSpeechWaitMs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EndOfSpeechWait.DEFAULT_MS)
+
+    fun setEndOfSpeechWaitMs(ms: Int) {
+        viewModelScope.launch { preferencesRepository.setEndOfSpeechWaitMs(ms) }
+    }
+
+    val shortTermMemoryEnabled: StateFlow<Boolean> = preferencesRepository.shortTermMemoryEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    val longTermMemoryEnabled: StateFlow<Boolean> = preferencesRepository.longTermMemoryEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    val memories: StateFlow<List<MemoryFact>> = memory.facts
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Turning short-term memory off also drops what it was holding, so nothing is left behind unused. */
+    fun setShortTermMemoryEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setShortTermMemoryEnabled(enabled)
+            if (!enabled) memory.clearRecent()
+        }
+    }
+
+    fun setLongTermMemoryEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setLongTermMemoryEnabled(enabled) }
+    }
+
+    /** Adds a note by hand; returns what happened, for the dialog to say. */
+    fun addMemory(text: String, onResult: (AddOutcome) -> Unit) {
+        viewModelScope.launch { onResult(memory.addFact(text)) }
+    }
+
+    fun deleteMemory(id: String) {
+        viewModelScope.launch { memory.deleteFact(id) }
+    }
+
+    fun clearMemories() {
+        viewModelScope.launch {
+            memory.clearFacts()
+            memory.clearRecent()
+        }
+    }
 
     val arabicDialect: StateFlow<ArabicDialect> = preferencesRepository.arabicDialect
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ArabicDialect.MATCH)
@@ -177,6 +225,11 @@ class SettingsViewModel @Inject constructor(
             _apiKeyMessage.value = text(if (saved) R.string.api_saved else R.string.api_save_failed)
             _hasApiKey.value = secureCredentials.hasApiKey()
         }
+    }
+
+    /** Forgets what the last save or clear said, so the key dialog opens without yesterday's answer in it. */
+    fun clearApiKeyMessage() {
+        _apiKeyMessage.value = null
     }
 
     fun clearApiKey() {

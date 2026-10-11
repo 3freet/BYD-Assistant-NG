@@ -1,20 +1,5 @@
 package com.bydassistantng.ui.settings
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,16 +8,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bydassistantng.R
-import com.bydassistantng.ui.AppTopBar
+import com.bydassistantng.audio.ExteriorVolume
 import com.bydassistantng.update.UpdateChannel
+import com.bydassistantng.ui.AppAlertDialog
 
-/** Settings that most people never need: which releases to follow, and the diagnostic logs. */
+/**
+ * Settings that most people never need: which releases to follow, the experimental car features (each off
+ * until switched on, after a confirmation), and the diagnostic logs.
+ */
 @Composable
 fun AdvancedSettingsScreen(
     onBack: () -> Unit,
@@ -42,10 +28,36 @@ fun AdvancedSettingsScreen(
 ) {
     val channel by viewModel.channel.collectAsState()
     val autoCheck by viewModel.autoCheck.collectAsState()
+    val exteriorVolume by viewModel.exteriorVolume.collectAsState()
+    val exteriorEnabled by viewModel.exteriorSpeakerEnabled.collectAsState()
+    val driveModesEnabled by viewModel.driveModesEnabled.collectAsState()
+    var showChannelChoice by remember { mutableStateOf(false) }
     var confirmBeta by remember { mutableStateOf(false) }
+    var showVolumeChoice by remember { mutableStateOf(false) }
+    var confirmExterior by remember { mutableStateOf(false) }
+    var confirmDriveModes by remember { mutableStateOf(false) }
 
+    if (showChannelChoice) {
+        ChoiceDialog(
+            title = stringResource(R.string.advanced_channel_title),
+            options = listOf(
+                ChoiceOption(UpdateChannel.STABLE.name, stringResource(R.string.channel_stable), stringResource(R.string.advanced_channel_stable_desc)),
+                ChoiceOption(UpdateChannel.BETA.name, stringResource(R.string.channel_beta), stringResource(R.string.advanced_channel_beta_desc)),
+            ),
+            selectedKey = channel.name,
+            onSelect = { key ->
+                showChannelChoice = false
+                when {
+                    key == channel.name -> Unit
+                    key == UpdateChannel.BETA.name -> confirmBeta = true
+                    else -> viewModel.setChannel(UpdateChannel.STABLE)
+                }
+            },
+            onDismiss = { showChannelChoice = false },
+        )
+    }
     if (confirmBeta) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { confirmBeta = false },
             title = { Text(stringResource(R.string.advanced_beta_title)) },
             text = { Text(stringResource(R.string.advanced_beta_body)) },
@@ -58,74 +70,139 @@ fun AdvancedSettingsScreen(
             dismissButton = { TextButton(onClick = { confirmBeta = false }) { Text(stringResource(R.string.action_cancel)) } },
         )
     }
-
-    Scaffold(topBar = { AppTopBar(stringResource(R.string.advanced_title), onBack) }) { padding ->
-        LazyColumn(
-            contentPadding = PaddingValues(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            modifier = Modifier.padding(padding),
-        ) {
-            if (viewModel.updatesSupported) {
-                item {
-                    Column {
-                        Text(stringResource(R.string.advanced_channel_title), style = MaterialTheme.typography.titleMedium)
-                        ChannelOption(
-                            title = stringResource(R.string.channel_stable),
-                            description = stringResource(R.string.advanced_channel_stable_desc),
-                            selected = channel == UpdateChannel.STABLE,
-                            onSelect = { viewModel.setChannel(UpdateChannel.STABLE) },
-                        )
-                        ChannelOption(
-                            title = stringResource(R.string.channel_beta),
-                            description = stringResource(R.string.advanced_channel_beta_desc),
-                            selected = channel == UpdateChannel.BETA,
-                            onSelect = { if (channel != UpdateChannel.BETA) confirmBeta = true },
-                        )
-                        Text(
-                            stringResource(R.string.advanced_channel_note),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                    }
-                }
-
-                item {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                            Text(stringResource(R.string.advanced_auto_title), style = MaterialTheme.typography.titleMedium)
-                            Text(stringResource(R.string.advanced_auto_desc), style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(checked = autoCheck, onCheckedChange = { viewModel.setAutoCheck(it) })
-                    }
-                }
-
-                item { HorizontalDivider() }
-            }
-
-            item { Text(stringResource(R.string.advanced_diagnostics), style = MaterialTheme.typography.titleMedium) }
-
-            item {
-                OutlinedButton(onClick = onOpenAppLog, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.view_app_log)) }
-            }
-
-            item {
-                OutlinedButton(onClick = onOpenCrashLog, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.view_crash_log)) }
-            }
-        }
+    if (showVolumeChoice) {
+        ChoiceDialog(
+            title = stringResource(R.string.advanced_exterior_title),
+            options = ExteriorVolume.entries.map { ChoiceOption(it.name, it.label()) },
+            selectedKey = exteriorVolume.name,
+            onSelect = { key ->
+                ExteriorVolume.entries.find { it.name == key }?.let { viewModel.setExteriorVolume(it) }
+                showVolumeChoice = false
+            },
+            onDismiss = { showVolumeChoice = false },
+        )
     }
+    // The experimental features are only switched on after the user has read what that means.
+    if (confirmExterior) {
+        AppAlertDialog(
+            onDismissRequest = { confirmExterior = false },
+            title = { Text(stringResource(R.string.advanced_exterior_confirm_title)) },
+            text = { Text(stringResource(R.string.advanced_exterior_confirm_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setExteriorSpeakerEnabled(true)
+                    confirmExterior = false
+                }) { Text(stringResource(R.string.action_enable)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmExterior = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+    if (confirmDriveModes) {
+        AppAlertDialog(
+            onDismissRequest = { confirmDriveModes = false },
+            title = { Text(stringResource(R.string.advanced_drive_modes_confirm_title)) },
+            text = { Text(stringResource(R.string.advanced_drive_modes_confirm_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setDriveModesEnabled(true)
+                    confirmDriveModes = false
+                }) { Text(stringResource(R.string.action_enable)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDriveModes = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+
+    SettingsPage(
+        title = stringResource(R.string.advanced_title),
+        onBack = onBack,
+        left = {
+            // A local developer build can't update itself, so it has no update options.
+            if (viewModel.updatesSupported) {
+                SettingsSection(stringResource(R.string.advanced_section_updates)) {
+                    row {
+                        ChoiceSetting(
+                            title = stringResource(R.string.advanced_channel_title),
+                            subtitle = stringResource(R.string.advanced_channel_note),
+                            value = stringResource(if (channel == UpdateChannel.BETA) R.string.channel_beta else R.string.channel_stable),
+                            onClick = { showChannelChoice = true },
+                        )
+                    }
+                    row {
+                        SwitchSetting(
+                            title = stringResource(R.string.advanced_auto_title),
+                            subtitle = stringResource(R.string.advanced_auto_desc),
+                            checked = autoCheck,
+                            onCheckedChange = { viewModel.setAutoCheck(it) },
+                        )
+                    }
+                }
+            }
+
+            SettingsSection(stringResource(R.string.advanced_diagnostics)) {
+                row {
+                    SettingRow(
+                        title = stringResource(R.string.view_app_log),
+                        onClick = onOpenAppLog,
+                        trailing = { SettingButton(label = stringResource(R.string.action_open), onClick = onOpenAppLog) },
+                    )
+                }
+                row {
+                    SettingRow(
+                        title = stringResource(R.string.view_crash_log),
+                        onClick = onOpenCrashLog,
+                        trailing = { SettingButton(label = stringResource(R.string.action_open), onClick = onOpenCrashLog) },
+                    )
+                }
+            }
+        },
+        right = {
+            // Only in a build that has the features at all.
+            SettingsSection(stringResource(R.string.advanced_experimental_title)) {
+                if (viewModel.exteriorSpeakerSupported || viewModel.driveModesSupported) {
+                    row { SettingNote(stringResource(R.string.advanced_experimental_note)) }
+                }
+                if (viewModel.exteriorSpeakerSupported) {
+                    row {
+                        SwitchSetting(
+                            title = stringResource(R.string.advanced_exterior_enable_title),
+                            subtitle = stringResource(R.string.advanced_exterior_enable_desc),
+                            checked = exteriorEnabled,
+                            // Switching on goes through the confirmation; switching off needs none.
+                            onCheckedChange = { on -> if (on) confirmExterior = true else viewModel.setExteriorSpeakerEnabled(false) },
+                        )
+                    }
+                    // Nothing about the exterior speaker is shown while it is off.
+                    if (exteriorEnabled) {
+                        row {
+                            ChoiceSetting(
+                                title = stringResource(R.string.advanced_exterior_title),
+                                subtitle = stringResource(R.string.advanced_exterior_desc),
+                                value = exteriorVolume.label(),
+                                onClick = { showVolumeChoice = true },
+                            )
+                        }
+                    }
+                }
+                if (viewModel.driveModesSupported) {
+                    row {
+                        SwitchSetting(
+                            title = stringResource(R.string.advanced_drive_modes_title),
+                            subtitle = stringResource(R.string.advanced_drive_modes_desc),
+                            checked = driveModesEnabled,
+                            onCheckedChange = { on -> if (on) confirmDriveModes = true else viewModel.setDriveModesEnabled(false) },
+                        )
+                    }
+                }
+            }
+        },
+    )
 }
 
 @Composable
-private fun ChannelOption(title: String, description: String, selected: Boolean, onSelect: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onSelect).padding(top = 8.dp),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        RadioButton(selected = selected, onClick = onSelect)
-        Column(modifier = Modifier.padding(top = 12.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(description, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
+private fun ExteriorVolume.label(): String = stringResource(
+    when (this) {
+        ExteriorVolume.LOW -> R.string.exterior_volume_low
+        ExteriorVolume.MEDIUM -> R.string.exterior_volume_medium
+        ExteriorVolume.HIGH -> R.string.exterior_volume_high
+    },
+)

@@ -27,6 +27,40 @@ class AssistantSetupTest {
     }
 
     @Test
+    fun speakingOutsideNeedsABuildThatCanDoItAndArmedVehicleControl() {
+        val tool = "speak_outside"
+        // Never in a build without an exterior speaker, armed or not.
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = true, conversation = true)))
+        // Not without vehicle control armed, even where the build has it.
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = false, conversation = true, exteriorSpeaker = true)))
+        // Not in a one-shot request, which has no way to play a spoken reply there.
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = true, conversation = false, exteriorSpeaker = true)))
+        assertTrue(tool in names(assistantTools(vehicleControlEnabled = true, conversation = true, exteriorSpeaker = true)))
+    }
+
+    @Test
+    fun soundEffectsAreOfferedOnlyWithTheSpeakerAndTheirOwnList() {
+        val tool = "play_sound_outside"
+        val effects = listOf(com.bydassistantng.audio.SoundEffect("doorbell", "a ding-dong"))
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = true, conversation = true, exteriorSpeaker = true)))
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = true, conversation = true, soundEffects = effects)))
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = false, conversation = true, exteriorSpeaker = true, soundEffects = effects)))
+        assertTrue(tool in names(assistantTools(vehicleControlEnabled = true, conversation = true, exteriorSpeaker = true, soundEffects = effects)))
+    }
+
+    @Test
+    fun driveModesNeedABuildThatCanDoThemAndArmedVehicleControl() {
+        val tool = "set_drive_mode"
+        // Never in a build without a drive mode switch, armed or not.
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = true, conversation = true)))
+        // Not without vehicle control armed, even where the build has it.
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = false, conversation = true, driveModes = true)))
+        // Not in a one-shot request: there is no conversation to hear what the car answered.
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = true, conversation = false, driveModes = true)))
+        assertTrue(tool in names(assistantTools(vehicleControlEnabled = true, conversation = true, driveModes = true)))
+    }
+
+    @Test
     fun webSearchIsAnExtraToolOnlyWhenOn() {
         assertTrue(assistantTools(false, webSearch = false).none { it.googleSearch != null })
         val withSearch = assistantTools(false, webSearch = true)

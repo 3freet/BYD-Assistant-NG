@@ -9,6 +9,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.bydassistantng.audio.EndOfSpeechWait
+import com.bydassistantng.audio.ExteriorVolume
 import com.bydassistantng.util.WheelKeys
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -58,6 +60,12 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
         val NOTIFIED_UPDATE_TAG = stringPreferencesKey("notified_update_tag")
         val PENDING_INSTALL = stringPreferencesKey("pending_install_code")
+        val EXTERIOR_VOLUME = stringPreferencesKey("exterior_volume")
+        val END_OF_SPEECH_WAIT_MS = intPreferencesKey("end_of_speech_wait_ms")
+        val SHORT_TERM_MEMORY = booleanPreferencesKey("short_term_memory_enabled")
+        val LONG_TERM_MEMORY = booleanPreferencesKey("long_term_memory_enabled")
+        val EXTERIOR_SPEAKER_ENABLED = booleanPreferencesKey("exterior_speaker_enabled")
+        val DRIVE_MODES_ENABLED = booleanPreferencesKey("drive_modes_enabled")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -89,9 +97,10 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.edit { it[Keys.WEB_SEARCH_ENABLED] = enabled }
     }
 
-    /** Off by default — the ported HAL invocation code isn't confirmed safe on real hardware yet,
-     * same cautious posture as the project this was ported from. */
-    val vehicleControlEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.VEHICLE_CONTROL_ENABLED] ?: false }
+    /** Whether the assistant may operate the car's controls (windows, seats, climate...), not just talk about
+     * them. On by default: it is what the assistant is for. Someone who switched it off keeps it off. */
+    val vehicleControlEnabled: Flow<Boolean> =
+        dataStore.data.map { it[Keys.VEHICLE_CONTROL_ENABLED] ?: CoreFeatures.VEHICLE_CONTROL_DEFAULT }
     suspend fun setVehicleControlEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.VEHICLE_CONTROL_ENABLED] = enabled }
     }
@@ -107,6 +116,58 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
     val bargeInEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.BARGE_IN_ENABLED] ?: true }
     suspend fun setBargeInEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.BARGE_IN_ENABLED] = enabled }
+    }
+
+    /**
+     * Whether the last few exchanges are carried into the next conversation (for ten minutes), so that a follow-up
+     * works. On by default; nothing leaves the device but the conversation itself.
+     */
+    val shortTermMemoryEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.SHORT_TERM_MEMORY] ?: true }
+    suspend fun setShortTermMemoryEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.SHORT_TERM_MEMORY] = enabled }
+    }
+
+    /** Whether the assistant keeps what it is asked to remember and uses it in later conversations. */
+    val longTermMemoryEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.LONG_TERM_MEMORY] ?: true }
+    suspend fun setLongTermMemoryEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.LONG_TERM_MEMORY] = enabled }
+    }
+
+    /** How long the assistant waits in silence after the user's speech before deciding they have finished (milliseconds). */
+    val endOfSpeechWaitMs: Flow<Int> = dataStore.data.map { prefs ->
+        EndOfSpeechWait.clamp(prefs[Keys.END_OF_SPEECH_WAIT_MS] ?: EndOfSpeechWait.DEFAULT_MS)
+    }
+    suspend fun setEndOfSpeechWaitMs(ms: Int) {
+        dataStore.edit { it[Keys.END_OF_SPEECH_WAIT_MS] = EndOfSpeechWait.clamp(ms) }
+    }
+
+    /**
+     * Whether the assistant may use the car's exterior speaker at all (speaking and sound effects outside the
+     * car). Off by default; when off nothing of it is offered, started or run. Only has an effect in a build
+     * that has the exterior speaker.
+     */
+    val exteriorSpeakerEnabled: Flow<Boolean> =
+        dataStore.data.map { it[Keys.EXTERIOR_SPEAKER_ENABLED] ?: OptInFeatures.EXTERIOR_SPEAKER_DEFAULT }
+    suspend fun setExteriorSpeakerEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.EXTERIOR_SPEAKER_ENABLED] = enabled }
+    }
+
+    /**
+     * Whether the assistant may change the car's drive mode (sand, mud, snow, eco, sport...). Off by default;
+     * when off the tool is not offered and a request is refused. Only has an effect in a build that has it.
+     */
+    val driveModesEnabled: Flow<Boolean> =
+        dataStore.data.map { it[Keys.DRIVE_MODES_ENABLED] ?: OptInFeatures.DRIVE_MODES_DEFAULT }
+    suspend fun setDriveModesEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.DRIVE_MODES_ENABLED] = enabled }
+    }
+
+    /** How loud the assistant is when it speaks or plays a sound on the exterior speaker, unless asked for another level. */
+    val exteriorVolume: Flow<ExteriorVolume> = dataStore.data.map { prefs ->
+        ExteriorVolume.entries.find { it.name == prefs[Keys.EXTERIOR_VOLUME] } ?: ExteriorVolume.DEFAULT
+    }
+    suspend fun setExteriorVolume(volume: ExteriorVolume) {
+        dataStore.edit { it[Keys.EXTERIOR_VOLUME] = volume.name }
     }
 
     val onboardingCompleted: Flow<Boolean> = dataStore.data.map { it[Keys.ONBOARDING_COMPLETED] ?: false }

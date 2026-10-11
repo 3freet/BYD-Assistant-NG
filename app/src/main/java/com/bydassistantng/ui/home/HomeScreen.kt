@@ -93,6 +93,8 @@ fun HomeScreen(onOpenSettings: () -> Unit, onOpenUpdates: () -> Unit, viewModel:
                             else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         },
                         shape = CircleShape,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(80.dp),
                     ) {
                         Icon(

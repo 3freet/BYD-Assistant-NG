@@ -9,6 +9,11 @@
     <string name="action_enable">تفعيل</string>
     <string name="action_save">حفظ</string>
     <string name="action_clear">مسح</string>
+    <string name="action_change">تغيير</string>
+    <string name="action_open">فتح</string>
+    <string name="action_close">إغلاق</string>
+    <string name="action_add">إضافة</string>
+    <string name="action_manage">إدارة</string>
     <string name="action_share">مشاركة</string>
 
     <!-- Home -->
@@ -32,6 +37,11 @@
     <string name="banner_tyres">جارٍ قراءة ضغط الإطارات</string>
     <string name="banner_playing">تشغيل: %1$s</string>
     <string name="banner_outside_temperature">جارٍ قراءة حرارة الخارج</string>
+    <string name="banner_speak_outside">جارٍ التحدث خارج السيارة</string>
+    <string name="banner_play_sound_outside">جارٍ تشغيل صوت خارج السيارة</string>
+    <string name="banner_drive_mode">وضع القيادة: %1$s</string>
+    <string name="banner_remember">جارٍ تذكّر ذلك</string>
+    <string name="banner_forget">جارٍ نسيان ذلك</string>
     <string name="banner_media">الوسائط: %1$s</string>
     <string name="media_play">تشغيل</string>
     <string name="media_pause">إيقاف مؤقت</string>
@@ -63,6 +73,14 @@
 
     <!-- Settings -->
     <string name="settings_title">الإعدادات</string>
+    <string name="settings_section_assistant">المساعد</string>
+    <string name="settings_section_conversation">المحادثة</string>
+    <string name="settings_section_memory">الذاكرة</string>
+    <string name="settings_section_car">السيارة</string>
+    <string name="settings_section_gemini">حساب Gemini</string>
+    <string name="settings_section_app">التطبيق</string>
+    <string name="settings_advanced_desc">قناة التحديث والميزات التجريبية والسجلات.</string>
+    <string name="advanced_section_updates">التحديثات</string>
     <string name="app_language_title">لغة التطبيق</string>
     <string name="app_language_hint">لغة الشاشات والرسائل. لا تغيّر اللغة التي يتحدث بها المساعد.</string>
     <string name="app_language_system">لغة النظام</string>
@@ -97,12 +115,32 @@
     <string name="wheel_back_to_mic">العودة إلى زر الميكروفون</string>
     <string name="wheel_conflict_note">إذا كان تطبيق آخر (مثل تطبيق لتخصيص الأزرار) يستخدم هذا الزر، فأزل تعيينه هناك — وإلا سيستجيب الاثنان معاً.</string>
     <string name="wheel_failure_hint">تعذّر التشغيل تلقائياً — يتطلب ذلك تفعيل تصحيح ADB في هذه الوحدة. أو نفّذ مرة واحدة من حاسوب: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS ثم حاول مجدداً.</string>
+    <string name="end_wait_title">مدة الانتظار بعد أن تتوقف عن الكلام</string>
+    <string name="end_wait_desc">المدة التي ينتظرها المساعد في الصمت قبل أن يعتبر أنك أنهيت كلامك. المدة الأقصر تعطي ردًا أسرع لكنها قد تقاطعك عندما تتوقف في منتصف الجملة.</string>
+    <string name="end_wait_value">%1$d مللي ثانية</string>
+    <string name="end_wait_reset">العودة إلى القيمة الافتراضية (%1$d مللي ثانية)</string>
+    <string name="memory_short_title">الذاكرة قصيرة المدى</string>
+    <string name="memory_short_desc">تحتفظ بآخر المحادثات القصيرة لمدة عشر دقائق، فيمكنك المتابعة في المحادثة التالية مثل \"افعل الشيء نفسه للراكب\".</string>
+    <string name="memory_long_title">الذاكرة طويلة المدى</string>
+    <string name="memory_long_desc">تسمح للمساعد بتذكّر ما تطلب منه تذكّره، مثل عنوان منزلك أو كيف تحب أن يناديك. تُحفظ على هذا الجهاز فقط.</string>
+    <string name="memory_manage">ما يتذكّره (%1$d)</string>
+    <string name="memory_dialog_title">ما يتذكّره المساعد</string>
+    <string name="memory_empty">لا شيء بعد. قل \"تذكّر أن …\" أثناء المحادثة، أو أضف ملاحظة أدناه.</string>
+    <string name="memory_add_hint">أضف شيئًا ليتذكّره</string>
+    <string name="memory_add">إضافة</string>
+    <string name="memory_forget">نسيان</string>
+    <string name="memory_close">إغلاق</string>
+    <string name="memory_clear_all">نسيان كل شيء</string>
+    <string name="memory_clear_title">نسيان كل شيء؟</string>
+    <string name="memory_clear_body">سيُحذف كل ما يتذكّره المساعد عنك، وكذلك المحادثات الأخيرة التي يحتفظ بها.</string>
+    <string name="memory_full">القائمة ممتلئة (%1$d عنصرًا). انسَ شيئًا أولًا.</string>
+    <string name="memory_duplicate">هذا مُتذكَّر بالفعل.</string>
     <string name="barge_title">التحدث فوق المساعد</string>
     <string name="barge_desc">ابدأ الكلام أثناء حديثه فيتوقف ويستمع إليك. أوقفه إذا قاطع نفسه بالخطأ.</string>
-    <string name="vehicle_title">التحكم بالسيارة (تجريبي)</string>
+    <string name="vehicle_title">التحكم بالسيارة</string>
     <string name="vehicle_desc">يتيح للمساعد تشغيل عناصر التحكم في السيارة فعلياً، لا الحديث عنها فقط.</string>
-    <string name="vehicle_warning_title">تفعيل التحكم التجريبي بالسيارة؟</string>
-    <string name="vehicle_warning_body">يتيح هذا للمساعد تشغيل المكيف والنوافذ والمقاعد وما شابهها فعلياً عند طلبك. الميزة تجريبية: استخدمها أثناء التوقف فقط وعلى مسؤوليتك.</string>
+    <string name="vehicle_warning_title">تفعيل التحكم بالسيارة؟</string>
+    <string name="vehicle_warning_body">يتيح هذا للمساعد تشغيل المكيف والنوافذ والمقاعد وما شابهها عند طلبك. استخدمه أثناء التوقف أو عندما يكون ذلك آمنًا.</string>
     <string name="autostart_title">التشغيل التلقائي بعد إعادة التشغيل</string>
     <string name="autostart_confirmed">فتحتَ شاشة التشغيل التلقائي في الوحدة منذ آخر تحديث. إذا توقف زر المقود عن الاستجابة بعد نوم السيارة أو إعادة تشغيلها، فتأكد من تفعيل هذا التطبيق هناك.</string>
     <string name="autostart_unconfirmed">غير مؤكد. فعّل هذا التطبيق في شاشة التشغيل التلقائي للوحدة، وإلا قد يغلقه النظام عند نوم السيارة أو إعادة تشغيلها، فيتوقف زر المقود حتى تفتح التطبيق مجدداً.</string>
@@ -174,6 +212,21 @@
     <string name="advanced_beta_body">تُنشر الإصدارات التجريبية قبل اكتمال اختبارها وقد تحتوي على أخطاء. يمكنك العودة إلى القناة المستقرة في أي وقت.</string>
     <string name="advanced_auto_title">التحقق من التحديثات تلقائياً</string>
     <string name="advanced_auto_desc">يبحث عن إصدار جديد كل ست ساعات تقريباً عند توفر الإنترنت، ويعرض إشعاراً عند وجوده. لا يُثبَّت شيء دون تأكيدك.</string>
+    <string name="advanced_experimental_title">ميزات تجريبية</string>
+    <string name="advanced_experimental_note">هذه الوظائف تجريبية. تعتمد على وظائف في السيارة لم يُصمَّم التطبيق لها، وقد جُرّبت على طراز واحد فقط من السيارات، وقد تتوقف عن العمل بعد تحديث برنامج السيارة. استخدمها على مسؤوليتك الخاصة.</string>
+    <string name="advanced_exterior_enable_title">السماعة الخارجية</string>
+    <string name="advanced_exterior_enable_desc">تسمح للمساعد بالتحدث وتشغيل الأصوات عبر السماعة الخارجية للسيارة ليسمعها من هم خارجها. معطّلة افتراضيًا.</string>
+    <string name="advanced_drive_modes_title">تبديل وضع القيادة</string>
+    <string name="advanced_drive_modes_desc">تسمح للمساعد بتغيير وضع القيادة (ثلج، رمل، طين، جبل، صخور، تلقائي، اقتصادي، رياضي) عندما تطلب ذلك. وتبقى السيارة هي التي تقرر قبوله. معطّلة افتراضيًا.</string>
+    <string name="advanced_exterior_confirm_title">تفعيل السماعة الخارجية؟</string>
+    <string name="advanced_exterior_confirm_body">هذه ميزة تجريبية. تُخرج صوت المساعد وأصواتًا أخرى من السيارة، وقد يُفزع ذلك من حولك أو يزعجهم، وتعمل عبر وظيفة في السيارة لم يُصمَّم التطبيق لها. جُرّبت على طراز واحد فقط من السيارات وقد تتوقف عن العمل بعد تحديث برنامج السيارة. تستخدمها على مسؤوليتك الخاصة بالكامل وتبقى مسؤولًا عن كيفية استخدامها ومكانها.</string>
+    <string name="advanced_drive_modes_confirm_title">تفعيل تبديل وضع القيادة؟</string>
+    <string name="advanced_drive_modes_confirm_body">هذه ميزة تجريبية. تغيير وضع القيادة يغيّر طريقة توصيل القدرة والتحكم والفرملة في السيارة، وتعمل عبر وظيفة في السيارة لم يُصمَّم التطبيق لها. جُرّبت على طراز واحد فقط من السيارات، وقد لا تعمل أو قد تتوقف عن العمل بعد تحديث برنامج السيارة. استخدمها فقط عندما يكون ذلك آمنًا. تستخدمها على مسؤوليتك الخاصة بالكامل وتبقى مسؤولًا عن التشغيل الآمن لسيارتك.</string>
+    <string name="advanced_exterior_title">مستوى صوت السماعة الخارجية</string>
+    <string name="advanced_exterior_desc">مدى ارتفاع صوت المساعد عندما يتحدث أو يشغّل صوتًا خارج السيارة. يمكنك أيضًا طلب مستوى معيّن بصوتك، مثلًا \"قلها بصوت عالٍ\".</string>
+    <string name="exterior_volume_low">منخفض</string>
+    <string name="exterior_volume_medium">متوسط</string>
+    <string name="exterior_volume_high">مرتفع</string>
     <string name="advanced_diagnostics">التشخيص</string>
     <string name="update_channel_name">تحديثات التطبيق</string>
     <string name="update_channel_desc">يُعلمك عند توفر إصدار جديد من BYD Assistant NG</string>

@@ -1,5 +1,6 @@
 package com.bydassistantng.gemini
 
+import android.os.SystemClock
 import android.util.Base64
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.util.NetworkDebug
@@ -10,12 +11,16 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -23,6 +28,7 @@ import javax.inject.Singleton
 
 private const val TAG = "GeminiLiveClient"
 private const val LIVE_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+private const val LIVE_HOST_URL = "https://generativelanguage.googleapis.com/"
 private const val INPUT_AUDIO_MIME = "audio/pcm;rate=16000"
 
 /** One session's worth of events, delivered in order; [Closed]/[Failed] always end the sequence. */
@@ -50,6 +56,12 @@ class GeminiLiveClient @Inject constructor() {
         .pingInterval(15, TimeUnit.SECONDS)
         .build()
 
+    // The same pool and dispatcher, speaking the one protocol a WebSocket upgrade uses (HTTP/1.1): a connection
+    // opened by it is one the next session's socket can take over, skipping DNS, TCP and TLS.
+    private val preconnectClient by lazy { httpClient.newBuilder().protocols(listOf(Protocol.HTTP_1_1)).build() }
+    @Volatile private var preconnectedAtMs = 0L
+    @Volatile private var setupSentAtMs = 0L
+
     private var webSocket: WebSocket? = null
     private val events = MutableSharedFlow<LiveEvent>(extraBufferCapacity = 64)
     val eventFlow: SharedFlow<LiveEvent> = events.asSharedFlow()
@@ -73,6 +85,22 @@ class GeminiLiveClient @Inject constructor() {
         private set
 
     /**
+     * Opens a connection to the Live API's host and leaves it in the pool, so that the next session's
+     * socket can skip the DNS lookup, TCP connect and TLS handshake (about half a second on the head unit's
+     * phone-tethered network when they are cold). Fire and forget: a failure only means the next session
+     * connects the usual way. Carries no key.
+     */
+    fun preconnect() {
+        if (NetworkDebug.simulateOffline) return
+        preconnectedAtMs = SystemClock.elapsedRealtime()
+        val request = Request.Builder().url(LIVE_HOST_URL).head().build()
+        preconnectClient.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) = Unit
+            override fun onResponse(call: Call, response: Response) = response.close()
+        })
+    }
+
+    /**
      * Opens the WebSocket, sends the setup message, and suspends until `setupComplete` arrives or
      * [timeoutMs] elapses. Returns true only if the session is actually ready to receive audio —
      * callers should fall back to the classic REST path on false, not retry indefinitely, since a
@@ -92,6 +120,8 @@ class GeminiLiveClient @Inject constructor() {
         val ready = CompletableDeferred<Boolean>()
         val myGeneration = generation.incrementAndGet()
         fun isCurrent() = generation.get() == myGeneration
+        val startedAt = SystemClock.elapsedRealtime()
+        var openedAt: Long
 
         val baseUrl = if (NetworkDebug.simulateOffline) LIVE_WS_URL.replace("generativelanguage.googleapis.com", "offline.invalid") else LIVE_WS_URL
         val request = Request.Builder().url("$baseUrl?key=$apiKey").build()
@@ -113,7 +143,14 @@ class GeminiLiveClient @Inject constructor() {
                 )
                 val functions = tools?.sumOf { it.functionDeclarations?.size ?: 0 } ?: 0
                 val search = tools?.any { it.googleSearch != null } == true
-                AppLogger.log(TAG, "WS open, sending setup (model=$model, tools=$functions, search=$search, voice=${voiceName ?: "default"})")
+                openedAt = SystemClock.elapsedRealtime()
+                setupSentAtMs = openedAt
+                val warm = preconnectedAtMs.takeIf { it > 0 }?.let { "pre-connected ${(startedAt - it) / 1000}s before" } ?: "not pre-connected"
+                AppLogger.log(
+                    TAG,
+                    "WS open, sending setup (model=$model, tools=$functions, search=$search, voice=${voiceName ?: "default"}) " +
+                        "[connected in ${openedAt - startedAt}ms, $warm]",
+                )
                 ws.send(json.encodeToString(LiveClientSetupMessage.serializer(), setup))
             }
 
@@ -194,7 +231,7 @@ class GeminiLiveClient @Inject constructor() {
         }
 
         if (message.setupComplete != null) {
-            AppLogger.log(TAG, "setupComplete received")
+            AppLogger.log(TAG, "setupComplete received [setup took ${SystemClock.elapsedRealtime() - setupSentAtMs}ms]")
             ready.complete(true)
             return
         }

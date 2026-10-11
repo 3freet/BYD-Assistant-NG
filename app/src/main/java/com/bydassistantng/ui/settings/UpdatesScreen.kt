@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -37,6 +36,7 @@ import com.bydassistantng.update.ReleaseNotes
 import com.bydassistantng.update.UpdateFailure
 import com.bydassistantng.update.UpdateRelease
 import com.bydassistantng.update.UpdateState
+import com.bydassistantng.ui.AppAlertDialog
 
 @Composable
 fun UpdatesScreen(onBack: () -> Unit, onOpenAdvanced: () -> Unit, viewModel: UpdatesViewModel = hiltViewModel()) {
@@ -47,7 +47,7 @@ fun UpdatesScreen(onBack: () -> Unit, onOpenAdvanced: () -> Unit, viewModel: Upd
     LaunchedEffect(Unit) { viewModel.onOpened() }
 
     confirming?.let { release ->
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { confirming = null },
             title = { Text(stringResource(R.string.updates_confirm_title, release.version.toString())) },
             text = { Text(stringResource(R.string.updates_confirm_body)) },

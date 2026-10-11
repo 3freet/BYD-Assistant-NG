@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bydassistantng.audio.AudioRecorder
 import com.bydassistantng.audio.TextToSpeechEngine
+import com.bydassistantng.data.CoreFeatures
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.gemini.ConversationController
 import com.bydassistantng.gemini.LiveConversationController
@@ -59,7 +60,7 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     val vehicleControlEnabled: StateFlow<Boolean> =
-        preferencesRepository.vehicleControlEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        preferencesRepository.vehicleControlEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CoreFeatures.VEHICLE_CONTROL_DEFAULT)
 
     val updateState: StateFlow<UpdateState> = updateManager.state
 

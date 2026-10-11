@@ -35,6 +35,24 @@ class SpeechEndpointerTest {
     }
 
     @Test
+    fun theWaitAfterSpeechFollowsTheSetting() {
+        // The same speech and silence, ended after different waits: 400ms is 8 quiet chunks, 1500ms is 30.
+        for ((waitMs, chunks) in listOf(400 to 8, 600 to 12, 800 to 16, 1_500 to 30)) {
+            val endpointer = SpeechEndpointer(silenceEndMs = waitMs)
+            val ended = endpointer.feed(100 to 10, 3000 to 30, 100 to 60)
+            assertEquals("wait $waitMs ms", 40 + chunks - 1, ended)
+        }
+    }
+
+    @Test
+    fun theDefaultWaitIs800Milliseconds() {
+        assertEquals(800, EndOfSpeechWait.DEFAULT_MS)
+        val ended = SpeechEndpointer().feed(100 to 10, 3000 to 30, 100 to 40)
+        val explicit = SpeechEndpointer(silenceEndMs = 800).feed(100 to 10, 3000 to 30, 100 to 40)
+        assertEquals(explicit, ended)
+    }
+
+    @Test
     fun aShortDipBetweenWordsDoesNotEnd() {
         val endpointer = SpeechEndpointer()
         assertEquals(null, endpointer.feed(100 to 10, 3000 to 20, 100 to 10, 3000 to 20))
@@ -94,5 +112,16 @@ class SpeechEndpointerTest {
         endpointer.beginMidSpeech(noiseFloor = 20.0)
         // Loud, then 400ms (8 chunks) at a softer 800: under the 800ms silence needed.
         assertEquals(null, endpointer.feed(6000 to 30, 800 to 8, 6000 to 20))
+    }
+
+    @Test
+    fun theSettingIsKeptInRangeAndOnAStep() {
+        assertEquals(400, EndOfSpeechWait.clamp(0))
+        assertEquals(400, EndOfSpeechWait.clamp(399))
+        assertEquals(1_500, EndOfSpeechWait.clamp(99_999))
+        assertEquals(800, EndOfSpeechWait.clamp(800))
+        assertEquals(800, EndOfSpeechWait.clamp(840))
+        assertEquals(900, EndOfSpeechWait.clamp(850))
+        assertTrue(EndOfSpeechWait.clamp(EndOfSpeechWait.DEFAULT_MS) == EndOfSpeechWait.DEFAULT_MS)
     }
 }

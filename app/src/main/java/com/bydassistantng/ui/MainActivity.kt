@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Surface(modifier = Modifier.fillMaxSize().tapSound(), color = MaterialTheme.colorScheme.background) {
                     AppRoot(openUpdates = openUpdates)
                 }
             }

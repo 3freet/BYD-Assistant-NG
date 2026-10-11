@@ -105,6 +105,25 @@ class ShellHelperVehicleController @Inject constructor(
         }
     }
 
+    /**
+     * Asks the helper that is already running for a drive mode ([DriveModeCommand]); null when the helper could
+     * not be reached. Not a vehicle command: it has nothing to do with the registry or its denylist.
+     */
+    internal suspend fun requestDriveMode(value: Int): VehicleDispatchResult? {
+        val line = "${DriveModeCommand.NAME} set $value"
+        return mutex.withLock {
+            try {
+                sendLine(line) ?: run {
+                    AppLogger.log(TAG, "Helper connection was lost — restarting it")
+                    closeSession()
+                    sendLine(line)
+                }
+            } finally {
+                armIdleClose()
+            }
+        }
+    }
+
     /** @return null if the helper couldn't be started or its stream was dead; a result otherwise. */
     private suspend fun send(command: VehicleCommand, value: Int): VehicleDispatchResult? = sendLine("${command.id} $value")
 
@@ -165,7 +184,7 @@ class ShellHelperVehicleController @Inject constructor(
 }
 
 /** One running helper process and the ADB stream wired to its stdin/stdout. */
-private class HelperSession(private val dadb: Dadb, private val stream: AdbShellStream) {
+internal class HelperSession(private val dadb: Dadb, private val stream: AdbShellStream) {
     private val buffer = StringBuilder()
     private val watchdogScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 

@@ -3,6 +3,14 @@ package com.bydassistantng.gemini
 import android.content.Context
 import com.bydassistantng.R
 import com.bydassistantng.apps.AppLauncherTool
+import com.bydassistantng.audio.PlaySoundOutsideTool
+import com.bydassistantng.audio.SoundEffect
+import com.bydassistantng.audio.SpeakOutsideTool
+import com.bydassistantng.memory.ForgetMemoryTool
+import com.bydassistantng.memory.MemoryContext
+import com.bydassistantng.memory.MemoryFacts
+import com.bydassistantng.memory.RecentExchanges
+import com.bydassistantng.memory.RememberTool
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.media.MediaControlTool
@@ -12,6 +20,7 @@ import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.LoggingVehicleController
 import com.bydassistantng.vehicle.OutsideTemperatureTool
+import com.bydassistantng.vehicle.SetDriveModeTool
 import com.bydassistantng.vehicle.TyreStatusTool
 import com.bydassistantng.vehicle.VehicleCommandRegistry
 import com.bydassistantng.vehicle.VehicleController
@@ -39,18 +48,42 @@ private fun mediaActionText(context: Context, action: String): String = when (ac
 /** The functions the model may call this turn. Navigation, opening apps and media keys are always offered
  * (they only open an app or press a media key); the vehicle commands only when the user has explicitly
  * armed vehicle control — without that, the model structurally cannot emit a call to one. With
- * [webSearch] the model may also look things up on Google (a Live API tool, answered by the server). */
-fun assistantTools(vehicleControlEnabled: Boolean, conversation: Boolean = false, webSearch: Boolean = false): List<GeminiTool> {
+ * [webSearch] the model may also look things up on Google (a Live API tool, answered by the server).
+ * [exteriorSpeaker] offers speaking through the car's exterior speaker, in a conversation with vehicle
+ * control armed and only in a build that has one; [soundEffects] are the ready-made sounds it can play.
+ * [memoryTools] offers remembering and forgetting facts, in a conversation with long-term memory on.
+ * [driveModes] offers changing the car's drive mode, like the exterior speaker only in a build that can. */
+fun assistantTools(
+    vehicleControlEnabled: Boolean,
+    conversation: Boolean = false,
+    webSearch: Boolean = false,
+    exteriorSpeaker: Boolean = false,
+    soundEffects: List<SoundEffect> = emptyList(),
+    memoryTools: Boolean = false,
+    driveModes: Boolean = false,
+): List<GeminiTool> {
     val declarations = buildList {
         add(NavigationTool.declaration)
         add(AppLauncherTool.declaration)
         add(MediaControlTool.declaration)
         add(PlayMediaTool.declaration)
         if (conversation) add(endConversationDeclaration)
+        // Only when the user has long-term memory switched on, in a conversation.
+        if (conversation && memoryTools) {
+            add(RememberTool.declaration)
+            add(ForgetMemoryTool.declaration)
+        }
         if (vehicleControlEnabled) {
             addAll(VehicleCommandRegistry.functionDeclarations())
             add(TyreStatusTool.declaration)
             add(OutsideTemperatureTool.declaration)
+            // Needs a build that can switch the exterior speaker, and counts as controlling the car.
+            if (conversation && exteriorSpeaker) {
+                add(SpeakOutsideTool.declaration)
+                if (soundEffects.isNotEmpty()) add(PlaySoundOutsideTool.declaration(soundEffects))
+            }
+            // Needs a build that can ask the car for a drive mode, and counts as controlling the car.
+            if (conversation && driveModes) add(SetDriveModeTool.declaration)
         }
     }
     return buildList {
@@ -207,6 +240,7 @@ fun voiceAssistantSystemPrompt(
     conversation: Boolean = false,
     dialect: ArabicDialect = ArabicDialect.MATCH,
     webSearch: Boolean = false,
+    memory: MemoryContext = MemoryContext(),
 ): String {
     val languageInstruction = when (language) {
         AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English or Arabic."
@@ -229,13 +263,26 @@ fun voiceAssistantSystemPrompt(
         " For questions about current information — news, weather, sports results, prices, opening hours — " +
             "use Google Search, then answer in one or two spoken sentences without reading out links or sources."
     } else ""
+    // Memory, when the user has it on: what it knows, how to add to it, and what was just said.
+    val memoryInstruction = buildString {
+        if (memory.tools) {
+            append(
+                " You have a memory. When the user asks you to remember something, call remember with one short " +
+                    "sentence; when they ask you to forget something, call forget_memory. At most once in a " +
+                    "conversation, and only for a clearly lasting preference or fact (never a one-off request), " +
+                    "you may offer in one short sentence to remember it, and call remember only if they agree.",
+            )
+        }
+        MemoryFacts.promptSection(memory.facts)?.let { append(" $it") }
+        RecentExchanges.promptSection(memory.recent)?.let { append(" $it") }
+    }
     return "You are a concise voice assistant built into a car's head unit. $languageInstruction$dialectInstruction " +
         "Keep replies short — they will be read aloud.$listeningHint When the user asks to be taken somewhere, call " +
         "navigate_to with the place name instead of describing the route. When the user asks to open an app, call " +
         "open_app; for play, pause, next or previous on the music, call media_control. When the user asks you to " +
         "control something in the car and a matching function is available, call that function instead " +
         "of describing the action in words. If no matching function is available, say so plainly rather " +
-        "than pretending to have done it.$searchInstruction" +
+        "than pretending to have done it.$searchInstruction$memoryInstruction" +
         if (conversation) {
             " This is an ongoing conversation: after you answer, the user may keep talking, so answer " +
                 "and wait. When the user says they are finished, call end_conversation and say a very short goodbye."

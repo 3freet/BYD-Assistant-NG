@@ -32,6 +32,10 @@
     <uses-permission android:name="android.permission.BYDAUTO_SETTING_GET" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.BYDAUTO_SETTING_SET" tools:ignore="ProtectedPermissions" />
 
+    <!-- The exterior speaker (an experimental feature, off until switched on) raises the navigation stream's
+         level when that is at zero and boosts its own track's loudness. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
     <!-- Lets the app see which maps apps can handle a navigation request (package visibility). -->
     <queries>
         <intent>

@@ -3,6 +3,7 @@ package com.bydassistantng.vehicle
 import android.content.Context
 import android.os.Looper
 import androidx.annotation.Keep
+import com.bydassistantng.BuildConfig
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -77,6 +78,11 @@ object VehicleShellHelper {
     }
 
     private fun execute(args: List<String>, controller: () -> ReflectionVehicleController): VehicleDispatchResult {
+        // The drive mode command is not a registry entry (the registry's denylist stays as it is): a build with the
+        // experimental car features answers it here, any other build does not know it.
+        if (args.firstOrNull() == DriveModeCommand.NAME) {
+            return if (BuildConfig.EXPERIMENTAL_CAR_FEATURES) DriveModeCommand.run(args.drop(1)) else invalid("unknown command '${args[0]}'")
+        }
         // Read-only questions: "query <id>". Only the queries in VehicleQuery exist; nothing else is readable this way.
         if (args.firstOrNull() == "query") {
             val query = args.getOrNull(1)?.let { VehicleQuery.byId(it) } ?: return invalid("unknown query '${args.getOrNull(1)}'")

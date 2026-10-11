@@ -3,13 +3,18 @@ package com.bydassistantng.gemini
 import android.content.Context
 import android.os.SystemClock
 import android.util.Base64
+import com.bydassistantng.BuildConfig
 import com.bydassistantng.R
 import com.bydassistantng.audio.BargeInDetector
 import com.bydassistantng.audio.DipConfirmer
 import com.bydassistantng.audio.Earcon
 import com.bydassistantng.audio.Earcons
+import com.bydassistantng.audio.EndOfSpeechWait
 import com.bydassistantng.audio.LivePcmPlayer
 import com.bydassistantng.audio.LivePcmRecorder
+import com.bydassistantng.audio.ExteriorVolume
+import com.bydassistantng.audio.PlaySoundOutsideTool
+import com.bydassistantng.audio.SpeakOutsideTool
 import com.bydassistantng.audio.SpeechEndpointer
 import com.bydassistantng.audio.UtteranceHold
 import com.bydassistantng.audio.pcm16Rms
@@ -18,11 +23,22 @@ import com.bydassistantng.util.NetworkState
 import com.bydassistantng.data.AssistantVoices
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.PreferencesRepository
+import com.bydassistantng.memory.AddOutcome
+import com.bydassistantng.memory.Exchange
+import com.bydassistantng.memory.ForgetMemoryTool
+import com.bydassistantng.memory.MemoryContext
+import com.bydassistantng.memory.MemoryFact
+import com.bydassistantng.memory.MemoryRepository
+import com.bydassistantng.memory.RecentExchanges
+import com.bydassistantng.memory.RememberTool
 import com.bydassistantng.data.SecureCredentials
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.media.PlayMediaTool
 import com.bydassistantng.media.PlaybackFollowUp
 import com.bydassistantng.util.AppLogger
+import com.bydassistantng.vehicle.DriveModeRepeatGuard
+import com.bydassistantng.vehicle.DriveModeSwitch
+import com.bydassistantng.vehicle.SetDriveModeTool
 import com.bydassistantng.vehicle.ShellHelperVehicleController
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -34,9 +50,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.util.Optional
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -70,9 +88,21 @@ private const val RESPONSE_TIMEOUT_MS = 12_000L
 // the tail of the assistant's own voice.
 private const val REOPEN_DELAY_MS = 500L
 
+// The exterior speaker's helper starts this long after the vehicle helper, not beside it.
+private const val HELPER_STAGGER_MS = 1_500L
+
+// After a conversation the connection to the server is refreshed this often, this many times (about half an hour).
+private const val KEEP_WARM_INTERVAL_MS = 4 * 60_000L
+private const val KEEP_WARM_REFRESHES = 7
+
 // After a barge-in the user's utterance may turn out to have been nothing (a cough, a bump the detector
 // took for speech): the server then never answers, so don't make the user wait the full time to find out.
 private const val BARGE_IN_RESPONSE_TIMEOUT_MS = 5_000L
+
+// The first wait after the user finishes a sentence: if the server has not made a sound at all (not even the
+// transcript) by now it is not going to. In 313 answered turns the first sign came within 2.2 s at worst, and a
+// silent turn used to cost the full 12 s of dead air. Once the server shows signs of life the usual timeout applies.
+private const val FIRST_RESPONSE_TIMEOUT_MS = 5_000L
 
 // Consecutive turns the server never answers before the conversation is given up on, rather than
 // listening again forever.
@@ -145,8 +175,18 @@ class LiveConversationController @Inject constructor(
     private val vehicleController: ShellHelperVehicleController,
     private val secureCredentials: SecureCredentials,
     private val preferencesRepository: PreferencesRepository,
+    private val memory: MemoryRepository,
+    // Present only in debug builds (see [DriveModeSwitch]).
+    driveModes: Optional<DriveModeSwitch>,
     @ApplicationContext private val context: Context,
 ) {
+    private val driveModeSwitch: DriveModeSwitch? = driveModes.orElse(null)
+    private val driveModeRepeats = DriveModeRepeatGuard()
+
+    // The opt-in car features, as switched in Advanced settings when this conversation started (both off by default).
+    private var exteriorSpeakerForSession = false
+    private var driveModesForSession = false
+
     private enum class Gate { OPEN, SILENT, BLOCKED }
 
     private var vehicleControlEnabledForSession = false
@@ -188,7 +228,22 @@ class LiveConversationController @Inject constructor(
     private var unansweredTurns = 0
 
     @Volatile private var gate = Gate.BLOCKED
-    private var endpointer = SpeechEndpointer()
+    // The assistant's memory as this conversation uses it, read when it starts (see [MemoryRepository]).
+    private var longTermForSession = false
+    private var shortTermForSession = false
+    private var factsForSession: List<MemoryFact> = emptyList()
+    private var recentForSession: List<Exchange> = emptyList()
+
+    // How many chunks of the user's audio went to the server this turn (for working out why a turn goes unanswered).
+    @Volatile private var chunksThisTurn = 0
+
+    // The exchange in progress: what the user said and which functions were called, until its reply is complete.
+    private val pendingUser = StringBuilder()
+    private val pendingActions = mutableListOf<String>()
+
+    // How long a silence after speech has to last before the turn is over (a setting, read at the start of each conversation).
+    @Volatile private var silenceEndMsForSession = EndOfSpeechWait.DEFAULT_MS
+    private var endpointer = newEndpointer()
     private val bargeInDetector = BargeInDetector()
 
     // Between "the detector thinks that's the user" and "it is, cut the reply" / "it isn't, carry on": the
@@ -221,6 +276,8 @@ class LiveConversationController @Inject constructor(
     // on its own would flicker the UI one word at a time, so they're accumulated per turn.
     private val transcript = StringBuilder()
 
+    private fun newEndpointer() = SpeechEndpointer(silenceEndMs = silenceEndMsForSession)
+
     /** True while the mic is open for the user to speak. */
     val isListening: Boolean get() = recorder.isRecording && gate == Gate.OPEN
 
@@ -229,7 +286,23 @@ class LiveConversationController @Inject constructor(
      * or "start one". */
     val inConversation: Boolean get() = conversationActive
 
+    // Refreshes the pooled connection to the server for a while after a conversation, so a press some minutes
+    // later still finds it open (an idle pooled connection is dropped after about five minutes).
+    private var keepWarmJob: Job? = null
+
+    private fun keepConnectionWarm() {
+        keepWarmJob?.cancel()
+        liveClient.preconnect()
+        keepWarmJob = scope.launch {
+            repeat(KEEP_WARM_REFRESHES) {
+                delay(KEEP_WARM_INTERVAL_MS)
+                if (!conversationActive) liveClient.preconnect()
+            }
+        }
+    }
+
     init {
+        keepConnectionWarm()
         // A "play X" whose last step could not start anything says so with the error tone.
         PlaybackFollowUp.onNotStarted = { earcons.play(Earcon.ERROR) }
         PlaybackFollowUp.isConversationActive = { conversationActive }
@@ -242,6 +315,7 @@ class LiveConversationController @Inject constructor(
     suspend fun start(onStatus: suspend (TurnStatus) -> Unit): Boolean {
         // Before close(), which would otherwise start a press that is waiting for the conversation to end.
         PlaybackFollowUp.cancel()
+        keepWarmJob?.cancel()
         close()
         // close() deliberately lets queued audio finish, but starting means the user pressed over any
         // previous reply and wants it to stop.
@@ -255,6 +329,7 @@ class LiveConversationController @Inject constructor(
 
         lastStartFailure = StartFailure.NONE
         lastStartMessage = ""
+        val startedAt = SystemClock.elapsedRealtime()
         languageForSession = preferencesRepository.assistantLanguage.first()
         val apiKey = secureCredentials.getApiKey()
         if (apiKey.isNullOrBlank()) {
@@ -269,14 +344,25 @@ class LiveConversationController @Inject constructor(
         // Off while a recent session showed the server refusing it (see [searchBlockedUntilMs]).
         webSearchForSession = preferencesRepository.webSearchEnabled.first() && SystemClock.elapsedRealtime() >= searchBlockedUntilMs
         voiceForSession = AssistantVoices.valid(preferencesRepository.assistantVoice.first())
-        // Start the vehicle helper now, while the user is still speaking, so the first command doesn't
-        // wait for it to boot.
-        if (vehicleControlEnabledForSession) vehicleController.warmUp()
+        silenceEndMsForSession = EndOfSpeechWait.clamp(preferencesRepository.endOfSpeechWaitMs.first())
+        longTermForSession = preferencesRepository.longTermMemoryEnabled.first()
+        shortTermForSession = preferencesRepository.shortTermMemoryEnabled.first()
+        exteriorSpeakerForSession = preferencesRepository.exteriorSpeakerEnabled.first()
+        driveModesForSession = preferencesRepository.driveModesEnabled.first()
+        factsForSession = if (longTermForSession) memory.currentFacts() else emptyList()
+        recentForSession = if (shortTermForSession) memory.recentExchanges() else emptyList()
+        pendingUser.clear()
+        pendingActions.clear()
+        if (factsForSession.isNotEmpty() || recentForSession.isNotEmpty()) {
+            AppLogger.log(TAG, "Memory: ${factsForSession.size} remembered fact(s), ${recentForSession.size} recent exchange(s) carried in")
+        }
 
         sessionApiKey = apiKey
         buildSession()
+        val settingsMs = SystemClock.elapsedRealtime() - startedAt
 
         var opened = openSession()
+        val connectedMs = SystemClock.elapsedRealtime() - startedAt - settingsMs
         // A server that turns the setup down must not leave the user with no assistant at all. The extras are
         // dropped one at a time, search first, so the log says which one it was: "exceeded your current quota"
         // came back for a key that cannot use Google Search while everything else on it worked.
@@ -310,12 +396,41 @@ class LiveConversationController @Inject constructor(
         }
         openGate()
         conversationActive = true
+        AppLogger.log(
+            TAG,
+            "Ready to listen ${SystemClock.elapsedRealtime() - startedAt}ms after start " +
+                "(settings ${settingsMs}ms, connection and setup ${connectedMs}ms)",
+        )
+        // The vehicle helper is started now, while the user is still speaking, so the first command does not wait
+        // for it to boot — but only once the connection is up: two JVMs starting at the same moment as the
+        // connection's TLS handshake and setup were competing with it for the head unit's CPU. The exterior
+        // speaker's helper follows the vehicle helper rather than starting beside it.
+        if (vehicleControlEnabledForSession) warmUpHelpers()
         return true
+    }
+
+    private fun warmUpHelpers() {
+        vehicleController.warmUp()
+        // Nothing for the exterior speaker is started unless it is switched on.
+        if (exteriorSpeakerForSession) {
+            scope.launch {
+                delay(HELPER_STAGGER_MS)
+                player.prepareOutside()
+            }
+        }
     }
 
     /** The tools and instructions for this session, from the settings read at [start]. */
     private fun buildSession() {
-        sessionTools = assistantTools(vehicleControlEnabledForSession, conversation = true, webSearch = webSearchForSession)
+        sessionTools = assistantTools(
+            vehicleControlEnabledForSession,
+            conversation = true,
+            webSearch = webSearchForSession,
+            exteriorSpeaker = player.canSpeakOutside && exteriorSpeakerForSession,
+            soundEffects = if (exteriorSpeakerForSession) player.soundEffects else emptyList(),
+            memoryTools = longTermForSession,
+            driveModes = driveModeSwitch != null && driveModesForSession,
+        )
         sessionInstruction = GeminiContent(
             parts = listOf(
                 GeminiPart(
@@ -324,6 +439,7 @@ class LiveConversationController @Inject constructor(
                         conversation = true,
                         dialect = dialectForSession,
                         webSearch = webSearchForSession,
+                        memory = MemoryContext(tools = longTermForSession, facts = factsForSession, recent = recentForSession),
                     ),
                 ),
             ),
@@ -384,11 +500,12 @@ class LiveConversationController @Inject constructor(
     /** The user's turn begins: the mic's audio goes to the server, with fresh end-of-speech detection, the
      * "go ahead" tone, and the timers that stop a silent or endless utterance. */
     private fun openGate() {
-        endpointer = SpeechEndpointer()
+        endpointer = newEndpointer()
         awaitingSpokenReply = false
         replyAudioStarted = false
         turnCompleted = false
         discardReply = false
+        chunksThisTurn = 0
         endDip()
         responseTimeoutMs = RESPONSE_TIMEOUT_MS
         holdJob?.cancel()
@@ -450,17 +567,20 @@ class LiveConversationController @Inject constructor(
         when (gate) {
             Gate.OPEN -> {
                 bargeInDetector.observeAmbient(pcm16Rms(chunk))
-                if (!utteranceHold.offer(chunk)) liveClient.sendAudioChunk(chunk)
+                if (!utteranceHold.offer(chunk)) {
+                    liveClient.sendAudioChunk(chunk)
+                    chunksThisTurn++
+                }
                 if (endpointer.onChunk(pcm16Rms(chunk))) {
                     if (recorder.usesVoiceProcessing && endpointer.peak < MIN_UTTERANCE_PEAK) {
                         // Cabin noise, not a sentence: keep listening rather than sending it off and
                         // waiting up to 12s for an answer that will never come.
                         AppLogger.log(TAG, "Ignored a faint sound (${endpointer.summary()})")
-                        endpointer = SpeechEndpointer()
+                        endpointer = newEndpointer()
                     } else {
                         scope.launch {
                             if (isListening) {
-                                AppLogger.log(TAG, "User stopped speaking — ending the turn (${endpointer.summary()})")
+                                AppLogger.log(TAG, "User stopped speaking — ending the turn (${endpointer.summary()}, sent $chunksThisTurn audio chunks)")
                                 stopListening()
                             }
                         }
@@ -490,7 +610,9 @@ class LiveConversationController @Inject constructor(
 
     /** Talking over the assistant only makes sense once there is a reply to talk over (or one has just
      * ended): while it is still working on a function call there is nothing to interrupt. */
-    private fun bargeInPossible(): Boolean = replyAudioStarted || turnCompleted
+    // Not while the exterior speaker is playing: the cabin does not hear that as a reply, and it is loud enough
+    // to reach the mic, where it was taken for the user talking over the assistant and cut the announcement off.
+    private fun bargeInPossible(): Boolean = (replyAudioStarted || turnCompleted) && !player.exteriorSoundActive
 
     /** The detector thinks the user is talking over the reply. Don't cut it yet: turn it right down and see
      * whether the mic stays loud (the user) or falls away (a burst of noise, the speakers' own echo). */
@@ -525,6 +647,8 @@ class LiveConversationController @Inject constructor(
         // Cut the reply off at once, and anything of it still on its way from the server. The flag goes
         // up BEFORE the flush: the other way round, a chunk arriving in between slipped through and played.
         discardReply = !turnCompleted
+        pendingUser.clear()
+        pendingActions.clear()
         player.stopAndFlush()
         endDip() // the next reply starts at full volume
         transcript.clear()
@@ -550,7 +674,7 @@ class LiveConversationController @Inject constructor(
         } else {
             heard.forEach { liveClient.sendAudioChunk(it) }
         }
-        endpointer = SpeechEndpointer().also { it.beginMidSpeech(bargeInDetector.ambient) }
+        endpointer = newEndpointer().also { it.beginMidSpeech(bargeInDetector.ambient) }
         replyAudioStarted = false
         turnCompleted = false
         responseTimeoutMs = BARGE_IN_RESPONSE_TIMEOUT_MS
@@ -590,7 +714,7 @@ class LiveConversationController @Inject constructor(
         earcons.play(Earcon.THINKING)
         // Without this the UI keeps saying "Listening…" until the model's first transcript arrives.
         scope.launch { onStatus?.invoke(TurnStatus.Thinking) }
-        armResponseWatchdog()
+        armResponseWatchdog(firstWait = true)
     }
 
     /** Ends the whole conversation right now: stops the mic and any reply being spoken, closes the
@@ -599,18 +723,133 @@ class LiveConversationController @Inject constructor(
         AppLogger.log(TAG, "Conversation ended")
         player.stopAndFlush()
         close()
+        // The next press finds a connection to the server already open (see [GeminiLiveClient.preconnect]).
+        keepConnectionWarm()
         earcons.play(Earcon.DONE)
         scope.launch { onStatus?.invoke(TurnStatus.Done) }
     }
 
+    /**
+     * The model asked to say something outside the car: switch the car over, then let it speak. Everything it
+     * says from here to the end of its turn is heard on the exterior speaker only.
+     *
+     * When the car's helper is already running the switch is made while the model is starting to speak (the
+     * audio waits for it), so the announcement is not delayed by it; otherwise the answer waits for the switch.
+     */
+    private suspend fun speakOutside(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
+        val message = SpeakOutsideTool.message(call) ?: return SpeakOutsideTool.refused("there was no message to say")
+        if (!vehicleControlEnabledForSession || !exteriorSpeakerForSession || !player.canSpeakOutside) {
+            return SpeakOutsideTool.refused("the exterior speaker is not available")
+        }
+        val volume = SpeakOutsideTool.volume(call) ?: preferencesRepository.exteriorVolume.first()
+        report(TurnStatus.DispatchingCommand(AppLanguage.string(context, R.string.banner_speak_outside)))
+        if (!player.beginOutside(volume, waitForSwitch = !player.outsideReady)) {
+            return SpeakOutsideTool.refused("the car did not switch to the exterior speaker")
+        }
+        AppLogger.log(TAG, "Speaking outside the car (${volume.word}): \"$message\"")
+        return SpeakOutsideTool.ready(message)
+    }
+
+    /** The model asked for a sound effect outside the car: it plays on its own track, and the cabin carries on. */
+    private suspend fun playSoundOutside(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
+        val effects = player.soundEffects
+        if (!vehicleControlEnabledForSession || !exteriorSpeakerForSession || effects.isEmpty()) {
+            return PlaySoundOutsideTool.refused("the exterior speaker is not available")
+        }
+        val effect = PlaySoundOutsideTool.effect(call, effects) ?: return PlaySoundOutsideTool.refused("there is no such sound")
+        val volume = PlaySoundOutsideTool.volume(call) ?: preferencesRepository.exteriorVolume.first()
+        report(TurnStatus.DispatchingCommand(AppLanguage.string(context, R.string.banner_play_sound_outside)))
+        AppLogger.log(TAG, "Playing \"${effect.name}\" outside the car (${volume.word})")
+        scope.launch {
+            val pcm = player.renderEffect(effect.name)
+            val played = pcm != null && try {
+                player.playEffectOutside(pcm, volume)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.logError(TAG, "Sound effect failed", e)
+                false
+            }
+            if (!played) {
+                AppLogger.log(TAG, "Could not play \"${effect.name}\" on the exterior speaker")
+                earcons.play(Earcon.ERROR)
+            }
+        }
+        return PlaySoundOutsideTool.playing(effect)
+    }
+
+    /**
+     * The model asked for a drive mode. The car decides: the answer says which mode it is really in afterwards,
+     * or why nothing was sent (moving, no link to the car).
+     */
+    private suspend fun setDriveMode(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
+        val mode = SetDriveModeTool.mode(call) ?: return SetDriveModeTool.refused("that is not a mode the car can be asked for")
+        val switch = driveModeSwitch
+        if (!vehicleControlEnabledForSession || !driveModesForSession || switch == null) {
+            return SetDriveModeTool.refused("drive modes are not available")
+        }
+        // The model sometimes asks again straight after a success: answer from the first result, without the car.
+        driveModeRepeats.repeatOf(mode, SystemClock.elapsedRealtime())?.let { first ->
+            AppLogger.log(TAG, "Drive mode ${mode.word}: asked again within moments — answered from the first result")
+            return SetDriveModeTool.alreadyDone(first)
+        }
+        report(TurnStatus.DispatchingCommand(AppLanguage.string(context, R.string.banner_drive_mode, mode.label)))
+        val outcome = switch.switchTo(mode)
+        driveModeRepeats.record(mode, outcome, SystemClock.elapsedRealtime())
+        AppLogger.log(TAG, "Drive mode ${mode.word}: $outcome")
+        return SetDriveModeTool.answer(outcome)
+    }
+
+    /** Adds a piece of what the user said to the exchange in progress (fragments arrive as they are recognised). */
+    private fun noteUserWords(text: String) {
+        if (text.isBlank()) return
+        if (pendingUser.isNotEmpty() && !pendingUser.last().isWhitespace() && !text.first().isWhitespace()) pendingUser.append(' ')
+        pendingUser.append(text)
+    }
+
+    /** The exchange in progress is complete: it is kept, briefly, so that a follow-up in the next conversation works. */
+    private suspend fun recordExchange() {
+        val user = pendingUser.toString()
+        val actions = pendingActions.toList()
+        val assistant = transcript.toString()
+        pendingUser.clear()
+        pendingActions.clear()
+        if (!shortTermForSession) return
+        try {
+            memory.recordExchange(user, assistant, actions)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError(TAG, "Could not keep the exchange", e)
+        }
+    }
+
+    private suspend fun remember(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
+        if (!longTermForSession) return RememberTool.refused()
+        val fact = RememberTool.fact(call) ?: return RememberTool.answer(AddOutcome.Empty)
+        report(TurnStatus.DispatchingCommand(AppLanguage.string(context, R.string.banner_remember)))
+        val outcome = memory.addFact(fact)
+        if (outcome is AddOutcome.Added) factsForSession = factsForSession + outcome.fact
+        return RememberTool.answer(outcome)
+    }
+
+    private suspend fun forgetMemory(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
+        if (!longTermForSession) return ForgetMemoryTool.refused()
+        val match = ForgetMemoryTool.match(call) ?: return ForgetMemoryTool.answer(0)
+        report(TurnStatus.DispatchingCommand(AppLanguage.string(context, R.string.banner_forget)))
+        val removed = memory.forget(match)
+        if (removed > 0) factsForSession = memory.currentFacts()
+        return ForgetMemoryTool.answer(removed)
+    }
+
     /** Gives up on a turn the server never answers. In a conversation that means listening again —
      * unless it keeps happening, which means something is wrong and listening forever won't fix it. */
-    private fun armResponseWatchdog() {
+    private fun armResponseWatchdog(firstWait: Boolean = false) {
         responseWatchdog?.cancel()
         responseWatchdog = scope.launch {
-            val timeout = responseTimeoutMs
+            val timeout = if (firstWait) FIRST_RESPONSE_TIMEOUT_MS.coerceAtMost(responseTimeoutMs) else responseTimeoutMs
             delay(timeout)
-            AppLogger.log(TAG, "No server response ${timeout}ms after the user finished — giving up on this turn")
+            AppLogger.log(TAG, "No server response ${timeout}ms after the user finished — giving up on this turn (sent $chunksThisTurn audio chunks)")
             when {
                 endAfterReply -> endConversation()
                 conversationActive && ++unansweredTurns < MAX_UNANSWERED_TURNS -> resumeAfterReply(reopenQuickly = true)
@@ -636,6 +875,8 @@ class LiveConversationController @Inject constructor(
         recorder.stop()
         gate = Gate.BLOCKED
         endDip()
+        // What is being said outside the car is heard to the end before the speaker is switched back.
+        if (player.speakingOutside) scope.launch { player.endOutside() }
         // A "play X" that was asked for during this conversation gets its last step now that nothing is listening.
         PlaybackFollowUp.startPending(context)
         holdJob?.cancel()
@@ -656,6 +897,9 @@ class LiveConversationController @Inject constructor(
             // the reply is still queued to play.
             delay(player.remainingPlaybackMs() + if (reopenQuickly) 0 else REOPEN_DELAY_MS)
             if (!conversationActive) return@launch
+            // An announcement made outside the car is over: wait for its tail, then the cabin has the next reply.
+            player.endOutside()
+            if (!conversationActive) return@launch
 
             if (endAfterReply) {
                 endConversation()
@@ -671,7 +915,7 @@ class LiveConversationController @Inject constructor(
                 return@launch
             }
             // Cheap when it is already running; keeps the idle timer from shutting it down mid-conversation.
-            if (vehicleControlEnabledForSession) vehicleController.warmUp()
+            if (vehicleControlEnabledForSession) warmUpHelpers()
             transcript.clear()
             if (!recorder.isRecording && !recorder.start(onChunk = ::onMicChunk)) {
                 fail(AppLanguage.string(context, R.string.err_mic_reopen))
@@ -758,15 +1002,34 @@ class LiveConversationController @Inject constructor(
                 transcript.append(event.text)
                 report(TurnStatus.Speaking(transcript.toString().trim(), languageForSession))
             }
-            is LiveEvent.InputTranscript -> AppLogger.log(TAG, "heard: \"${event.text}\"")
+            is LiveEvent.InputTranscript -> {
+                AppLogger.log(TAG, "heard: \"${event.text}\"")
+                if (shortTermForSession) noteUserWords(event.text)
+            }
             is LiveEvent.ToolCall -> {
                 awaitingSpokenReply = true
                 val responses = event.calls.map { call ->
                     AppLogger.log(TAG, "Tool call: ${call.name}(${call.args})")
+                    if (shortTermForSession && call.name != RememberTool.FUNCTION_NAME && call.name != ForgetMemoryTool.FUNCTION_NAME) {
+                        pendingActions += RecentExchanges.describeCall(
+                            call.name,
+                            call.args.mapValues { (_, value) -> (value as? JsonPrimitive)?.content ?: value.toString() },
+                        )
+                    }
                     val result = if (call.name == END_CONVERSATION_FUNCTION) {
                         // Ends once the goodbye the model is about to say has been heard.
                         endAfterReply = true
                         buildJsonObject { put("status", "ok") }
+                    } else if (call.name == SpeakOutsideTool.FUNCTION_NAME) {
+                        speakOutside(call, report)
+                    } else if (call.name == PlaySoundOutsideTool.FUNCTION_NAME) {
+                        playSoundOutside(call, report)
+                    } else if (call.name == SetDriveModeTool.FUNCTION_NAME) {
+                        setDriveMode(call, report)
+                    } else if (call.name == RememberTool.FUNCTION_NAME) {
+                        remember(call, report)
+                    } else if (call.name == ForgetMemoryTool.FUNCTION_NAME) {
+                        forgetMemory(call, report)
                     } else {
                         VehicleFunctionDispatcher.dispatch(call, vehicleControlEnabledForSession, vehicleController, context) { displayName ->
                             report(TurnStatus.DispatchingCommand(displayName))
@@ -785,6 +1048,9 @@ class LiveConversationController @Inject constructor(
             LiveEvent.Interrupted -> {
                 // The server heard the user over the reply (a barge-in it noticed itself, or ours reaching it).
                 AppLogger.log(TAG, "Server reports the reply was interrupted")
+                // What came before was cut short; the next exchange starts from what the user says now.
+                pendingUser.clear()
+                pendingActions.clear()
                 interruptedAtMs = SystemClock.elapsedRealtime()
                 player.stopAndFlush()
                 transcript.clear()
@@ -803,6 +1069,9 @@ class LiveConversationController @Inject constructor(
                     return
                 }
                 AppLogger.log(TAG, "Turn complete (${bargeInDetector.summary()})")
+                // What the assistant said, for working out why it answered as it did. Debug builds only.
+                if (BuildConfig.DEBUG && transcript.isNotBlank()) AppLogger.log(TAG, "said: \"${transcript.toString().trim()}\"")
+                recordExchange()
                 turnCompleted = true
                 listenCapJob?.cancel()
                 transcript.clear()
