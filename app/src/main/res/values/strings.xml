@@ -40,6 +40,7 @@
     <string name="banner_playing_favorites">Playing your favorites</string>
     <string name="banner_playing_playlists">Playing your playlists</string>
     <string name="banner_outside_temperature">Reading outside temperature</string>
+    <string name="banner_air_quality">Reading air quality</string>
     <string name="banner_speak_outside">Speaking outside the car</string>
     <string name="banner_play_sound_outside">Playing a sound outside the car</string>
     <string name="banner_drive_mode">Drive mode: %1$s</string>

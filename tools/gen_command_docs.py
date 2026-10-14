@@ -19,7 +19,21 @@ DEVICES = {1000: "Ac", 1001: "Bodywork", 1002: "Audio", 1004: "Light", 1023: "Se
 # is "accepted by the HAL only".
 NOTES = {
     "steeringWheel.heating": "Has a read-back, but this control has not been exercised on a vehicle yet.",
-    "light.ambientBrightness": "Not verified: the observed state ranges 1–6 while this entry allows 1–3.",
+    "ambient.color": "Sets the whole cabin (front and back rows). The index is the car's 1–127 colour strip; the names are the nearest of the lamp's measured output colours. The read-back is the front row.",
+    "ambient.brightness": "Whole cabin. The method takes 0–5 and the car's state reads 1–6 (the value shown here).",
+    "ambient.dynamic": "On is the animated multi-colour scene; a fixed colour is easiest to see with it off.",
+    "mirrors.autoFold": "The 'Side mirror auto fold' switch on the Driving screen. A manual fold or unfold command was not found.",
+    "mirrors.tiltInReverse": "The 'Side mirror auto flip while reversing' switch. Off is written as 2 and reads back 0.",
+    "audio.mediaMute": "Mutes media only (1 = normal, 2 = muted). The all-sound mute (`AUDIO_MUTE_STATUS_SET`) also works but would silence the assistant.",
+    "audio.navigationVolume": "The HAL value confirms; whether the navigation app's voice follows it was not heard.",
+    "audio.soundFocus": "The Devialet Sound Staging choice: whole car 6, front 7, back seats 4 (as the screen wrote them).",
+    "audio.spaceSound": "Devialet Space switch: off 1, on 2.",
+    "audio.spaceSoundMode": "Devialet Space strength: soft 1, standard 2, strong 3.",
+    "dashcam.record": "The answer is the dashcam service's own verdict (1 = done). Stopping is refused for a few seconds while a locked clip is being saved.",
+    "dashcam.photo": "The answer is the dashcam service's own verdict (1 = done). Brings the dashcam screen to the front.",
+    "dashcam.lock": "The answer is the dashcam service's own verdict (2 or 3 = saving). Brings the dashcam screen to the front.",
+    "dashcam.audio": "The answer is the dashcam service's own verdict (1 = done); the dashcam shows its own notice.",
+    "dashcam.collisionSensitivity": "The answer is the dashcam service's own verdict (1 = done); the dashcam's settings screen follows.",
     "seat.driver.massage": "Off is a write of 1 to the mode control (0 is ignored); on starts at the chosen level.",
     "seat.passenger.massage": "Off is a write of 1 to the mode control (0 is ignored); on starts at the chosen level.",
     "fridge.cool.temperature": "Screen −6…6 °C is signal 13…25 (offset 19). Refused unless the fridge is cooling.",
@@ -44,6 +58,8 @@ def values(c):
 
 def route(c):
     inv = c["invocation"]
+    if inv["type"] == "binderCommand":
+        return f"`{inv['serviceName']}` service, command {inv['commandCode']}"
     if inv["type"] == "acBinderProperty":
         return f"A/C service, property {inv['propertyId']}, area {inv['area']}"
     if inv["type"] == "namedMethod":
@@ -54,6 +70,8 @@ def route(c):
 
 def state(c):
     inv = c["invocation"]
+    if inv["type"] == "binderCommand":
+        return "the service's own answer"
     if inv["type"] == "acBinderProperty":
         return "read back through the A/C service"
     if c.get("stateFeatureId"):
@@ -65,7 +83,7 @@ def status(c):
     inv = c["invocation"]
     if c["id"] in NOTES:
         return NOTES[c["id"]]
-    if inv["type"] == "acBinderProperty" or c.get("stateFeatureId"):
+    if inv["type"] in ("acBinderProperty", "binderCommand") or c.get("stateFeatureId"):
         return "Confirmed by read-back."
     return "Accepted by the HAL; no read-back, so not independently verified."
 

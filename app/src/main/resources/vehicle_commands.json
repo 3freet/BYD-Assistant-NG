@@ -253,6 +253,106 @@
     }
   },
   {
+    "id": "audio.mediaMute",
+    "domain": "AUDIO",
+    "displayName": "Mute or unmute the media sound (music, radio, video). The car's own sounds and the assistant are not touched",
+    "label": "Media sound",
+    "labelAr": "صوت الوسائط",
+    "deviceType": 1002,
+    "featureId": 470810680,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "unmute": 1,
+        "mute": 2
+      }
+    },
+    "stateFeatureId": 1339031597
+  },
+  {
+    "id": "audio.navigationVolume",
+    "domain": "AUDIO",
+    "displayName": "Navigation voice volume, 0 to 10",
+    "label": "Navigation volume",
+    "labelAr": "صوت الملاحة",
+    "deviceType": 1002,
+    "featureId": 1309081616,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "range",
+      "min": 0,
+      "max": 10
+    },
+    "stateFeatureId": 1108344868
+  },
+  {
+    "id": "audio.soundFocus",
+    "domain": "AUDIO",
+    "displayName": "Where the sound system focuses the sound: whole car, front seats or back seats",
+    "label": "Sound focus",
+    "labelAr": "تركيز الصوت",
+    "deviceType": 1002,
+    "featureId": 470810653,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "whole_car": 6,
+        "front": 7,
+        "back_seats": 4
+      }
+    },
+    "stateFeatureId": 1339031565
+  },
+  {
+    "id": "audio.spaceSound",
+    "domain": "AUDIO",
+    "displayName": "Devialet Space sound (the added vertical immersive sound) on or off",
+    "label": "Space sound",
+    "labelAr": "الصوت المحيطي",
+    "deviceType": 1002,
+    "featureId": 372244496,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "on": 2
+      }
+    },
+    "stateFeatureId": 1263534096
+  },
+  {
+    "id": "audio.spaceSoundMode",
+    "domain": "AUDIO",
+    "displayName": "Devialet Space sound strength: soft, standard or strong",
+    "label": "Space sound strength",
+    "labelAr": "قوة الصوت المحيطي",
+    "deviceType": 1002,
+    "featureId": 372244498,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "soft": 1,
+        "standard": 2,
+        "strong": 3
+      }
+    },
+    "stateFeatureId": 1263534098
+  },
+  {
     "id": "trunk",
     "domain": "SETTING",
     "displayName": "Trunk",
@@ -298,11 +398,110 @@
     }
   },
   {
-    "id": "light.ambientBrightness",
+    "id": "mirrors.autoFold",
     "domain": "SETTING",
-    "displayName": "Ambient light brightness",
-    "label": "Ambient light",
-    "labelAr": "الإضاءة المحيطة",
+    "displayName": "Fold the side mirrors automatically when the car is locked (setting)",
+    "label": "Mirror auto fold",
+    "labelAr": "طي المرايا تلقائيا",
+    "deviceType": 1023,
+    "featureId": 1312817178,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 0,
+        "on": 1
+      }
+    },
+    "stateFeatureId": 1081081884
+  },
+  {
+    "id": "mirrors.tiltInReverse",
+    "domain": "SETTING",
+    "displayName": "Tilt the side mirrors down when reversing (setting)",
+    "label": "Mirror tilt in reverse",
+    "labelAr": "إمالة المرايا عند الرجوع",
+    "deviceType": 1023,
+    "featureId": 1312817180,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 0,
+        "on": 1
+      }
+    },
+    "stateFeatureId": 1228931096,
+    "overrides": [
+      {
+        "whenValue": 0,
+        "featureId": 1312817180,
+        "sendValue": 2
+      }
+    ]
+  },
+  {
+    "id": "ambient.color",
+    "domain": "SETTING",
+    "displayName": "Ambient light colour for the whole cabin. If the lights keep changing colour by themselves, switch dynamic colours off first (ambient_dynamic)",
+    "label": "Ambient colour",
+    "labelAr": "لون الإضاءة المحيطة",
+    "deviceType": 1023,
+    "invocation": {
+      "type": "namedMethod",
+      "deviceClass": "setting",
+      "methodName": "setIALColor",
+      "paramTypes": [
+        "int",
+        "int",
+        "int"
+      ],
+      "argsTemplate": [
+        3,
+        null,
+        1
+      ]
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "pink": 4,
+        "magenta": 4,
+        "purple": 8,
+        "dark_blue": 12,
+        "blue": 16,
+        "sky_blue": 24,
+        "cyan": 32,
+        "mint": 48,
+        "light_green": 52,
+        "green": 56,
+        "lime": 64,
+        "yellow": 80,
+        "gold": 84,
+        "amber": 88,
+        "orange": 92,
+        "deep_orange": 96,
+        "red": 104,
+        "crimson": 108,
+        "coral": 112,
+        "warm_white": 116,
+        "cold_white": 124,
+        "ice_blue": 127
+      }
+    },
+    "stateFeatureId": 1121976336
+  },
+  {
+    "id": "ambient.brightness",
+    "domain": "SETTING",
+    "displayName": "Ambient light brightness for the whole cabin, 1 (dimmest) to 6 (brightest)",
+    "label": "Ambient brightness",
+    "labelAr": "سطوع الإضاءة المحيطة",
+    "deviceType": 1023,
     "invocation": {
       "type": "namedMethod",
       "deviceClass": "setting",
@@ -313,7 +512,7 @@
         "int"
       ],
       "argsTemplate": [
-        1,
+        3,
         null,
         1
       ]
@@ -321,8 +520,30 @@
     "parameter": {
       "type": "range",
       "min": 1,
-      "max": 3
-    }
+      "max": 6
+    },
+    "valueOffset": -1,
+    "stateFeatureId": 1121976328
+  },
+  {
+    "id": "ambient.dynamic",
+    "domain": "LIGHT",
+    "displayName": "Dynamic multi-colour effect of the ambient lights (the 'Dynamic Colors' scene)",
+    "label": "Dynamic colours",
+    "labelAr": "الألوان الديناميكية",
+    "deviceType": 1004,
+    "featureId": 1276153886,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "on": 1,
+        "off": 2
+      }
+    },
+    "stateFeatureId": 679477578
   },
   {
     "id": "fridge.mode",
@@ -580,6 +801,216 @@
       "featureId": 1220542488,
       "equals": 2,
       "message": "The fridge isn't heating. Switch it to heating mode first."
+    }
+  },
+  {
+    "id": "dashcam.record",
+    "domain": "SETTING",
+    "displayName": "Start or stop the dashcam recording (it normally records all the time while the car is on)",
+    "label": "Dashcam recording",
+    "labelAr": "تسجيل الكاميرا",
+    "invocation": {
+      "type": "binderCommand",
+      "serviceName": "IBYDCDRService",
+      "interfaceDescriptor": "android.cdrservice.IBYDCDRService",
+      "transactionCode": 1,
+      "commandCode": 0,
+      "successCodes": [
+        1
+      ],
+      "failureMessages": {
+        "21": "The dashcam is switched off in its own settings.",
+        "22": "The dashcam cannot record now: its camera is unavailable or the car is in a low-power state.",
+        "23": "The car is switched off, so the dashcam is not running.",
+        "24": "The dashcam is still saving a locked clip; try again in a moment.",
+        "26": "The dashcam could not start.",
+        "10": "The dashcam's memory card did not answer in time.",
+        "11": "There is no memory card in the dashcam.",
+        "12": "The dashcam's memory card has a problem.",
+        "13": "The dashcam's memory card has a problem.",
+        "14": "The dashcam's memory card is full.",
+        "15": "The dashcam's memory card has a problem.",
+        "16": "The dashcam's memory card has a problem.",
+        "17": "The dashcam's memory card has a problem.",
+        "18": "The dashcam's memory card has a problem.",
+        "19": "The dashcam's memory card has a problem.",
+        "20": "The dashcam's memory card has a problem."
+      }
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "start": 1,
+        "stop": 0
+      }
+    }
+  },
+  {
+    "id": "dashcam.photo",
+    "domain": "SETTING",
+    "displayName": "Take a still photo with the dashcam",
+    "label": "Dashcam photo",
+    "labelAr": "صورة من الكاميرا",
+    "invocation": {
+      "type": "binderCommand",
+      "serviceName": "IBYDCDRService",
+      "interfaceDescriptor": "android.cdrservice.IBYDCDRService",
+      "transactionCode": 1,
+      "commandCode": 1,
+      "successCodes": [
+        1
+      ],
+      "failureMessages": {
+        "21": "The dashcam is switched off in its own settings.",
+        "22": "The dashcam cannot record now: its camera is unavailable or the car is in a low-power state.",
+        "23": "The car is switched off, so the dashcam is not running.",
+        "24": "The dashcam is still saving a locked clip; try again in a moment.",
+        "26": "The dashcam could not start.",
+        "10": "The dashcam's memory card did not answer in time.",
+        "11": "There is no memory card in the dashcam.",
+        "12": "The dashcam's memory card has a problem.",
+        "13": "The dashcam's memory card has a problem.",
+        "14": "The dashcam's memory card is full.",
+        "15": "The dashcam's memory card has a problem.",
+        "16": "The dashcam's memory card has a problem.",
+        "17": "The dashcam's memory card has a problem.",
+        "18": "The dashcam's memory card has a problem.",
+        "19": "The dashcam's memory card has a problem.",
+        "20": "The dashcam's memory card has a problem."
+      }
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "take": 0
+      }
+    }
+  },
+  {
+    "id": "dashcam.lock",
+    "domain": "SETTING",
+    "displayName": "Save the current dashcam clip so it is not overwritten (an emergency or event clip)",
+    "label": "Save dashcam clip",
+    "labelAr": "حفظ مقطع الكاميرا",
+    "invocation": {
+      "type": "binderCommand",
+      "serviceName": "IBYDCDRService",
+      "interfaceDescriptor": "android.cdrservice.IBYDCDRService",
+      "transactionCode": 1,
+      "commandCode": 2,
+      "successCodes": [
+        2,
+        3
+      ],
+      "failureMessages": {
+        "21": "The dashcam is switched off in its own settings.",
+        "22": "The dashcam cannot record now: its camera is unavailable or the car is in a low-power state.",
+        "23": "The car is switched off, so the dashcam is not running.",
+        "24": "The dashcam is still saving a locked clip; try again in a moment.",
+        "26": "The dashcam could not start.",
+        "10": "The dashcam's memory card did not answer in time.",
+        "11": "There is no memory card in the dashcam.",
+        "12": "The dashcam's memory card has a problem.",
+        "13": "The dashcam's memory card has a problem.",
+        "14": "The dashcam's memory card is full.",
+        "15": "The dashcam's memory card has a problem.",
+        "16": "The dashcam's memory card has a problem.",
+        "17": "The dashcam's memory card has a problem.",
+        "18": "The dashcam's memory card has a problem.",
+        "19": "The dashcam's memory card has a problem.",
+        "20": "The dashcam's memory card has a problem."
+      }
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "save": 0
+      }
+    }
+  },
+  {
+    "id": "dashcam.audio",
+    "domain": "SETTING",
+    "displayName": "Record sound inside the car with the dashcam video, on or off",
+    "label": "Dashcam audio",
+    "labelAr": "صوت الكاميرا",
+    "invocation": {
+      "type": "binderCommand",
+      "serviceName": "IBYDCDRService",
+      "interfaceDescriptor": "android.cdrservice.IBYDCDRService",
+      "transactionCode": 1,
+      "commandCode": 6,
+      "successCodes": [
+        1
+      ],
+      "failureMessages": {
+        "21": "The dashcam is switched off in its own settings.",
+        "22": "The dashcam cannot record now: its camera is unavailable or the car is in a low-power state.",
+        "23": "The car is switched off, so the dashcam is not running.",
+        "24": "The dashcam is still saving a locked clip; try again in a moment.",
+        "26": "The dashcam could not start.",
+        "10": "The dashcam's memory card did not answer in time.",
+        "11": "There is no memory card in the dashcam.",
+        "12": "The dashcam's memory card has a problem.",
+        "13": "The dashcam's memory card has a problem.",
+        "14": "The dashcam's memory card is full.",
+        "15": "The dashcam's memory card has a problem.",
+        "16": "The dashcam's memory card has a problem.",
+        "17": "The dashcam's memory card has a problem.",
+        "18": "The dashcam's memory card has a problem.",
+        "19": "The dashcam's memory card has a problem.",
+        "20": "The dashcam's memory card has a problem."
+      }
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "on": 1,
+        "off": 0
+      }
+    }
+  },
+  {
+    "id": "dashcam.collisionSensitivity",
+    "domain": "SETTING",
+    "displayName": "How sensitive the dashcam is to bumps when it saves an event clip: low, middle or high",
+    "label": "Dashcam sensitivity",
+    "labelAr": "حساسية الكاميرا",
+    "invocation": {
+      "type": "binderCommand",
+      "serviceName": "IBYDCDRService",
+      "interfaceDescriptor": "android.cdrservice.IBYDCDRService",
+      "transactionCode": 1,
+      "commandCode": 5,
+      "successCodes": [
+        1
+      ],
+      "failureMessages": {
+        "21": "The dashcam is switched off in its own settings.",
+        "22": "The dashcam cannot record now: its camera is unavailable or the car is in a low-power state.",
+        "23": "The car is switched off, so the dashcam is not running.",
+        "24": "The dashcam is still saving a locked clip; try again in a moment.",
+        "26": "The dashcam could not start.",
+        "10": "The dashcam's memory card did not answer in time.",
+        "11": "There is no memory card in the dashcam.",
+        "12": "The dashcam's memory card has a problem.",
+        "13": "The dashcam's memory card has a problem.",
+        "14": "The dashcam's memory card is full.",
+        "15": "The dashcam's memory card has a problem.",
+        "16": "The dashcam's memory card has a problem.",
+        "17": "The dashcam's memory card has a problem.",
+        "18": "The dashcam's memory card has a problem.",
+        "19": "The dashcam's memory card has a problem.",
+        "20": "The dashcam's memory card has a problem."
+      }
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "low": 6,
+        "middle": 7,
+        "high": 8
+      }
     }
   },
   {

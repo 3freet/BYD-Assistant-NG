@@ -145,6 +145,94 @@ class VehicleCommandRegistryTest {
     }
 
     @Test
+    fun mirrorSwitchesAreConfirmedByTheirOwnStates() {
+        // Recorded by operating the two switches on the Driving screen: each wrote its own control and state.
+        val fold = command("mirrors.autoFold")
+        assertEquals(1312817178, fold.featureId)
+        assertEquals(1081081884, fold.stateFeatureId)
+        assertEquals(mapOf("off" to 0, "on" to 1), (fold.parameter as VehicleParameter.FixedEnum).options)
+
+        val tilt = command("mirrors.tiltInReverse")
+        assertEquals(1312817180, tilt.featureId)
+        assertEquals(1228931096, tilt.stateFeatureId)
+        // Off is written as 2 (writing 0 is not what the car's switch does) and the state then reads 0.
+        assertEquals(listOf(ValueOverride(0, 1312817180, 2)), tilt.overrides)
+    }
+
+    @Test
+    fun ambientColorAndBrightnessAreWholeCabinMethodsWithReadBack() {
+        val color = command("ambient.color")
+        val colorCall = color.invocation as VehicleInvocation.NamedMethod
+        assertEquals("setIALColor", colorCall.methodName)
+        // Area 3 is the whole cabin (front and back rows), source 1 is "voice".
+        assertEquals(listOf(3, null, 1), colorCall.argsTemplate)
+        assertEquals(1121976336, color.stateFeatureId)
+        assertEquals(1023, color.deviceType)
+        val colors = (color.parameter as VehicleParameter.FixedEnum).options
+        // The car's colour strip is 1..127; 0 is invalid and is refused by the car.
+        assertTrue(colors.values.all { it in 1..127 })
+        assertEquals(104, colors.getValue("red"))
+        assertEquals(16, colors.getValue("blue"))
+
+        val brightness = command("ambient.brightness")
+        val range = brightness.parameter as VehicleParameter.Range
+        // The method takes 0..5; the state reads 1..6, which is the level the user names.
+        assertEquals(VehicleParameter.Range(1, 6), range)
+        assertEquals(-1, brightness.valueOffset)
+        assertEquals(0, brightness.stateOffset)
+        assertEquals(listOf(3, null, 1), (brightness.invocation as VehicleInvocation.NamedMethod).argsTemplate)
+    }
+
+    @Test
+    fun theDynamicColourSwitchIsOnTheLightDevice() {
+        val dynamic = command("ambient.dynamic")
+        assertEquals(VehicleDomain.LIGHT, dynamic.domain)
+        assertEquals(1004, dynamic.deviceType)
+        assertEquals(mapOf("on" to 1, "off" to 2), (dynamic.parameter as VehicleParameter.FixedEnum).options)
+        assertEquals(679477578, dynamic.stateFeatureId)
+    }
+
+    @Test
+    fun audioControlsMatchWhatTheNativeScreensWrote() {
+        assertEquals(mapOf("unmute" to 1, "mute" to 2), (command("audio.mediaMute").parameter as VehicleParameter.FixedEnum).options)
+        assertEquals(VehicleParameter.Range(0, 10), command("audio.navigationVolume").parameter)
+        // Sound staging as the screen wrote it: whole car 6, front 7, back seats 4.
+        assertEquals(
+            mapOf("whole_car" to 6, "front" to 7, "back_seats" to 4),
+            (command("audio.soundFocus").parameter as VehicleParameter.FixedEnum).options,
+        )
+        assertEquals(mapOf("soft" to 1, "standard" to 2, "strong" to 3), (command("audio.spaceSoundMode").parameter as VehicleParameter.FixedEnum).options)
+        assertEquals(mapOf("off" to 1, "on" to 2), (command("audio.spaceSound").parameter as VehicleParameter.FixedEnum).options)
+        for (id in listOf("audio.mediaMute", "audio.navigationVolume", "audio.soundFocus", "audio.spaceSound", "audio.spaceSoundMode")) {
+            assertNotNull("$id needs a read-back", command(id).stateFeatureId)
+        }
+    }
+
+    @Test
+    fun dashcamCommandsAreBinderCommandsToTheRecorderService() {
+        val expected = mapOf(
+            "dashcam.record" to 0, "dashcam.photo" to 1, "dashcam.lock" to 2,
+            "dashcam.collisionSensitivity" to 5, "dashcam.audio" to 6,
+        )
+        for ((id, code) in expected) {
+            val call = command(id).invocation as VehicleInvocation.BinderCommand
+            assertEquals(id, "IBYDCDRService", call.serviceName)
+            assertEquals(id, "android.cdrservice.IBYDCDRService", call.interfaceDescriptor)
+            // IBYDCDRService.Stub: setCommand is transaction 1 (registerUser is 2, unregisterUser 3).
+            assertEquals(id, 1, call.transactionCode)
+            assertEquals(id, code, call.commandCode)
+            assertTrue("$id has no success code", call.successCodes.isNotEmpty())
+        }
+        // A lock answers 2 or 3 (both mean it is being saved); the others answer 1.
+        assertEquals(setOf(2, 3), (command("dashcam.lock").invocation as VehicleInvocation.BinderCommand).successCodes)
+        assertEquals(setOf(1), (command("dashcam.record").invocation as VehicleInvocation.BinderCommand).successCodes)
+        // The service's own refusals are worded for the user.
+        val refusals = (command("dashcam.record").invocation as VehicleInvocation.BinderCommand).failureMessages
+        assertTrue(refusals.getValue(24).contains("locked clip"))
+        assertEquals(mapOf("low" to 6, "middle" to 7, "high" to 8), (command("dashcam.collisionSensitivity").parameter as VehicleParameter.FixedEnum).options)
+    }
+
+    @Test
     fun everyCommandHasABannerLabelInBothLanguages() {
         for (c in VehicleCommandRegistry.known) {
             assertTrue("${c.id} needs an English label", !c.label.isNullOrBlank())

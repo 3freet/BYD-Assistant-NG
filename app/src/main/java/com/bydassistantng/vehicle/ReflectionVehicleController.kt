@@ -36,9 +36,10 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
 
         val result = withContext(Dispatchers.IO) {
             when (val invocation = command.invocation) {
-                is VehicleInvocation.NamedMethod -> tryNamedMethod(invocation, value)
+                is VehicleInvocation.NamedMethod -> tryNamedMethod(invocation, command, value)
                 VehicleInvocation.GenericFeatureSet -> tryGenericSet(command, value)
                 is VehicleInvocation.AcBinderProperty -> tryAcBinderProperty(invocation, command, value)
+                is VehicleInvocation.BinderCommand -> tryBinderCommand(invocation, command, value)
             }
         }
 
@@ -55,6 +56,10 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
                 onSuccess = { VehicleDispatchResult.Success(TyreStatusTool.encode(it)) },
                 onFailure = { queryFailure(it) },
             )
+            VehicleQuery.AIR_QUALITY -> AirQualityTool.read(context).fold(
+                onSuccess = { VehicleDispatchResult.Success(AirQualityTool.encode(it)) },
+                onFailure = { queryFailure(it) },
+            )
         }
     }
 
@@ -66,17 +71,27 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         )
     }
 
-    private fun tryNamedMethod(invocation: VehicleInvocation.NamedMethod, value: Int): VehicleDispatchResult {
+    /** A typed setter. A command that names a [VehicleCommand.stateFeatureId] and a device type is confirmed
+     * by reading that state back, as the generic route is: the method's argument is [value] plus
+     * [VehicleCommand.valueOffset], and the state is expected to read [value] plus [VehicleCommand.stateOffset]. */
+    private suspend fun tryNamedMethod(invocation: VehicleInvocation.NamedMethod, command: VehicleCommand, value: Int): VehicleDispatchResult {
         val className = "android.hardware.bydauto.${invocation.deviceClass}.BYDAuto${invocation.deviceClass.replaceFirstChar { it.uppercase() }}Device"
         return try {
             val instance = getOrCreateInstance(className) ?: return VehicleDispatchResult.Failure(
                 VehicleDispatchError.CLASS_NOT_FOUND, "No usable instance for $className"
             )
             val paramTypes = invocation.paramTypes.map { intClassFor(it) }.toTypedArray()
-            val args = invocation.argsTemplate.map { it ?: value }.toTypedArray()
+            val args = invocation.argsTemplate.map { it ?: (value + command.valueOffset) }.toTypedArray()
 
             val method = findMethod(instance.javaClass, invocation.methodName, *paramTypes)
-            toResult(method.invoke(instance, *args))
+            val accepted = toResult(method.invoke(instance, *args))
+            val deviceType = command.deviceType
+            val stateId = command.stateFeatureId
+            if (accepted is VehicleDispatchResult.Success && deviceType != null && stateId != null) {
+                verifyGenericState(instance, command, deviceType, stateId, value + command.stateOffset, before = null, offset = 0)
+            } else {
+                accepted
+            }
         } catch (e: ClassNotFoundException) {
             Log.w(TAG, "Class not found: $className", e)
             VehicleDispatchResult.Failure(VehicleDispatchError.CLASS_NOT_FOUND, e.message)
@@ -133,7 +148,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             val method = findMethod(instance.javaClass, "set", Int::class.java, IntArray::class.java, IntArray::class.java)
             val accepted = toResult(method.invoke(instance, deviceType, intArrayOf(controlId), intArrayOf(sent)))
             if (accepted is VehicleDispatchResult.Success && stateId != null) {
-                verifyGenericState(instance, command, deviceType, stateId, expectedState, before)
+                verifyGenericState(instance, command, deviceType, stateId, expectedState, before, command.valueOffset)
             } else {
                 accepted
             }
@@ -166,8 +181,8 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         stateId: Int,
         expected: Int,
         before: Int?,
+        offset: Int,
     ): VehicleDispatchResult {
-        val offset = command.valueOffset
         var last: Int? = null
         repeat(STATE_VERIFY_ATTEMPTS) {
             delay(STATE_VERIFY_INTERVAL_MS)
@@ -257,6 +272,60 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             VehicleDispatchResult.Success("sent, but the A/C wouldn't report a value to confirm it")
         } else {
             VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, "The A/C did not apply it: asked for $expected but it reports $actual")
+        }
+    }
+
+    /**
+     * A command on a system service that answers with a status int: one transaction carrying
+     * `(commandCode, value)`. The answer *is* the service's verdict (it knows whether the car is on, the card
+     * is present and so on), so there is nothing to read back.
+     */
+    private fun tryBinderCommand(
+        invocation: VehicleInvocation.BinderCommand,
+        command: VehicleCommand,
+        value: Int,
+    ): VehicleDispatchResult {
+        return try {
+            val binder = serviceBinder(invocation.serviceName) ?: return VehicleDispatchResult.Failure(
+                VehicleDispatchError.CLASS_NOT_FOUND, "System service '${invocation.serviceName}' not found",
+            )
+            val code = transactCommand(binder, invocation, value)
+            Log.i(TAG, "${command.id} -> ${invocation.serviceName} answered $code")
+            if (code in invocation.successCodes) {
+                VehicleDispatchResult.Success("the service accepted it (answer $code)")
+            } else {
+                VehicleDispatchResult.Failure(
+                    VehicleDispatchError.INVOCATION_FAILED,
+                    invocation.failureMessages[code] ?: "The service refused it (answer $code).",
+                )
+            }
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Security denied dispatching ${command.id} via BinderCommand", e)
+            VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, e.message)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Unexpected error dispatching ${command.id} via BinderCommand", e)
+            VehicleDispatchResult.Failure(VehicleDispatchError.UNKNOWN, e.message)
+        }
+    }
+
+    private fun serviceBinder(name: String): IBinder? {
+        val serviceManagerClass = Class.forName("android.os.ServiceManager")
+        return serviceManagerClass.getMethod("getService", String::class.java).invoke(null, name) as? IBinder
+    }
+
+    private fun transactCommand(binder: IBinder, invocation: VehicleInvocation.BinderCommand, value: Int): Int {
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(invocation.interfaceDescriptor)
+            data.writeInt(invocation.commandCode)
+            data.writeInt(value)
+            binder.transact(invocation.transactionCode, data, reply, 0)
+            reply.readException()
+            return reply.readInt()
+        } finally {
+            data.recycle()
+            reply.recycle()
         }
     }
 
@@ -392,6 +461,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
 
         private val GENERIC_ROUTE_CLASS_BY_DOMAIN = mapOf(
             VehicleDomain.BODYWORK to "android.hardware.bydauto.bodywork.BYDAutoBodyworkDevice",
+            VehicleDomain.LIGHT to "android.hardware.bydauto.light.BYDAutoLightDevice",
             VehicleDomain.AUDIO to "android.hardware.bydauto.audio.BYDAutoAudioDevice",
             VehicleDomain.SETTING to "android.hardware.bydauto.setting.BYDAutoSettingDevice",
         )

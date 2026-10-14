@@ -99,6 +99,7 @@ internal data class CommandEntryDto(
     val parameter: ParameterDto,
     val stateFeatureId: Int? = null,
     val valueOffset: Int = 0,
+    val stateOffset: Int = 0,
     val stateTolerance: Int = 0,
     val gradual: Boolean = false,
     val requires: RequiresDto? = null,
@@ -124,6 +125,12 @@ internal data class InvocationDto(
     val interfaceDescriptor: String? = null,
     val area: Int? = null,
     val propertyId: Int? = null,
+    // binderCommand
+    val serviceName: String? = null,
+    val transactionCode: Int? = null,
+    val commandCode: Int? = null,
+    val successCodes: List<Int>? = null,
+    val failureMessages: Map<String, String>? = null,
 )
 
 @Serializable
@@ -176,6 +183,7 @@ internal fun CommandEntryDto.toVehicleCommand(): VehicleCommand {
         parameter = parameter.toVehicleParameter(id),
         stateFeatureId = stateFeatureId,
         valueOffset = valueOffset,
+        stateOffset = stateOffset,
         stateTolerance = stateTolerance,
         gradual = gradual,
         requires = requires?.let { StateRequirement(it.featureId, it.equals, it.message) },
@@ -196,6 +204,16 @@ private fun InvocationDto.toVehicleInvocation(commandId: String): VehicleInvocat
         interfaceDescriptor = interfaceDescriptor ?: error("acBinderProperty invocation for '$commandId' missing interfaceDescriptor"),
         propertyId = propertyId ?: error("acBinderProperty invocation for '$commandId' missing propertyId"),
         area = area ?: error("acBinderProperty invocation for '$commandId' missing area"),
+    )
+    "binderCommand" -> VehicleInvocation.BinderCommand(
+        serviceName = serviceName ?: error("binderCommand invocation for '$commandId' missing serviceName"),
+        interfaceDescriptor = interfaceDescriptor ?: error("binderCommand invocation for '$commandId' missing interfaceDescriptor"),
+        transactionCode = transactionCode ?: error("binderCommand invocation for '$commandId' missing transactionCode"),
+        commandCode = commandCode ?: error("binderCommand invocation for '$commandId' missing commandCode"),
+        successCodes = (successCodes ?: error("binderCommand invocation for '$commandId' missing successCodes")).toSet(),
+        failureMessages = failureMessages.orEmpty().mapKeys { (code, _) ->
+            code.toIntOrNull() ?: error("binderCommand failure code '$code' for '$commandId' is not an integer")
+        },
     )
     else -> error("Unknown invocation type '$type' for command '$commandId' — refusing to load")
 }

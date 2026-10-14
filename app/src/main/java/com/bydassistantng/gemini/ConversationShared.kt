@@ -19,6 +19,7 @@ import com.bydassistantng.navigation.NavigationTool
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.LoggingVehicleController
+import com.bydassistantng.vehicle.AirQualityTool
 import com.bydassistantng.vehicle.OutsideTemperatureTool
 import com.bydassistantng.vehicle.SetDriveModeTool
 import com.bydassistantng.vehicle.TyreStatusTool
@@ -77,6 +78,7 @@ fun assistantTools(
             addAll(VehicleCommandRegistry.functionDeclarations())
             add(TyreStatusTool.declaration)
             add(OutsideTemperatureTool.declaration)
+            add(AirQualityTool.declaration)
             // Needs a build that can switch the exterior speaker, and counts as controlling the car.
             if (conversation && exteriorSpeaker) {
                 add(SpeakOutsideTool.declaration)
@@ -128,6 +130,11 @@ object VehicleFunctionDispatcher {
         if (functionCall.name == OutsideTemperatureTool.FUNCTION_NAME) {
             onDispatching(AppLanguage.string(context, R.string.banner_outside_temperature))
             return readOutsideTemperature(vehicleControlEnabled, reflectionController)
+        }
+
+        if (functionCall.name == AirQualityTool.FUNCTION_NAME) {
+            onDispatching(AppLanguage.string(context, R.string.banner_air_quality))
+            return readAirQuality(vehicleControlEnabled, reflectionController)
         }
 
         val command = VehicleCommandRegistry.byFunctionName(functionCall.name)
@@ -199,6 +206,28 @@ object VehicleFunctionDispatcher {
             }
             else -> {
                 AppLogger.log(TAG, "outside temperature -> $result")
+                result.toResponseJson()
+            }
+        }
+    }
+
+    private suspend fun readAirQuality(vehicleControlEnabled: Boolean, controller: VehicleController): JsonObject {
+        if (!vehicleControlEnabled) {
+            return buildJsonObject {
+                put("status", "error")
+                put("error", "Vehicle features are switched off in the app's settings.")
+            }
+        }
+        return when (val result = controller.query(VehicleQuery.AIR_QUALITY)) {
+            is VehicleDispatchResult.Success -> {
+                AppLogger.log(TAG, "air quality -> ${result.note}")
+                result.note?.let { AirQualityTool.parse(it) }?.let { AirQualityTool.report(it) } ?: buildJsonObject {
+                    put("status", "error")
+                    put("error", "The car's answer could not be read.")
+                }
+            }
+            else -> {
+                AppLogger.log(TAG, "air quality -> $result")
                 result.toResponseJson()
             }
         }

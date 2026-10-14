@@ -29,6 +29,10 @@ data class VehicleCommand(
      * signal isn't what the car's own screen shows — e.g. the fridge's cooling set-point reads 13..25
      * for the −6..6 °C on its screen. The value users and the model deal in is always the screen one. */
     val valueOffset: Int = 0,
+    /** For [VehicleInvocation.NamedMethod] with a [stateFeatureId]: added to the value to get what the
+     * state should read once the method took effect (the method's argument is not always the number the
+     * state holds — the ambient brightness argument is 0..5 while the state is 1..6). */
+    val stateOffset: Int = 0,
     /** How far the read-back may be from the value sent and still count as arrived (a window stops a
      * percent or two off its target). */
     val stateTolerance: Int = 0,
@@ -102,5 +106,23 @@ sealed interface VehicleInvocation {
         val interfaceDescriptor: String,
         val propertyId: Int,
         val area: Int,
+    ) : VehicleInvocation
+
+    /**
+     * A one-call command on a system service that takes `(command, value)` and answers with a status int
+     * (the dashcam's `IBYDCDRService.setCommand`): resolve [serviceName] with `ServiceManager`, then one
+     * transaction [transactionCode] on [interfaceDescriptor] carrying [commandCode] and the value.
+     *
+     * The answer is the service's own verdict, so no state needs reading back: a code in [successCodes]
+     * is success, anything else is a failure worded by [failureMessages] (keyed by the code as text) or
+     * the bare code.
+     */
+    data class BinderCommand(
+        val serviceName: String,
+        val interfaceDescriptor: String,
+        val transactionCode: Int,
+        val commandCode: Int,
+        val successCodes: Set<Int>,
+        val failureMessages: Map<Int, String> = emptyMap(),
     ) : VehicleInvocation
 }

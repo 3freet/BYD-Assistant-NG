@@ -20,6 +20,8 @@ object LoggingVehicleController : VehicleController {
                 "${invocation.deviceClass}.${invocation.methodName}(${invocation.argsTemplate.joinToString { it?.toString() ?: "value" }})"
             is VehicleInvocation.AcBinderProperty ->
                 "${invocation.interfaceDescriptor} (sub=${invocation.subServiceKey}, area=${invocation.area}) id=0x${command.featureId?.toString(16)}"
+            is VehicleInvocation.BinderCommand ->
+                "${invocation.serviceName} command ${invocation.commandCode}"
         }
         Log.i(TAG, "STUB dispatch: ${command.id} ($target) <- $value")
         return VehicleDispatchResult.Success(note = "stub: no HAL call made")

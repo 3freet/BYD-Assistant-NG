@@ -32,8 +32,14 @@ exterior speaker or change the drive mode.
 - **Web search** through Google Search (optional; needs a paid Gemini plan — see below).
 - **Vehicle control** (on by default; switch it off in Settings): A/C (power, temperature, fan, air direction,
   air source, ventilation, compressor, auto, defrost), windows (open/close or any position), sunroof, sunshade,
-  trunk, volume, seat heating / ventilation / massage, steering-wheel heating, the cabin light and the fridge. The
-  full list, with ids and what is verified, is in [vehicle-commands.md](docs/byd-internals/vehicle-commands.md).
+  trunk, volume, seat heating / ventilation / massage, steering-wheel heating, the cabin light and the fridge, and
+  from the cabin and dashcam: ambient light colour and brightness, mirror auto-fold and tilt in reverse, media
+  mute, navigation volume and sound staging, and the dashcam ("save this clip", "take a photo", audio on or off).
+  The full list, with ids and what is verified, is in
+  [vehicle-commands.md](docs/byd-internals/vehicle-commands.md); how the new ones were found is in
+  [cabin-and-dashcam.md](docs/byd-internals/cabin-and-dashcam.md).
+- **Air quality** ("how's the air in the car?"): the car's PM2.5 sensors, inside and outside, with the car's own
+  rating. Read-only; same switch as vehicle control.
 - **Outside temperature** ("how hot is it outside?"), read from the instrument cluster; same switch as vehicle control.
 - **Tyre pressure** ("how are my tyres?"): reads each wheel's pressure, the car's own low/high and leak warnings
   and the temperature, and answers in the unit you ask for. Read-only, but it uses the same switch as vehicle

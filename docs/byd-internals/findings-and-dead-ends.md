@@ -52,6 +52,14 @@ rather than "flash now" buttons. **We do not know what they do, and writing to t
 security setting.** This project deliberately keeps the whole Security domain unreachable; please do not
 experiment with it on a car you cannot afford to confuse.
 
+**No manual mirror fold was found.** The two controls the framework lists for it were accepted and nothing moved or
+changed (see [cabin-and-dashcam.md](cabin-and-dashcam.md#mirrors)); only the two *settings* (auto-fold on lock,
+tilt in reverse) are controllable.
+
+**A control that looks right can be accepted and ignored.** `AUDIO_SOUND_FIELD_FOCUS_SET_SET` takes any value and
+changes nothing; the screen writes `AUDIO_LEFT_RIGHT_FIELD_SET_SET` for the same choice. Find what the screen
+writes in the system log (`set featureID is …`) rather than guessing from names.
+
 **Large vendor apps are not a source of ids.** One app's 467 MB package was assets; its dex held no raw ids.
 
 **Polling cannot see short pulses** (see [research-method.md](research-method.md#pitfalls)).

@@ -22,9 +22,18 @@ where the car's own signal differs, the offset is shown.
 | `sunroof.openPercent` — Sunroof position | Bodywork device (1001), control id 1330642976 | 0…100 % | — | Accepted by the HAL; no read-back, so not independently verified. |
 | `sunshade.percent` — Sunshade | Bodywork device (1001), control id 1330642984 | 0…100 % | — | Accepted by the HAL; no read-back, so not independently verified. |
 | `audio.volume` — Volume | Audio device (1002), control id 1309020176 | 0…30 | — | Accepted by the HAL; no read-back, so not independently verified. |
+| `audio.mediaMute` — Media sound | Audio device (1002), control id 470810680 | `unmute`=1, `mute`=2 | state id 1339031597 | Mutes media only (1 = normal, 2 = muted). The all-sound mute (`AUDIO_MUTE_STATUS_SET`) also works but would silence the assistant. |
+| `audio.navigationVolume` — Navigation volume | Audio device (1002), control id 1309081616 | 0…10 | state id 1108344868 | The HAL value confirms; whether the navigation app's voice follows it was not heard. |
+| `audio.soundFocus` — Sound focus | Audio device (1002), control id 470810653 | `whole_car`=6, `front`=7, `back_seats`=4 | state id 1339031565 | The Devialet Sound Staging choice: whole car 6, front 7, back seats 4 (as the screen wrote them). |
+| `audio.spaceSound` — Space sound | Audio device (1002), control id 372244496 | `off`=1, `on`=2 | state id 1263534096 | Devialet Space switch: off 1, on 2. |
+| `audio.spaceSoundMode` — Space sound strength | Audio device (1002), control id 372244498 | `soft`=1, `standard`=2, `strong`=3 | state id 1263534098 | Devialet Space strength: soft 1, standard 2, strong 3. |
 | `trunk` — Trunk | Setting device (1023), control id 1125122080 | `open`=1, `stop`=2, `close`=3 | — | Accepted by the HAL; no read-back, so not independently verified. |
 | `screen.rotation` — Screen rotation | `setting` method `setPadRotation` | `horizontal`=1, `vertical`=2 | — | Accepted by the HAL; no read-back, so not independently verified. |
-| `light.ambientBrightness` — Ambient light | `setting` method `setIALBrightness` | 1…3 | — | Not verified: the observed state ranges 1–6 while this entry allows 1–3. |
+| `mirrors.autoFold` — Mirror auto fold | Setting device (1023), control id 1312817178 | `off`=0, `on`=1 | state id 1081081884 | The 'Side mirror auto fold' switch on the Driving screen. A manual fold or unfold command was not found. |
+| `mirrors.tiltInReverse` — Mirror tilt in reverse | Setting device (1023), control id 1312817180 | `off`=0, `on`=1 | state id 1228931096 | The 'Side mirror auto flip while reversing' switch. Off is written as 2 and reads back 0. |
+| `ambient.color` — Ambient colour | `setting` method `setIALColor` | `pink`=4, `magenta`=4, `purple`=8, `dark_blue`=12, `blue`=16, `sky_blue`=24, `cyan`=32, `mint`=48, `light_green`=52, `green`=56, `lime`=64, `yellow`=80, `gold`=84, `amber`=88, `orange`=92, `deep_orange`=96, `red`=104, `crimson`=108, `coral`=112, `warm_white`=116, `cold_white`=124, `ice_blue`=127 | state id 1121976336 | Sets the whole cabin (front and back rows). The index is the car's 1–127 colour strip; the names are the nearest of the lamp's measured output colours. The read-back is the front row. |
+| `ambient.brightness` — Ambient brightness | `setting` method `setIALBrightness` | 1…6 (signal = value -1) | state id 1121976328 | Whole cabin. The method takes 0–5 and the car's state reads 1–6 (the value shown here). |
+| `ambient.dynamic` — Dynamic colours | Light device (1004), control id 1276153886 | `on`=1, `off`=2 | state id 679477578 | On is the animated multi-colour scene; a fixed colour is easiest to see with it off. |
 | `fridge.mode` — Fridge | Setting device (1023), control id 850427920 | `off`=3, `cool`=1, `heat`=2 | state id 1220542488 | Switching to cooling starts at 3 °C, to heating at 50 °C. |
 | `fridge.cool.temperature` — Fridge cooling temperature | Setting device (1023), control id 850427928 | -6…6 °C (signal = value +19) | state id 1220542480 | Screen −6…6 °C is signal 13…25 (offset 19). Refused unless the fridge is cooling. |
 | `seat.driver.heating` — Driver seat heating | Setting device (1023), control id 1125122068 | `off`=1, `low`=2, `high`=3 | state id 1335885835 | Confirmed by read-back. |
@@ -37,6 +46,11 @@ where the car's own signal differs, the offset is shown.
 | `seat.rearRight.ventilation` — Rear-right seat ventilation | Setting device (1023), control id 1125122096 | `off`=1, `low`=2, `high`=3 | state id 1214251024 | Confirmed by read-back. |
 | `steeringWheel.heating` — Steering wheel heating | Setting device (1023), control id 944767029 | `off`=1, `on`=2 | state id 1116733454 | Has a read-back, but this control has not been exercised on a vehicle yet. |
 | `fridge.heat.temperature` — Fridge heating temperature | Setting device (1023), control id 850427928 | 35…50 °C | state id 1220542480 | The screen value equals the signal (35…50). Refused unless the fridge is heating. |
+| `dashcam.record` — Dashcam recording | `IBYDCDRService` service, command 0 | `start`=1, `stop`=0 | the service's own answer | The answer is the dashcam service's own verdict (1 = done). Stopping is refused for a few seconds while a locked clip is being saved. |
+| `dashcam.photo` — Dashcam photo | `IBYDCDRService` service, command 1 | `take`=0 | the service's own answer | The answer is the dashcam service's own verdict (1 = done). Brings the dashcam screen to the front. |
+| `dashcam.lock` — Save dashcam clip | `IBYDCDRService` service, command 2 | `save`=0 | the service's own answer | The answer is the dashcam service's own verdict (2 or 3 = saving). Brings the dashcam screen to the front. |
+| `dashcam.audio` — Dashcam audio | `IBYDCDRService` service, command 6 | `on`=1, `off`=0 | the service's own answer | The answer is the dashcam service's own verdict (1 = done); the dashcam shows its own notice. |
+| `dashcam.collisionSensitivity` — Dashcam sensitivity | `IBYDCDRService` service, command 5 | `low`=6, `middle`=7, `high`=8 | the service's own answer | The answer is the dashcam service's own verdict (1 = done); the dashcam's settings screen follows. |
 | `window.driver.position` — Driver window position | Bodywork device (1001), control id 1276219408 | 0…100 % | state id 947912728 | Confirmed by read-back. |
 | `window.passenger.position` — Passenger window position | Bodywork device (1001), control id 1276219424 | 0…100 % | state id 1267728400 | Confirmed by read-back. |
 | `window.rearLeft.position` — Rear-left window position | Bodywork device (1001), control id 1276219416 | 0…100 % | state id 947912736 | Confirmed by read-back. |
@@ -51,5 +65,5 @@ where the car's own signal differs, the offset is shown.
 | `ac.frontDefrost` — Windshield defrost | A/C service, property 107, area 256 | `on`=1, `off`=0 | read back through the A/C service | On forces fan 7, face/defrost vents and outside air; off falls back to auto. |
 | `ac.rearDefrost` — Rear window defrost | A/C service, property 108, area 256 | `on`=1, `off`=0 | read back through the A/C service | Confirmed by read-back. |
 
-40 commands. Domains that affect driving (engine, gearbox, motor, driver assistance, radar, security, power)
+54 commands. Domains that affect driving (engine, gearbox, motor, driver assistance, radar, security, power)
 are deliberately absent: the registry refuses to load an entry in one of them. See [safety](../../README.md#safety).
