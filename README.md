@@ -19,6 +19,7 @@ exterior speaker or change the drive mode.
 - **Natural conversation** with Gemini Live: speak, it answers aloud, and you can talk over it to interrupt.
 - **Steering-wheel button** starts and ends a conversation (an accessibility service that watches that one key).
 - **Status banner** on screen shows whether the mic is live, the assistant is thinking, or it is speaking.
+- **Tap sound**: every tap in the app ticks with the head unit's own touch sound, like the rest of the car's screens.
 - **Navigation** ("take me to …"), **open any installed app** by name, and **play / pause / next / previous**.
 - **Play something in an app**: "play <song> on Spotify", "a video about <topic> on YouTube", or "put on something
   moody" and it picks one. It uses Android's standard play-from-search request, so it works with any installed
