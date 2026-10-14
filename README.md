@@ -1,5 +1,7 @@
 # BYD Assistant NG
 
+**English** · [العربية](README.ar.md)
+
 A hands-free voice assistant for **BYD DiLink head units**, built on Google's **Gemini Live** API. Press the
 microphone button on the steering wheel, talk naturally in Arabic or English, and it can answer, navigate,
 open apps, control the media player, operate the car's comfort controls and — on request — speak through the

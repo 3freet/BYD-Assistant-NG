@@ -133,6 +133,10 @@ All text is in `app/src/main/res/values/strings.xml`. Add `values-<code>/strings
 placeholders** (a test checks this), and add the command labels to the registry. Brand names such as the app
 name are not translated.
 
+The README exists in English ([README.md](README.md)) and Arabic ([README.ar.md](README.ar.md)); each links to the
+other at the top. When you change a feature description in one, change the other too — the Arabic one names the
+settings exactly as the app's Arabic strings do.
+
 ## Code style
 
 Kotlin official style. Comments explain *why* — what was measured, what failed — not what the next line does.
