@@ -7,9 +7,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FirstResultTest {
-    private fun node(pkg: String, id: String = "", desc: String = "", clickable: Boolean = true, b: String): String {
+    private fun node(pkg: String, id: String = "", desc: String = "", clickable: Boolean = true, b: String, text: String = ""): String {
         val (l, t, r, bt) = Regex("""\d+""").findAll(b).map { it.value }.toList()
-        return """<node index="0" text="" resource-id="$id" class="x" package="$pkg" content-desc="$desc" clickable="$clickable" bounds="[$l,$t][$r,$bt]" />"""
+        return """<node index="0" text="$text" resource-id="$id" class="x" package="$pkg" content-desc="$desc" clickable="$clickable" bounds="[$l,$t][$r,$bt]" />"""
     }
 
     private fun dump(vararg nodes: String) = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0">${nodes.joinToString("")}</hierarchy>"""
@@ -88,6 +88,42 @@ class FirstResultTest {
     fun youtubeFallsBackToAShortWhenThatIsAllThereIs() {
         val nodes = ScreenDump.parse(dump(node(yt, desc = "A trick, 1 million views, Someone, 1 year ago - play Short", b = "32,243,428,943")))
         assertNotNull(FirstResult.forPackage(yt, nodes, MediaKind.ANY))
+    }
+
+    private val queryBox = "$yt:id/search_query"
+    private val firstVideo = "Relaxing Piano Music: Romantic Music - 3 hours, 36 minutes - Soothing Relaxation - 218 million views - 9 years ago - play video"
+
+    @Test
+    fun youtubeNeverPressesTheMiniPlayerOfAnEarlierVideo() {
+        // A video minimized earlier leaves a small "Play video" button on the results page, ahead of the results.
+        val nodes = ScreenDump.parse(
+            dump(
+                node(yt, "$yt:id/modern_miniplayer_overlay_action_button", desc = "Play video", b = "1900,843,1996,939"),
+                node(yt, desc = firstVideo, b = "32,227,2544,669"),
+            ),
+        )
+        val point = FirstResult.forPackage(yt, nodes, MediaKind.VIDEO)!!
+        assertEquals(448, point.y)
+        assertEquals("Relaxing Piano Music: Romantic Music - 3 hours", point.label)
+    }
+
+    @Test
+    fun youtubeOnlyPressesResultsThatAreForTheQueryAsked() {
+        val stale = ScreenDump.parse(dump(node(yt, queryBox, b = "112,128,2176,195", text = "blinding lights", clickable = true), node(yt, desc = firstVideo, b = "32,227,2544,669")))
+        assertNull(FirstResult.forPackage(yt, stale, MediaKind.VIDEO, "relaxing piano music"))
+        val fresh = ScreenDump.parse(dump(node(yt, queryBox, b = "112,128,2176,195", text = "Relaxing piano music"), node(yt, desc = firstVideo, b = "32,227,2544,669")))
+        assertNotNull(FirstResult.forPackage(yt, fresh, MediaKind.VIDEO, "relaxing piano music"))
+        // A page that is not a results page at all (no query box) is not the results either.
+        val watchPage = ScreenDump.parse(dump(node(yt, desc = firstVideo, b = "32,227,2544,669")))
+        assertNull(FirstResult.forPackage(yt, watchPage, MediaKind.VIDEO, "relaxing piano music"))
+        // Without a query nothing is checked.
+        assertNotNull(FirstResult.forPackage(yt, watchPage, MediaKind.VIDEO))
+    }
+
+    @Test
+    fun youtubePlaylistsAndOtherDescriptionsAreNotResultsToPlay() {
+        val nodes = ScreenDump.parse(dump(node(yt, desc = "Mix - The Weeknd - Starboy - Daft Punk, and more - 50 videos", b = "32,701,2544,1153")))
+        assertNull(FirstResult.forPackage(yt, nodes, MediaKind.VIDEO))
     }
 
     @Test

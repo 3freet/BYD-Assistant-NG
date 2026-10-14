@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.bydassistantng.R
@@ -25,16 +26,48 @@ import kotlinx.serialization.json.put
 private const val TAG = "PlayMediaTool"
 private const val MAX_TEXT_LENGTH = 200
 
-/** What to play and where, as the model gave it. */
-data class PlayRequest(val app: String, val query: String, val kind: MediaKind) {
+/**
+ * What to play and where, as the model gave it. The [query] is what to search for; for the user's own library
+ * it is optional (the name of one playlist, when one was named).
+ */
+data class PlayRequest(val app: String, val query: String, val kind: MediaKind, val source: PlaySource = PlaySource.SEARCH) {
     companion object {
-        /** Null when there is nothing to search for or no app named. */
+        /** Null when there is no app named, or nothing to search for when a search is what was asked. */
         fun from(call: GeminiFunctionCall): PlayRequest? {
             fun text(key: String) = (call.args[key] as? JsonPrimitive)?.content?.trim().orEmpty().take(MAX_TEXT_LENGTH)
             val app = text("app")
             val query = text("query")
-            if (app.isEmpty() || query.isEmpty()) return null
-            return PlayRequest(app, query, MediaKind.from(text("kind")))
+            val source = PlaySource.from(text("source"))
+            if (app.isEmpty()) return null
+            if (query.isEmpty() && source == PlaySource.SEARCH) return null
+            return PlayRequest(app, query, MediaKind.from(text("kind")), source)
+        }
+    }
+}
+
+/** Where the music comes from: anything in the catalogue (a search), or the user's own library. */
+enum class PlaySource(val word: String) {
+    SEARCH("search"),
+    FAVORITES("favorites"),
+    MY_PLAYLISTS("my_playlists"),
+    ;
+
+    companion object {
+        /** What a model that does not follow the list exactly tends to say instead. */
+        private val ALIASES = mapOf(
+            "favourites" to FAVORITES,
+            "favorite" to FAVORITES,
+            "favourite" to FAVORITES,
+            "liked" to FAVORITES,
+            "liked_songs" to FAVORITES,
+            "playlists" to MY_PLAYLISTS,
+            "playlist" to MY_PLAYLISTS,
+            "my_playlist" to MY_PLAYLISTS,
+        )
+
+        fun from(word: String): PlaySource {
+            val key = word.trim().lowercase().replace(' ', '_').replace('-', '_')
+            return entries.find { it.word == key } ?: ALIASES[key] ?: SEARCH
         }
     }
 }
@@ -61,7 +94,9 @@ enum class MediaKind(val word: String, val focus: String) {
  * supports the request works without a change here; the model, not this code, picks the app and the phrase
  * (including a song of its own choosing when the user leaves it open).
  *
- * It is not "press the first video on the home screen": with nothing to search for, nothing can be asked.
+ * It is not "press the first video on the home screen": with nothing to search for, nothing can be asked. The
+ * one exception is the user's own Spotify or YouTube library ("my favorites", "my playlists"), which has links of
+ * its own.
  */
 object PlayMediaTool {
     const val FUNCTION_NAME = "play_media"
@@ -72,10 +107,15 @@ object PlayMediaTool {
             "playlist or a video, found by a search phrase. Use for \"play <song> on Spotify\", \"play a video " +
             "about <topic> on YouTube\", \"put on some music\". When the user leaves the choice to you " +
             "(\"something moody\", \"surprise me\"), pick one specific, well-known title and artist yourself " +
-            "and pass them as the query. It cannot pick from an app's home screen: it always needs a search " +
-            "phrase. It searches and starts the top result, which takes a few seconds. After it succeeds, " +
-            "confirm in one short sentence; the conversation ends so the music does not get picked up by the " +
-            "microphone.",
+            "and pass them as the query. It cannot pick from an app's home screen: a search always needs a " +
+            "search phrase. It searches and starts the top result, which takes a few seconds. " +
+            "For the user's own library in Spotify or YouTube there is no search phrase: \"play my favorites\" / " +
+            "\"my liked songs\" / \"my liked videos\" is source favorites, and \"play music from my " +
+            "playlists\" / \"play my watch later\" is source my_playlists (put the playlist's name in query " +
+            "only when the user said one, e.g. \"play my road trip playlist\"; otherwise leave query out and " +
+            "their most recent playlist plays). After it " +
+            "succeeds, confirm in one short sentence; the conversation ends so the music does not get picked " +
+            "up by the microphone.",
         parameters = GeminiSchema(
             type = "OBJECT",
             properties = mapOf(
@@ -85,27 +125,37 @@ object PlayMediaTool {
                 ),
                 "query" to GeminiSchema(
                     type = "STRING",
-                    description = "What to search for and play, e.g. \"Hotel California Eagles\" or \"how to change a tyre\".",
+                    description = "What to search for and play, e.g. \"Hotel California Eagles\" or \"how to change a tyre\". " +
+                        "Required for a search. For source my_playlists it is the playlist's name, if one was said; " +
+                        "leave it out for favorites.",
                 ),
                 "kind" to GeminiSchema(
                     type = "STRING",
                     description = "What the query names. Use \"any\" when unsure.",
                     enum = MediaKind.entries.map { it.word },
                 ),
+                "source" to GeminiSchema(
+                    type = "STRING",
+                    description = "Where to play from. \"search\" (default): search for the query. \"favorites\": the " +
+                        "user's liked songs (liked videos on YouTube). \"my_playlists\": one of the user's own " +
+                        "playlists. Only Spotify and YouTube support favorites and my_playlists.",
+                    enum = PlaySource.entries.map { it.word },
+                ),
             ),
-            required = listOf("app", "query"),
+            required = listOf("app"),
         ),
     )
 
     suspend fun handle(context: Context, call: GeminiFunctionCall, onPlaying: suspend (String) -> Unit): JsonObject {
-        val request = PlayRequest.from(call) ?: return error("Both an app and something to search for are needed.")
+        val request = PlayRequest.from(call)
+            ?: return error("An app is needed, and something to search for (unless it is the user's own favorites or playlists).")
         val players = players(context)
         if (players.isEmpty()) return error("No installed app can play from a search.")
 
         return when (val match = AppMatcher.find(request.app, players)) {
             is AppMatch.One -> {
-                onPlaying(AppLanguage.string(context, R.string.banner_playing, request.query))
-                play(context, match.app, request)
+                onPlaying(banner(context, request))
+                if (request.source == PlaySource.SEARCH) play(context, match.app, request) else playFromLibrary(context, match.app, request)
             }
             is AppMatch.Several -> buildJsonObject {
                 put("status", "ambiguous")
@@ -118,6 +168,13 @@ object PlayMediaTool {
                 put("apps_that_can_play", JsonArray(players.map { JsonPrimitive(it.label) }.distinct()))
             }
         }
+    }
+
+    /** What the status banner says while it starts. */
+    private fun banner(context: Context, request: PlayRequest): String = when {
+        request.source == PlaySource.FAVORITES -> AppLanguage.string(context, R.string.banner_playing_favorites)
+        request.source == PlaySource.MY_PLAYLISTS && request.query.isBlank() -> AppLanguage.string(context, R.string.banner_playing_playlists)
+        else -> AppLanguage.string(context, R.string.banner_playing, request.query)
     }
 
     /** The installed apps that answer the play-from-search request. */
@@ -134,11 +191,7 @@ object PlayMediaTool {
     }
 
     private suspend fun play(context: Context, app: InstalledApp, request: PlayRequest): JsonObject {
-        val intent = Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
-            .setPackage(app.packageName)
-            .putExtra(SearchManager.QUERY, request.query)
-            .putExtra(MediaStore.EXTRA_MEDIA_FOCUS, request.kind.focus)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val intent = searchIntent(app, request)
         try {
             context.startActivity(intent)
         } catch (e: ActivityNotFoundException) {
@@ -159,7 +212,7 @@ object PlayMediaTool {
             PlaybackFollowUp.schedule(PendingPlayback(app.packageName, app.label, request.query, request.kind))
             return ok("${app.label} is opening results for \"${request.query}\" and will start the top one in a few seconds. Confirm in one short sentence.")
         }
-        return when (val outcome = UiPlayStarter(context).startFirstResult(app.packageName, request.kind)) {
+        return when (val outcome = UiPlayStarter(context).startFirstResult(app.packageName, request.kind, request.query)) {
             is StartOutcome.Playing -> ok("${app.label} is now playing ${outcome.label.ifBlank { "\"${request.query}\"" }}.")
             is StartOutcome.Pressed -> ok("${app.label} was told to play ${outcome.label.ifBlank { "\"${request.query}\"" }} and starts in a moment.")
             is StartOutcome.PageOpened -> {
@@ -172,6 +225,62 @@ object PlayMediaTool {
             StartOutcome.NoAdb -> partial("${app.label} is showing results for \"${request.query}\", but the car's debugging connection is not available to start it. Tell the user to tap the first result.")
         }
     }
+
+    /**
+     * "Play my favorites" / "play music from my playlists": the app's own page for that part of the library is
+     * opened through its link, and the play control of what opens is pressed once the conversation is over (see
+     * [PlaybackFollowUp]). Nothing is searched, so there is no phrase and no ranking to get wrong.
+     */
+    private fun playFromLibrary(context: Context, app: InstalledApp, request: PlayRequest): JsonObject {
+        val link = when (app.packageName) {
+            FirstResult.SPOTIFY -> SpotifyLibrary.linkFor(app.packageName, request.source)
+            FirstResult.YOUTUBE -> YouTubeLibrary.linkFor(request.source)
+            else -> null
+        } ?: return partial("${app.label} cannot play from the user's own library by voice, only Spotify and YouTube can. Offer to search for something to play instead.")
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link)).setPackage(app.packageName)
+        if (app.packageName == FirstResult.YOUTUBE) freshTask(intent) else intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            AppLogger.logError(TAG, "${app.label} could not open $link", e)
+            return error("${app.label} could not open that.")
+        } catch (e: SecurityException) {
+            AppLogger.logError(TAG, "Not allowed to start ${app.label}", e)
+            return error("Not allowed to start ${app.label}.")
+        }
+        AppLogger.log(TAG, "Asked ${app.label} to open ${request.source.word}${request.query.takeIf { it.isNotBlank() }?.let { " \"$it\"" }.orEmpty()}")
+        PlaybackFollowUp.schedule(PendingPlayback(app.packageName, app.label, request.query, MediaKind.PLAYLIST, source = request.source))
+        val what = when {
+            request.source == PlaySource.FAVORITES -> if (app.packageName == FirstResult.YOUTUBE) "the user's liked videos" else "the user's liked songs"
+            request.query.isNotBlank() -> "the user's playlist \"${request.query}\""
+            else -> "the user's most recent playlist"
+        }
+        return ok("${app.label} is opening the library and will start $what in a few seconds. Confirm in one short sentence.")
+    }
+
+    /**
+     * The request that makes [app] show results for the phrase. Android's play-from-search request, except for
+     * YouTube, which ignores it while it is already open (the page of the last search stays, and the first result
+     * of that would be pressed); its own search link is answered in any state.
+     */
+    private fun searchIntent(app: InstalledApp, request: PlayRequest): Intent =
+        if (app.packageName == FirstResult.YOUTUBE) {
+            freshTask(Intent(Intent.ACTION_VIEW, Uri.parse(YouTubeLibrary.searchUrl(request.query))).setPackage(app.packageName))
+        } else {
+            Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
+                .setPackage(app.packageName)
+                .putExtra(SearchManager.QUERY, request.query)
+                .putExtra(MediaStore.EXTRA_MEDIA_FOCUS, request.kind.focus)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+    /**
+     * YouTube starts in a task of its own: whatever was open (a video playing, the page of an earlier search) is
+     * closed, so the page that follows is the only thing on screen. A video left playing keeps the screen busy
+     * and a busy screen cannot be read, and the first result of an old page must not be what gets pressed.
+     */
+    private fun freshTask(intent: Intent): Intent =
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
 
     private fun ok(note: String) = buildJsonObject {
         put("status", "ok")

@@ -36,6 +36,8 @@
     <string name="banner_opening_app">فتح %1$s</string>
     <string name="banner_tyres">جارٍ قراءة ضغط الإطارات</string>
     <string name="banner_playing">تشغيل: %1$s</string>
+    <string name="banner_playing_favorites">تشغيل المفضّلة</string>
+    <string name="banner_playing_playlists">تشغيل قوائم التشغيل</string>
     <string name="banner_outside_temperature">جارٍ قراءة حرارة الخارج</string>
     <string name="banner_speak_outside">جارٍ التحدث خارج السيارة</string>
     <string name="banner_play_sound_outside">جارٍ تشغيل صوت خارج السيارة</string>

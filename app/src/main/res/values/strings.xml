@@ -37,6 +37,8 @@
     <string name="banner_opening_app">Opening %1$s</string>
     <string name="banner_tyres">Reading tyre pressure</string>
     <string name="banner_playing">Playing: %1$s</string>
+    <string name="banner_playing_favorites">Playing your favorites</string>
+    <string name="banner_playing_playlists">Playing your playlists</string>
     <string name="banner_outside_temperature">Reading outside temperature</string>
     <string name="banner_speak_outside">Speaking outside the car</string>
     <string name="banner_play_sound_outside">Playing a sound outside the car</string>

@@ -23,6 +23,15 @@ private const val CONFIRM_ATTEMPTS = 10
 private const val PAGE_CONFIRM_ATTEMPTS = 3
 private const val SAME_TRACK_ACCEPT_ATTEMPTS = 4
 private const val PAGE_OPEN_WAIT_MS = 6_000L
+// A page that just opened loads over the network: how long to give it, and how many looks for its play control.
+private const val PAGE_LOAD_DELAY_MS = 1_500L
+private const val PAGE_LOOKS = 3
+// Looks at the library list for a named playlist: the first, and one more after each scroll.
+private const val LIBRARY_LOOKS = 3
+private const val SCROLL_DURATION_MS = 400
+// Looks at a results page that may still be on its way: how many, and how far apart.
+private const val RESULT_LOOKS = 4
+private const val RESULT_LOOK_INTERVAL_MS = 1_500L
 private const val QUICK_PRESSES = 9
 private const val QUICK_PRESS_INTERVAL_MS = 1_300L
 private const val KNOWN_SCREEN_WIDTH = 2560
@@ -31,6 +40,14 @@ private const val KNOWN_PLAY_X = 1864
 private const val KNOWN_PLAY_Y = 950
 private const val DUMP_PATH = "/data/local/tmp/byd_assistant_ui.xml"
 private val PACKAGE_NAME = Regex("[A-Za-z0-9._]+")
+// Spotify's play/pause control, found in its own view dump: the collapsed bar's, and the full now-playing view's in
+// older versions. Other apps are paused with the media key: YouTube's player hides its controls a few seconds after
+// a touch, and a tap on hidden controls only brings them back.
+private val PLAY_PAUSE_IDS = mapOf(
+    FirstResult.SPOTIFY to listOf("id/nowplaying_elements_playpause_button", "id/play_pause_button"),
+)
+private const val PAUSE_CONFIRM_ATTEMPTS = 5
+private const val PAUSE_CONFIRM_INTERVAL_MS = 400L
 
 /** What happened after an app was asked to play from a search. */
 sealed interface StartOutcome {
@@ -94,11 +111,12 @@ data class SessionState(val state: Int?, val position: Long?, val title: String?
  */
 class UiPlayStarter(private val context: Context) {
 
-    suspend fun startFirstResult(packageName: String, kind: MediaKind): StartOutcome = withContext(Dispatchers.IO) {
+    /** [query] is what the results are for: an app that shows an older page must not have its first result pressed. */
+    suspend fun startFirstResult(packageName: String, kind: MediaKind, query: String = ""): StartOutcome = withContext(Dispatchers.IO) {
         if (!FirstResult.hasRule(packageName) || !PACKAGE_NAME.matches(packageName)) return@withContext StartOutcome.NoRule
         val adb = AdbHelper.connect(context, CONNECT_TIMEOUT_MS, SOCKET_TIMEOUT_MS) ?: return@withContext StartOutcome.NoAdb
         try {
-            val target = findTarget(adb, packageName, kind) ?: run {
+            val target = findTarget(adb, packageName, kind, query) ?: run {
                 AppLogger.log(TAG, "No results of $packageName on screen")
                 return@withContext StartOutcome.NoResults
             }
@@ -144,22 +162,7 @@ class UiPlayStarter(private val context: Context) {
         if (!PACKAGE_NAME.matches(packageName)) return@withContext StartOutcome.NoRule
         val adb = AdbHelper.connect(context, CONNECT_TIMEOUT_MS, SOCKET_TIMEOUT_MS) ?: return@withContext StartOutcome.NoAdb
         try {
-            val before = sessionState(adb, packageName)
-            if (before.isPlaying) pausePlayback(adb)
-            delay(PAGE_SETTLE_DELAY_MS)
-            // One look (see readWithUiAutomation): it switches the wheel button off while it runs.
-            val xml = adb.shell("uiautomator dump $DUMP_PATH >/dev/null 2>&1; cat $DUMP_PATH; rm -f $DUMP_PATH").output
-            val target = if (xml.contains("<hierarchy")) FirstResult.playButtonOnPage(ScreenDump.parse(xml), packageName) else null
-            val button = target ?: return@withContext StartOutcome.NoResults
-            AppLogger.log(TAG, "Pressing play on the opened page of $packageName")
-            adb.shell("input tap ${button.x} ${button.y}")
-            repeat(CONFIRM_ATTEMPTS) { attempt ->
-                delay(LOOK_INTERVAL_MS)
-                if (SessionState.startedSince(before.copy(state = 2), sessionState(adb, packageName), waitedLong = attempt >= SAME_TRACK_ACCEPT_ATTEMPTS)) {
-                    return@withContext StartOutcome.Playing(button.label)
-                }
-            }
-            StartOutcome.Pressed(button.label)
+            pressPlay(adb, packageName)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -168,6 +171,108 @@ class UiPlayStarter(private val context: Context) {
         } finally {
             runCatching { adb.close() }
         }
+    }
+
+    /**
+     * "Play music from my playlists": the library page is open (the tool sent its link). Opens the playlist that
+     * [name] names, or the most recent one when no name was said, and presses play on the page that opens.
+     */
+    suspend fun playFromPlaylists(packageName: String, name: String): StartOutcome = withContext(Dispatchers.IO) {
+        if (!PACKAGE_NAME.matches(packageName)) return@withContext StartOutcome.NoRule
+        val adb = AdbHelper.connect(context, CONNECT_TIMEOUT_MS, SOCKET_TIMEOUT_MS) ?: return@withContext StartOutcome.NoAdb
+        try {
+            // Anything playing keeps the screen busy, and reading it needs the screen idle.
+            val pausedByUs = sessionState(adb, packageName).isPlaying
+            if (pausedByUs) pausePlayback(adb, packageName)
+            delay(PAGE_SETTLE_DELAY_MS)
+            val row = findLibraryRow(adb, packageName, name) ?: run {
+                AppLogger.log(TAG, "No playlist${name.takeIf { it.isNotBlank() }?.let { " \"$it\"" }.orEmpty()} on the library page of $packageName")
+                // Nothing new to play: leave things as they were.
+                if (pausedByUs) resumePlayback(adb, packageName)
+                return@withContext StartOutcome.NoResults
+            }
+            AppLogger.log(TAG, "Opening the playlist \"${row.label.take(60)}\" of $packageName")
+            adb.shell("input tap ${row.x} ${row.y}")
+            delay(PAGE_LOAD_DELAY_MS)
+            when (val outcome = pressPlay(adb, packageName)) {
+                is StartOutcome.Playing -> StartOutcome.Playing(row.label)
+                is StartOutcome.Pressed -> StartOutcome.Pressed(row.label)
+                else -> outcome
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError(TAG, "Could not start a playlist", e)
+            StartOutcome.NoResults
+        } finally {
+            runCatching { adb.close() }
+        }
+    }
+
+    /** The row to open on the library page: looks, and scrolls on when a named playlist is not among the rows shown. */
+    private suspend fun findLibraryRow(adb: Dadb, packageName: String, name: String): TapPoint? {
+        repeat(LIBRARY_LOOKS) {
+            val nodes = ScreenDump.parse(dumpScreen(adb))
+            val library = libraryOf(packageName)
+            library.target(nodes, packageName, name)?.let { return it }
+            val rows = library.rows(nodes, packageName)
+            if (name.isNotBlank() && rows.size > 1) {
+                // The list is there but the name is not: move it up by about what is shown, and look again.
+                val x = (rows.first().left + rows.first().right) / 2
+                adb.shell("input swipe $x ${rows.last().let { (it.top + it.bottom) / 2 }} $x ${rows.first().let { (it.top + it.bottom) / 2 }} $SCROLL_DURATION_MS")
+            }
+            delay(LOOK_INTERVAL_MS)
+        }
+        return null
+    }
+
+    /** How an app lists the user's playlists on its library page. */
+    private class Library(
+        val rows: (List<ScreenNode>, String) -> List<LibraryRow>,
+        val target: (List<ScreenNode>, String, String) -> TapPoint?,
+    )
+
+    private fun libraryOf(packageName: String): Library =
+        if (packageName == FirstResult.YOUTUBE) {
+            Library(YouTubeLibrary::rows, YouTubeLibrary::target)
+        } else {
+            Library(SpotifyLibrary::rows, SpotifyLibrary::target)
+        }
+
+    /**
+     * Presses the play control of the open page, once it has drawn (a few looks: it loads over the network), and
+     * waits for the app to report it playing. A second press follows only when nothing plays after the first.
+     */
+    private suspend fun pressPlay(adb: Dadb, packageName: String): StartOutcome {
+        val before = sessionState(adb, packageName)
+        val pausedByUs = before.isPlaying
+        if (pausedByUs) pausePlayback(adb, packageName)
+        delay(PAGE_SETTLE_DELAY_MS)
+        // One look is one go of the system's UI automation: it switches the wheel button off while it runs.
+        var button: TapPoint? = null
+        for (look in 0 until PAGE_LOOKS) {
+            val xml = dumpScreen(adb)
+            button = if (xml.contains("<hierarchy")) FirstResult.playButtonOnPage(ScreenDump.parse(xml), packageName) else null
+            if (button != null) break
+            delay(PAGE_LOAD_DELAY_MS)
+        }
+        val target = button ?: run {
+            if (pausedByUs) resumePlayback(adb, packageName)
+            return StartOutcome.NoResults
+        }
+        repeat(2) { press ->
+            AppLogger.log(TAG, "Pressing play on the opened page of $packageName (${target.label})")
+            adb.shell("input tap ${target.x} ${target.y}")
+            repeat(CONFIRM_ATTEMPTS) { attempt ->
+                delay(LOOK_INTERVAL_MS)
+                if (SessionState.startedSince(before.copy(state = 2), sessionState(adb, packageName), waitedLong = attempt >= SAME_TRACK_ACCEPT_ATTEMPTS)) {
+                    return StartOutcome.Playing(target.label)
+                }
+            }
+            // A page still filling in ignores the press. Press again only when nothing is playing, or it would pause.
+            if (press == 0 && sessionState(adb, packageName).isPlaying) return StartOutcome.Playing(target.label)
+        }
+        return StartOutcome.Pressed(target.label)
     }
 
     /**
@@ -210,18 +315,57 @@ class UiPlayStarter(private val context: Context) {
         return false
     }
 
-    /** Presses the app's own pause control (found in its view dump) so the screen can go idle. */
-    private fun pausePlayback(adb: Dadb) {
+    /**
+     * Puts back what [pausePlayback] stopped, for a request that ended up with nothing new to play: the app's own
+     * control again, or failing that the media key.
+     */
+    private fun resumePlayback(adb: Dadb, packageName: String) {
+        val button = playPauseButton(adb, packageName)
+        if (button != null) {
+            AppLogger.log(TAG, "Resuming $packageName from its ${button.resourceId.substringAfterLast('/')}")
+            adb.shell("input tap ${(button.left + button.right) / 2} ${button.centerY}")
+        } else {
+            AppLogger.log(TAG, "Resuming $packageName with the media key (no control of its own on screen)")
+            adb.shell("cmd media_session dispatch play")
+        }
+    }
+
+    /**
+     * Pauses what [packageName] is playing so the screen can go idle (a playing video keeps it busy for ever, and a
+     * busy screen cannot be read). It presses the app's own control, found in its view dump, and only then falls
+     * back to the media key, which goes to whichever app last held the media buttons and so may reach another one.
+     * Returns whether the app reports it paused.
+     */
+    private suspend fun pausePlayback(adb: Dadb, packageName: String): Boolean {
+        val button = playPauseButton(adb, packageName)
+        if (button != null) {
+            AppLogger.log(TAG, "Pausing $packageName from its ${button.resourceId.substringAfterLast('/')}")
+            adb.shell("input tap ${(button.left + button.right) / 2} ${button.centerY}")
+        } else {
+            AppLogger.log(TAG, "Pausing $packageName with the media key (no control of its own on screen)")
+            adb.shell("cmd media_session dispatch pause")
+        }
+        repeat(PAUSE_CONFIRM_ATTEMPTS) {
+            delay(PAUSE_CONFIRM_INTERVAL_MS)
+            if (!sessionState(adb, packageName).isPlaying) return true
+        }
+        return false
+    }
+
+    /** The visible play/pause control of [packageName] in its view dump, if it shows one. */
+    private fun playPauseButton(adb: Dadb, packageName: String): ViewNode? {
+        val ids = PLAY_PAUSE_IDS[packageName] ?: return null
         val nodes = ViewHierarchy.parse(adb.shell("dumpsys activity top").output)
-        val button = nodes.firstOrNull { it.resourceId.endsWith("id/nowplaying_elements_playpause_button") && it.width > 0 } ?: return
-        adb.shell("input tap ${(button.left + button.right) / 2} ${button.centerY}")
+        return ids.firstNotNullOfOrNull { id ->
+            nodes.firstOrNull { it.activityPackage == packageName && it.resourceId.endsWith(id) && it.width > 0 && it.height > 0 }
+        }
     }
 
     /** Finds the point to press, polling until the results are laid out (up to [RESULTS_WAIT_MS]). */
-    private suspend fun findTarget(adb: Dadb, packageName: String, kind: MediaKind): TapPoint? {
+    private suspend fun findTarget(adb: Dadb, packageName: String, kind: MediaKind, query: String): TapPoint? {
         if (FirstResult.needsUiAutomation(packageName)) {
             delay(SETTLE_DELAY_MS)
-            return readWithUiAutomation(adb, packageName, kind)
+            return readWithUiAutomation(adb, packageName, kind, query)
         }
         var waited = 0L
         var previous: TapPoint? = null
@@ -239,14 +383,31 @@ class UiPlayStarter(private val context: Context) {
         return previous
     }
 
-    /** One look at the screen through UI automation (the one moment accessibility is off), then the point to press. */
-    private fun readWithUiAutomation(adb: Dadb, packageName: String, kind: MediaKind): TapPoint? {
-        // One look only: each one switches the accessibility services (and with them the wheel button) off for
-        // several seconds, and a screen that would not go idle the first time will not the second.
-        val xml = adb.shell("uiautomator dump $DUMP_PATH >/dev/null 2>&1; cat $DUMP_PATH; rm -f $DUMP_PATH").output
-        if (!xml.contains("<hierarchy")) return null
-        return FirstResult.forPackage(packageName, ScreenDump.parse(xml), kind)
+    /**
+     * The point to press, through UI automation (the one thing here that switches accessibility off, each look for
+     * a few seconds). A video still playing keeps the screen busy, and a busy screen cannot be read, so it is
+     * paused first (and put back if nothing new is found). A few looks, since the page for the new search may still
+     * be on its way: only results that are for [query] count.
+     */
+    private suspend fun readWithUiAutomation(adb: Dadb, packageName: String, kind: MediaKind, query: String): TapPoint? {
+        val pausedByUs = sessionState(adb, packageName).isPlaying
+        repeat(RESULT_LOOKS) {
+            // Paused before every look: the first press may have been too early (the player was still being
+            // minimized), and a video that plays on makes the look fail.
+            if (sessionState(adb, packageName).isPlaying) pausePlayback(adb, packageName)
+            val xml = dumpScreen(adb)
+            if (xml.contains("<hierarchy")) {
+                FirstResult.forPackage(packageName, ScreenDump.parse(xml), kind, query)?.let { return it }
+            }
+            delay(RESULT_LOOK_INTERVAL_MS)
+        }
+        if (pausedByUs) resumePlayback(adb, packageName)
+        return null
     }
+
+    /** The screen as the system's UI automation reports it (empty or not a dump when the screen would not go idle). */
+    private fun dumpScreen(adb: Dadb): String =
+        adb.shell("uiautomator dump $DUMP_PATH >/dev/null 2>&1; cat $DUMP_PATH; rm -f $DUMP_PATH").output
 
     private fun sessionState(adb: Dadb, packageName: String): SessionState {
         val dump = adb.shell("dumpsys media_session | grep -a -A30 'package=$packageName' | head -n 32").output

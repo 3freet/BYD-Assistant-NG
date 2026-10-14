@@ -71,10 +71,13 @@ object FirstResult {
     private const val SPOTIFY_ROW = ":id/row_root"
     private const val SPOTIFY_SONG_MENU = "More options for song"
 
-    /** Null when the package has no rule or its results are not on screen (yet). */
-    fun forPackage(packageName: String, nodes: List<ScreenNode>, kind: MediaKind): TapPoint? = when (packageName) {
+    /**
+     * Null when the package has no rule or its results are not on screen (yet). With a [query], the results must
+     * be the ones for it: an app that kept the page of an earlier search must not have that pressed instead.
+     */
+    fun forPackage(packageName: String, nodes: List<ScreenNode>, kind: MediaKind, query: String = ""): TapPoint? = when (packageName) {
         SPOTIFY -> spotify(nodes, kind)
-        YOUTUBE -> youtube(nodes, kind)
+        YOUTUBE -> youtube(nodes, kind, query)
         else -> null
     }
 
@@ -131,14 +134,18 @@ object FirstResult {
         return mine.isNotEmpty() && mine.none { it.resourceId.endsWith("id/search_content_recyclerview") }
     }
 
-    private val PLAY_BUTTON = Regex("""(?i)^play( playlist| album| artist| podcast| show)?$""")
+    private val PLAY_BUTTON = Regex("""(?i)^(shuffle )?play( all| playlist| album| artist| podcast| show)?$""")
 
     /**
      * The green play control of a playlist, album or artist page, found by its accessibility label (those pages
-     * are drawn without view identifiers).
+     * are drawn without view identifiers). It is labelled "Shuffle Play playlist" where the app plays shuffled, as
+     * on Liked Songs, and "Play all" on YouTube's playlists. The big one wins over a small "Play" of the
+     * now-playing bar that may be in the same tree.
      */
     fun playButtonOnPage(nodes: List<ScreenNode>, packageName: String): TapPoint? {
-        val button = nodes.firstOrNull { it.packageName == packageName && PLAY_BUTTON.matches(it.description.trim()) } ?: return null
+        val button = nodes
+            .filter { it.packageName == packageName && PLAY_BUTTON.matches(it.description.trim()) }
+            .maxByOrNull { (it.right - it.left).toLong() * (it.bottom - it.top) } ?: return null
         return TapPoint(button.centerX, button.centerY, button.description)
     }
 
@@ -159,13 +166,20 @@ object FirstResult {
 
     /**
      * A regular video if there is one ("... - play video"), otherwise a Short ("... - play Short"). Each result
-     * item describes itself that way for accessibility.
+     * item describes itself that way for accessibility, after its title and details. The small "Play video" button
+     * of the mini player (a video that was minimized earlier) has no title in front, and is not a result.
      */
-    private fun youtube(nodes: List<ScreenNode>, kind: MediaKind): TapPoint? {
-        val items = nodes.filter { it.packageName == YOUTUBE && it.clickable }
-        val video = items.firstOrNull { it.description.endsWith("play video", ignoreCase = true) }
-        val short = items.firstOrNull { it.description.endsWith("play Short", ignoreCase = true) }
+    private fun youtube(nodes: List<ScreenNode>, kind: MediaKind, query: String): TapPoint? {
+        if (query.isNotBlank()) {
+            val shown = nodes.firstOrNull { it.packageName == YOUTUBE && it.resourceId.endsWith("id/search_query") }?.text
+            if (shown == null || !TextMatch.same(shown, query)) return null
+        }
+        val items = nodes.filter { it.packageName == YOUTUBE && it.clickable && it.bottom - it.top >= YOUTUBE_MIN_RESULT_HEIGHT }
+        val video = items.firstOrNull { it.description.trimEnd().endsWith(" - play video", ignoreCase = true) }
+        val short = items.firstOrNull { it.description.trimEnd().endsWith(" - play Short", ignoreCase = true) }
         val chosen = video ?: short ?: return null
         return TapPoint(chosen.centerX, chosen.centerY, chosen.description.substringBefore(',').take(80))
     }
+
+    private const val YOUTUBE_MIN_RESULT_HEIGHT = 100
 }

@@ -10,7 +10,10 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "PlaybackFollowUp"
 
-/** A play request whose search is on screen and whose top result still has to be pressed. */
+/**
+ * A play request whose page is on screen and whose press is still to come: the top result of a search, the play
+ * control of a page that opened, or (for the user's own library) the page of favorites or playlists.
+ */
 data class PendingPlayback(
     val packageName: String,
     val appLabel: String,
@@ -18,6 +21,8 @@ data class PendingPlayback(
     val kind: MediaKind,
     /** True when the search is already pressed and a page is open: only its play control remains. */
     val pressPlayOnPage: Boolean = false,
+    /** Anything but a search means the app's library page is open: favorites, or one of the playlists. */
+    val source: PlaySource = PlaySource.SEARCH,
 )
 
 /**
@@ -68,9 +73,8 @@ object PlaybackFollowUp {
         synchronized(lock) {
             running?.cancel()
             running = scope.launch {
-                val starter = UiPlayStarter(appContext)
-                val outcome = if (request.pressPlayOnPage) starter.pressPlayOnPage(request.packageName) else starter.startFirstResult(request.packageName, request.kind)
-                AppLogger.log(TAG, "${request.appLabel} \"${request.query}\" -> $outcome")
+                val outcome = press(UiPlayStarter(appContext), request)
+                AppLogger.log(TAG, "${request.appLabel} ${request.source.word} \"${request.query}\" -> $outcome")
                 if (outcome !is StartOutcome.Playing && outcome !is StartOutcome.Pressed && outcome !is StartOutcome.PageOpened) onNotStarted?.invoke()
             }
         }
@@ -79,7 +83,13 @@ object PlaybackFollowUp {
     /** For tests on the device: runs the scheduled press now and waits for its outcome. */
     suspend fun runPendingNow(context: Context): StartOutcome? {
         val request = synchronized(lock) { pending.also { pending = null } } ?: return null
-        val starter = UiPlayStarter(context.applicationContext)
-        return if (request.pressPlayOnPage) starter.pressPlayOnPage(request.packageName) else starter.startFirstResult(request.packageName, request.kind)
+        return press(UiPlayStarter(context.applicationContext), request)
+    }
+
+    private suspend fun press(starter: UiPlayStarter, request: PendingPlayback): StartOutcome = when {
+        request.source == PlaySource.FAVORITES -> starter.pressPlayOnPage(request.packageName)
+        request.source == PlaySource.MY_PLAYLISTS -> starter.playFromPlaylists(request.packageName, request.query)
+        request.pressPlayOnPage -> starter.pressPlayOnPage(request.packageName)
+        else -> starter.startFirstResult(request.packageName, request.kind, request.query)
     }
 }

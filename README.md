@@ -26,6 +26,9 @@ exterior speaker or change the drive mode.
 - **Play something in an app**: "play <song> on Spotify", "a video about <topic> on YouTube", or "put on something
   moody" and it picks one. It uses Android's standard play-from-search request, so it works with any installed
   app that supports it; it cannot pick from an app's home screen.
+- **Play your own library** (Spotify and YouTube): "play my favorites" starts your Liked Songs (liked videos on
+  YouTube), "play music from my playlists" starts your most recent playlist, and "play my <name> playlist" (or
+  "my watch later") starts that one.
 - **Web search** through Google Search (optional; needs a paid Gemini plan — see below).
 - **Vehicle control** (on by default; switch it off in Settings): A/C (power, temperature, fan, air direction,
   air source, ventilation, compressor, auto, defrost), windows (open/close or any position), sunroof, sunshade,
