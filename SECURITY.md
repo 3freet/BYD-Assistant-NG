@@ -40,10 +40,29 @@ refuses them again, and the dispatch layer refuses a third time. Be clear about 
 the shell user, which the vehicle services accept for **every** device, so these checks are this app's own
 safeguards. A modified build, or any other program using the same ADB access, is not bound by them.
 
+**There are two deliberate, narrow exceptions**, both experimental and both **off until the user switches them on**
+(Settings → Advanced → Experimental features, each behind a confirmation):
+
+- *The exterior speaker switch*: one feature id in the driver-assistance group, the values `0` and `1`, written by a
+  separate helper process that switches it off again by itself if the app stops sending a heartbeat, the
+  connection closes, or after 60 seconds. ([details](docs/byd-internals/exterior-speaker.md))
+- *The drive-mode request*: one feature id in the setting device, with the mode numbers the car's own screen sends
+  (Normal, Eco, Sport, Snow, Sand, Mud, Mountain, Rock, Auto and exit; never wade, warp, custom or traction), only
+  below 80 km/h, followed by a read-back of what the car did. ([details](docs/byd-internals/drive-modes.md))
+
+Neither goes through the command registry, so the model is never offered them as vehicle commands. Each is used
+only in a build that contains the experimental car features (beta and debug builds; not stable releases yet) **and**
+only when the car's framework gives the feature name the id it was confirmed with on the development vehicle — on any
+other car, or on a phone, they are absent. Both were confirmed on a single vehicle; another model may number the
+same names differently, which is what that check is for.
+
 ## Data
 
 - **Voice** is streamed to Google's Gemini API over TLS and is not stored by the app. With *Web search* on, your
   questions also go to Google Search. Google's own terms apply to that data.
+- **Memory** (what you asked the assistant to remember, and the last few exchanges for ten minutes) is stored in the
+  app's private storage on the device, not backed up, and can be read, deleted or cleared in Settings. It is sent
+  to Gemini as part of the instructions of a conversation so the assistant can use it. Each part can be switched off.
 - **The API key** is encrypted with an Android Keystore AES key before it is stored; the key never leaves the
   Keystore. Android backup is switched off for the app (`allowBackup="false"`), so neither the encrypted key nor
   the settings are copied to a cloud backup or to a new device. Cleartext network traffic is permitted only to
@@ -61,5 +80,6 @@ safeguards. A modified build, or any other program using the same ADB access, is
 
 ## Responsible use
 
-Vehicle control is experimental and is used entirely at your own responsibility; see the disclaimer in the app's
-*About* screen. Use it while parked.
+Vehicle control is used entirely at your own responsibility; see the disclaimer in the app's *About* screen. Use
+it while it is safe to do so. The experimental features (exterior speaker, drive modes) are exactly that —
+experimental, tried on one car, and switched on only by you.
