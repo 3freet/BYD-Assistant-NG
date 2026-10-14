@@ -30,6 +30,8 @@ data or from leaked documents**, and contributions should keep it that way (see
 | [research-method.md](research-method.md) | How to find a control and learn what its values mean, with the read-only probes in [`tools/probes`](../../tools/probes) |
 | [findings-and-dead-ends.md](findings-and-dead-ends.md) | Quirks that cost time, and the things that could **not** be done (the horn, the security group) |
 | [vehicle-commands.md](vehicle-commands.md) | Every control the app can operate, generated from the registry the app uses |
+| [exterior-speaker.md](exterior-speaker.md) | Sending sound to the speaker outside the car: the switch, the navi stream, how loudness really works, and why a process holds the switch |
+| [drive-modes.md](drive-modes.md) | How the car's own screen selects Snow, Sand, Mud…, the numbers it sends, the read-back, and what the app checks first |
 
 ## The short version
 
