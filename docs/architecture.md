@@ -11,10 +11,11 @@ A short tour for contributors. For the vehicle side, see [byd-internals](byd-int
 | `gemini/LiveConversationController` | The conversation state machine over the Gemini Live WebSocket |
 | `gemini/GeminiLiveClient` | The wire protocol only: setup, audio frames, tool calls, events |
 | `gemini/ConversationShared` | The system prompt, the tool list, and the dispatcher that routes a function call |
-| `audio/` | Microphone and speaker I/O, end-of-speech detection, talk-over detection |
-| `vehicle/` | The command registry, the safety gate, the helper process, and the read-only queries such as tyre pressure (see byd-internals) |
+| `audio/` | Microphone and speaker I/O, end-of-speech detection, talk-over detection, and the exterior speaker (its switch helper, the navi-stream track and the synthesised sound effects) |
+| `vehicle/` | The command registry, the safety gate, the helper process, the read-only queries such as tyre pressure, and drive-mode switching (see byd-internals) |
+| `memory/` | Short-term and long-term memory: the stores, the prompt text built from them, and the `remember` / `forget_memory` tools |
 | `apps/`, `media/`, `navigation/` | The non-vehicle tools: open an app, media keys, navigation |
-| `ui/` | The screens: home, onboarding, settings, about (Jetpack Compose) |
+| `ui/` | The screens: home, onboarding, settings, about (Jetpack Compose). `ui/theme` is the one palette for the whole app; `ui/settings/SettingsComponents` holds the card/row/switch/dialog pieces the settings pages are built from; `ui/TapSound` gives Compose taps the system tap sound |
 | `util/AppLanguage` | In-app language and layout direction |
 
 ## One conversation
@@ -60,6 +61,41 @@ Read-only questions (`get_tyre_pressure`) travel the same way as `query <id>` to
 of them (`VehicleQuery`) and calls only getters. They are offered under the same switch, since the helper is the
 same ADB-shell power either way.
 
+Vehicle control is **on by default** (it is what the assistant is for); the user can switch it off in Settings.
+
+### The two experimental features
+
+The exterior speaker (`speak_outside`, `play_sound_outside`) and drive-mode switching (`set_drive_mode`) are the only
+things that reach past the denylist, and they do it as two narrow exceptions rather than by loosening it. Each is
+offered to the model only when **all** of these hold, checked in this order:
+
+1. the build has `BuildConfig.EXPERIMENTAL_CAR_FEATURES` (debug and beta; not stable yet);
+2. the car's own framework names the feature with the id it was confirmed with (`CarFeatureIds`, checked again in
+   the helper process before anything is written) — on a phone, or another model, the feature is simply absent;
+3. the user switched it on under Settings → Advanced → Experimental features (`OptInFeatures` holds the defaults,
+   which are off), and vehicle control is on, in a conversation (not a one-shot request).
+
+Hilt supplies them as `Optional<ExteriorSpeaker>` / `Optional<DriveModeSwitch>` (empty when gated off), and the
+controller reads the two switches when a conversation starts. Neither goes through the command registry. The
+exterior speaker has its own helper process because it *holds* a state (the route, with a heartbeat and a time
+limit); the drive-mode request is a single write and runs inside the vehicle helper as `drivemode set <n>`.
+
+### Memory
+
+`memory/` keeps two things in DataStore: *facts* (what the user asked it to remember, at most 20 of 160 characters)
+and the *recent exchanges* (the last three, kept ten minutes). When a conversation starts they are turned into a
+paragraph of the system instructions, and the model gets `remember` / `forget_memory` to change the facts. Each
+half has its own switch; turning short-term memory off also drops what it holds.
+
+## Starting quickly
+
+The time from the button press to "listening" is mostly the connection, so the app does what it can ahead of it:
+after a conversation it leaves a pooled TLS connection to the server (`GeminiLiveClient.preconnect`) and refreshes
+it for about half an hour; the vehicle helper is started once the session is up, and the exterior speaker's helper
+1.5 s after that rather than beside it (two JVMs and a TLS handshake at the same moment were measurably slower). If the
+server has made no sound at all five seconds after the user finished, the turn is given up on instead of leaving
+twelve seconds of silence. The wait after the user stops speaking is a setting (0.4–1.5 s, default 0.8 s).
+
 ## When the connection fails
 
 `ConnectionFailures` classifies what went wrong (no network, key rejected, quota, server refusal, other) from
@@ -77,3 +113,13 @@ languages on purpose (the driver's side).
 
 Strings live in `res/values` and `res/values-ar`; a unit test fails if the two drift apart. Vehicle command names
 shown on the banner are in the registry (`label`, `labelAr`).
+
+## The look
+
+One fixed palette (`ui/theme/Theme.kt`: a near-black page, slightly lighter rounded surfaces, quiet tonal buttons and
+one teal accent; dark and light variants, no dynamic colour) is the `AppTheme` of the whole app. The settings pages
+are built from `SettingsPage` (two columns on the head unit, one on a narrow screen), `SettingsSection { row { … } }`
+(a small label over a card of rows) and the row types `SettingRow`, `SwitchSetting` and `ChoiceSetting` (a value
+button that opens a choice dialog). Compose buttons do not play the system tap sound the way Views do, so the
+activity root and `AppAlertDialog` (a dialog is a window of its own) carry `Modifier.tapSound()`, which plays it
+for a press that something took and that ended as a click.
