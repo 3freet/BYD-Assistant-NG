@@ -238,18 +238,17 @@
   {
     "id": "audio.volume",
     "domain": "AUDIO",
-    "displayName": "Volume",
+    "displayName": "Volume of the car's sound (the media volume), 0 (silent) to 39 (loudest)",
     "label": "Volume",
     "labelAr": "مستوى الصوت",
-    "deviceType": 1002,
-    "featureId": 1309020176,
     "invocation": {
-      "type": "genericFeatureSet"
+      "type": "streamVolume",
+      "stream": 3
     },
     "parameter": {
       "type": "range",
       "min": 0,
-      "max": 30
+      "max": 39
     }
   },
   {

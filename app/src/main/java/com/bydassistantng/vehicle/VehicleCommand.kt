@@ -125,4 +125,12 @@ sealed interface VehicleInvocation {
         val successCodes: Set<Int>,
         val failureMessages: Map<Int, String> = emptyMap(),
     ) : VehicleInvocation
+
+    /**
+     * An Android audio stream's volume index, the way the car's own volume control sets it (`AudioManager`,
+     * stream 3 is media). The car's volume *is* this stream (0..39 on the car this was checked on); the
+     * legacy `AUDIO_VOLUME_SET` feature is accepted by the HAL and changes nothing. Confirmed by reading the
+     * stream back.
+     */
+    data class AudioStreamVolume(val stream: Int) : VehicleInvocation
 }

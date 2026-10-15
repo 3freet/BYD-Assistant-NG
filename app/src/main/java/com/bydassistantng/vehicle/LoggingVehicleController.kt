@@ -22,6 +22,8 @@ object LoggingVehicleController : VehicleController {
                 "${invocation.interfaceDescriptor} (sub=${invocation.subServiceKey}, area=${invocation.area}) id=0x${command.featureId?.toString(16)}"
             is VehicleInvocation.BinderCommand ->
                 "${invocation.serviceName} command ${invocation.commandCode}"
+            is VehicleInvocation.AudioStreamVolume ->
+                "audio stream ${invocation.stream} volume"
         }
         Log.i(TAG, "STUB dispatch: ${command.id} ($target) <- $value")
         return VehicleDispatchResult.Success(note = "stub: no HAL call made")

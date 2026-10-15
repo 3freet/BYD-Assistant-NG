@@ -131,6 +131,8 @@ internal data class InvocationDto(
     val commandCode: Int? = null,
     val successCodes: List<Int>? = null,
     val failureMessages: Map<String, String>? = null,
+    // streamVolume
+    val stream: Int? = null,
 )
 
 @Serializable
@@ -214,6 +216,9 @@ private fun InvocationDto.toVehicleInvocation(commandId: String): VehicleInvocat
         failureMessages = failureMessages.orEmpty().mapKeys { (code, _) ->
             code.toIntOrNull() ?: error("binderCommand failure code '$code' for '$commandId' is not an integer")
         },
+    )
+    "streamVolume" -> VehicleInvocation.AudioStreamVolume(
+        stream = stream ?: error("streamVolume invocation for '$commandId' missing stream"),
     )
     else -> error("Unknown invocation type '$type' for command '$commandId' — refusing to load")
 }

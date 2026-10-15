@@ -72,6 +72,12 @@ visible either. Classic / tech mode (8, 9), day / night (6, 7) and the theme set
 holds commands that blank the cluster (1, "disconnect the cluster video") or run a stress test (41), so do not
 send numbers from it at random.
 
+**The volume control that "worked" did nothing.** `AUDIO_VOLUME_SET` (the typed `setVolume`) returns 0 for any value
+and changes nothing on this car, and with no state to read back the app reported success. The car's volume is
+Android's media stream (`AudioManager` stream 3, 0..39; `cmd media_session volume --stream 3 --get/--set`), and
+`AUDIO_MASTER_VOLUME_STATE` and `AUDIO_VOLUME` follow it. The registry entry now sets the stream and reads it
+back. Any control that is only "accepted by the HAL" with no read-back is unproven in the same way.
+
 **Large vendor apps are not a source of ids.** One app's 467 MB package was assets; its dex held no raw ids.
 
 **Polling cannot see short pulses** (see [research-method.md](research-method.md#pitfalls)).

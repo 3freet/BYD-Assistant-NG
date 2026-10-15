@@ -209,6 +209,14 @@ class VehicleCommandRegistryTest {
     }
 
     @Test
+    fun volumeIsTheMediaStreamNotTheLegacyHalFeature() {
+        // AUDIO_VOLUME_SET returned 0 and changed nothing; the car's volume is AudioManager stream 3, 0..39 here.
+        val volume = command("audio.volume")
+        assertEquals(VehicleInvocation.AudioStreamVolume(3), volume.invocation)
+        assertEquals(VehicleParameter.Range(0, 39), volume.parameter)
+    }
+
+    @Test
     fun headrestSoundAndSoundStyleMatchWhatTheScreenWrote() {
         // Recorded from the Devialet dialogs: the screen wrote 0x9C100035 (2 surround, 3 interactive, 4 exclusive)
         // and 0x9B100018 (1..6); 1 (off) was written once by hand and read back.

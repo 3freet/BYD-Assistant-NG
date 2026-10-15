@@ -1,6 +1,7 @@
 package com.bydassistantng.vehicle
 
 import android.content.Context
+import android.media.AudioManager
 import android.os.IBinder
 import android.os.Parcel
 import android.util.Log
@@ -40,6 +41,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
                 VehicleInvocation.GenericFeatureSet -> tryGenericSet(command, value)
                 is VehicleInvocation.AcBinderProperty -> tryAcBinderProperty(invocation, command, value)
                 is VehicleInvocation.BinderCommand -> tryBinderCommand(invocation, command, value)
+                is VehicleInvocation.AudioStreamVolume -> trySetStreamVolume(invocation, value)
             }
         }
 
@@ -304,6 +306,32 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, e.message)
         } catch (e: Throwable) {
             Log.e(TAG, "Unexpected error dispatching ${command.id} via BinderCommand", e)
+            VehicleDispatchResult.Failure(VehicleDispatchError.UNKNOWN, e.message)
+        }
+    }
+
+    /**
+     * The car's volume is Android's media stream: set its index and read it back. The legacy HAL feature for
+     * it (`AUDIO_VOLUME_SET`) returned 0 and did nothing, which is how this was found.
+     */
+    private suspend fun trySetStreamVolume(invocation: VehicleInvocation.AudioStreamVolume, value: Int): VehicleDispatchResult {
+        return try {
+            val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                ?: return VehicleDispatchResult.Failure(VehicleDispatchError.CLASS_NOT_FOUND, "No audio service")
+            val max = audio.getStreamMaxVolume(invocation.stream)
+            val target = value.coerceIn(0, max)
+            audio.setStreamVolume(invocation.stream, target, 0)
+            var now = -1
+            repeat(STATE_VERIFY_ATTEMPTS) {
+                delay(STATE_VERIFY_INTERVAL_MS)
+                now = audio.getStreamVolume(invocation.stream)
+                if (now == target) return VehicleDispatchResult.Success("confirmed: the volume is now $now of $max")
+            }
+            VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, "The car did not apply it: asked for $target but the volume is $now of $max")
+        } catch (e: SecurityException) {
+            VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, e.message)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Unexpected error setting the stream volume", e)
             VehicleDispatchResult.Failure(VehicleDispatchError.UNKNOWN, e.message)
         }
     }
