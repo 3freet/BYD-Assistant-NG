@@ -129,6 +129,15 @@
     <string name="wheel_on">On. %1$s starts and stops listening.</string>
     <string name="wheel_use_different">Use a different button</string>
     <string name="wheel_back_to_mic">Back to the mic button</string>
+    <string name="car_voice_title">BYD voice assistant</string>
+    <string name="car_voice_on">On. It also answers the steering-wheel mic button, so both assistants can start at once. Turn it off to leave the button to this app.</string>
+    <string name="car_voice_off">Off. The steering-wheel mic button is left to this app. You can turn it back on here.</string>
+    <string name="car_voice_turn_off">Turn off</string>
+    <string name="car_voice_turn_on">Turn back on</string>
+    <string name="car_voice_working">Working…</string>
+    <string name="car_voice_confirm_title">Turn off BYD\'s voice assistant?</string>
+    <string name="car_voice_confirm_body">This switches off the car\'s own voice assistant, so it no longer answers the steering-wheel mic button. Its own voice commands stop working too, until you turn it back on here. Nothing is uninstalled.</string>
+    <string name="car_voice_failed">Couldn\'t change it. That needs ADB debugging switched on for this head unit.</string>
     <string name="wheel_conflict_note">If another app (a button mapper, for instance) already uses this button, remove its mapping there — both would otherwise react.</string>
     <string name="wheel_failure_hint">Couldn\'t turn it on automatically — that needs ADB debugging switched on for this head unit. Or, once from a computer: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS, then try again.</string>
     <string name="end_wait_title">Wait after you stop speaking</string>

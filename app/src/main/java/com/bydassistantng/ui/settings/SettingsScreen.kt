@@ -38,7 +38,9 @@ import com.bydassistantng.memory.MemoryLimits
 import com.bydassistantng.ui.AiStudioKeyLink
 import com.bydassistantng.ui.findActivity
 import com.bydassistantng.ui.label
+import com.bydassistantng.ui.rememberCarVoiceAssistantSetup
 import com.bydassistantng.ui.rememberWheelServiceSetup
+import com.bydassistantng.util.CarVoiceAssistant
 import com.bydassistantng.update.UpdateState
 import com.bydassistantng.util.AppLanguageChoice
 import com.bydassistantng.util.DilinkAutoStart
@@ -69,12 +71,14 @@ fun SettingsScreen(
     val capturingKey by viewModel.capturingKey.collectAsState()
     val keyMessage by viewModel.keyMessage.collectAsState()
     val wheelSetup = rememberWheelServiceSetup()
+    val carVoice = rememberCarVoiceAssistantSetup()
     val hasApiKey by viewModel.hasApiKey.collectAsState()
     val apiKeyMessage by viewModel.apiKeyMessage.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val autoStartVisitedAt by viewModel.autoStartVisitedAt.collectAsState()
 
     var showMemories by remember { mutableStateOf(false) }
+    var showCarVoiceConfirm by remember { mutableStateOf(false) }
     var showVehicleControlWarning by remember { mutableStateOf(false) }
     var showAppLanguageChoice by remember { mutableStateOf(false) }
     var showLanguageChoice by remember { mutableStateOf(false) }
@@ -82,6 +86,20 @@ fun SettingsScreen(
     var showVoiceChoice by remember { mutableStateOf(false) }
     var showApiKey by remember { mutableStateOf(false) }
 
+    if (showCarVoiceConfirm) {
+        AppAlertDialog(
+            onDismissRequest = { showCarVoiceConfirm = false },
+            title = { Text(stringResource(R.string.car_voice_confirm_title)) },
+            text = { Text(stringResource(R.string.car_voice_confirm_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCarVoiceConfirm = false
+                    carVoice.set(on = false)
+                }) { Text(stringResource(R.string.car_voice_turn_off)) }
+            },
+            dismissButton = { TextButton(onClick = { showCarVoiceConfirm = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
     if (showVehicleControlWarning) {
         AppAlertDialog(
             onDismissRequest = { showVehicleControlWarning = false },
@@ -340,6 +358,36 @@ fun SettingsScreen(
                             )
                         },
                     )
+                }
+                // The head unit's own assistant answers the same button, so both can start at once: the user can
+                // switch it off here (and back on). Shown only on a unit that has it.
+                if (carVoice.state != CarVoiceAssistant.State.ABSENT) {
+                    row {
+                        val on = carVoice.state == CarVoiceAssistant.State.ON
+                        SettingRow(
+                            title = stringResource(R.string.car_voice_title),
+                            subtitle = stringResource(if (on) R.string.car_voice_on else R.string.car_voice_off),
+                            trailing = {
+                                SettingButton(
+                                    label = stringResource(
+                                        when {
+                                            carVoice.busy -> R.string.car_voice_working
+                                            on -> R.string.car_voice_turn_off
+                                            else -> R.string.car_voice_turn_on
+                                        },
+                                    ),
+                                    primary = on,
+                                    enabled = !carVoice.busy,
+                                    onClick = { if (on) showCarVoiceConfirm = true else carVoice.set(on = true) },
+                                )
+                            },
+                            below = {
+                                if (carVoice.failed) {
+                                    Text(stringResource(R.string.car_voice_failed), fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+                                }
+                            },
+                        )
+                    }
                 }
                 // Only meaningful on BYD DiLink firmware, whose own whitelist decides whether this app
                 // may start itself after a reboot — see DilinkAutoStart.

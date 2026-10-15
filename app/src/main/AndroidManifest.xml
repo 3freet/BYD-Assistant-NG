@@ -52,6 +52,8 @@
         <intent>
             <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
         </intent>
+        <!-- The head unit's own voice assistant, to show whether it is on and let the user switch it off. -->
+        <package android:name="com.byd.autovoice" />
         <!-- Every app with a launcher icon, so "open <app>" can find it by name. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />

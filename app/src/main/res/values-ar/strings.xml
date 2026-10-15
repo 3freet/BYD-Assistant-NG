@@ -128,6 +128,15 @@
     <string name="wheel_on">مفعّل. %1$s يبدأ الاستماع ويوقفه.</string>
     <string name="wheel_use_different">استخدام زر آخر</string>
     <string name="wheel_back_to_mic">العودة إلى زر الميكروفون</string>
+    <string name="car_voice_title">المساعد الصوتي من BYD</string>
+    <string name="car_voice_on">يعمل. وهو يستجيب أيضًا لزر الميكروفون في المقود، فقد يبدأ المساعدان معًا. أوقفه ليبقى الزر لهذا التطبيق.</string>
+    <string name="car_voice_off">متوقف. زر الميكروفون في المقود متروك لهذا التطبيق. يمكنك إعادة تشغيله من هنا.</string>
+    <string name="car_voice_turn_off">إيقاف</string>
+    <string name="car_voice_turn_on">إعادة التشغيل</string>
+    <string name="car_voice_working">جارٍ التنفيذ…</string>
+    <string name="car_voice_confirm_title">إيقاف المساعد الصوتي من BYD؟</string>
+    <string name="car_voice_confirm_body">سيُوقَف المساعد الصوتي الخاص بالسيارة فلا يستجيب بعدها لزر الميكروفون في المقود، وتتوقف أوامره الصوتية أيضًا إلى أن تعيد تشغيله من هنا. لا يُحذف شيء.</string>
+    <string name="car_voice_failed">تعذّر التغيير. يحتاج ذلك إلى تفعيل تصحيح ADB على هذه الوحدة.</string>
     <string name="wheel_conflict_note">إذا كان تطبيق آخر (مثل تطبيق لتخصيص الأزرار) يستخدم هذا الزر، فأزل تعيينه هناك — وإلا سيستجيب الاثنان معاً.</string>
     <string name="wheel_failure_hint">تعذّر التشغيل تلقائياً — يتطلب ذلك تفعيل تصحيح ADB في هذه الوحدة. أو نفّذ مرة واحدة من حاسوب: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS ثم حاول مجدداً.</string>
     <string name="end_wait_title">مدة الانتظار بعد أن تتوقف عن الكلام</string>
