@@ -291,4 +291,30 @@ class VehicleCommandRegistryTest {
         assertEquals(3, VehicleCommandRegistry.resolveValue(seat, "high"))
         assertNull(VehicleCommandRegistry.resolveValue(seat, "scorching"))
     }
+
+    @Test
+    fun windowPositionsAreSpokenAsPercentClosedAndSentAsPercentOpen() {
+        // "Lower it to 70" means 70 closed, and "raise it to 100" means closed; the car's signal is percent open.
+        for (id in listOf("window.driver.position", "window.passenger.position", "window.rearLeft.position", "window.rearRight.position")) {
+            val c = command(id)
+            assertTrue("$id is inverted", c.inverted)
+            assertEquals(VehicleParameter.Range(0, 100, "%"), c.parameter)
+            assertEquals("$id 70 closed is 30 open", 30, c.signalFor(70))
+            assertEquals("$id 100 closed is 0 open", 0, c.signalFor(100))
+            assertEquals("$id 0 closed is fully open", 100, c.signalFor(0))
+            assertEquals("$id 50", 50, c.signalFor(50))
+            // What the car reports comes back in the user's terms.
+            assertEquals(70, c.valueFor(30))
+            assertEquals(100, c.valueFor(0))
+            assertTrue("$id says closed", c.displayName.contains("closed"))
+        }
+    }
+
+    @Test
+    fun otherOffsetsStillAddAndComeBackOff() {
+        val cool = command("fridge.cool.temperature")
+        assertEquals(19 + 3, cool.signalFor(3))
+        assertEquals(3, cool.valueFor(22))
+        assertTrue(VehicleCommandRegistry.known.filter { it.inverted }.all { it.id.startsWith("window.") && it.id.endsWith(".position") })
+    }
 }

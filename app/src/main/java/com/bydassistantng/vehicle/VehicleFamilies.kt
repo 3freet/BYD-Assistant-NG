@@ -31,8 +31,9 @@ sealed interface CommandLookup {
 /** One short line of what a family is, for the model; a family without an entry is described by its name. */
 private val familyHints: Map<String, String> = mapOf(
     "ac" to "The car's air conditioner.",
-    "window" to "The car's windows. A setting named only after the window acts on it; one ending in .position moves it " +
-        "to a percent open.",
+    "window" to "The car's windows. Raise or up means toward closed; lower or down means toward open. A setting named " +
+        "only after the window acts on it (open, close, stop, half, breath); one ending in .position moves it to a " +
+        "percent closed (\"raise it to 100\" is closed, \"lower it to 70\" is 70 closed).",
     "sunroof" to "The sunroof: its state, or a percent open.",
     "sunshade" to "The sunroof's sunshade.",
     "audio" to "The car's sound system: volume, mute, and the Devialet sound options.",

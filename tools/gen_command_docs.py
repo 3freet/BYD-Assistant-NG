@@ -47,6 +47,10 @@ NOTES = {
     "ac.frontDefrost": "On forces fan 7, face/defrost vents and outside air; off falls back to auto.",
     "ac.airSource": "0 = outside (fresh) air, 1 = recirculate.",
     "ac.windMode": "Values 1–5 are as observed; the car also reports 7 for a mode not covered here.",
+    "window.driver.position": "Spoken as a percent *closed* (100 = raised all the way); the car counts percent open, so the app sends 100 − value and reports values back the same way.",
+    "window.passenger.position": "Spoken as a percent *closed* (100 = raised all the way); the car counts percent open, so the app sends 100 − value and reports values back the same way.",
+    "window.rearLeft.position": "Spoken as a percent *closed* (100 = raised all the way); the car counts percent open, so the app sends 100 − value and reports values back the same way.",
+    "window.rearRight.position": "Spoken as a percent *closed* (100 = raised all the way); the car counts percent open, so the app sends 100 − value and reports values back the same way.",
 }
 
 
@@ -62,6 +66,8 @@ def values(c):
         return ", ".join(f"`{k}`={v}" for k, v in p["options"].items())
     unit = f" {p['unit']}" if p.get("unit") else ""
     shown = f"{p['min']}…{p['max']}{unit}"
+    if c.get("inverted"):
+        return shown + f" (signal = {c['valueOffset']} − value)"
     return shown + (f" (signal = value {c['valueOffset']:+d})" if c.get("valueOffset") else "")
 
 

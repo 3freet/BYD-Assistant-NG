@@ -82,14 +82,14 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
                 VehicleDispatchError.CLASS_NOT_FOUND, "No usable instance for $className"
             )
             val paramTypes = invocation.paramTypes.map { intClassFor(it) }.toTypedArray()
-            val args = invocation.argsTemplate.map { it ?: (value + command.valueOffset) }.toTypedArray()
+            val args = invocation.argsTemplate.map { it ?: command.signalFor(value) }.toTypedArray()
 
             val method = findMethod(instance.javaClass, invocation.methodName, *paramTypes)
             val accepted = toResult(method.invoke(instance, *args))
             val deviceType = command.deviceType
             val stateId = command.stateFeatureId
             if (accepted is VehicleDispatchResult.Success && deviceType != null && stateId != null) {
-                verifyGenericState(instance, command, deviceType, stateId, value + command.stateOffset, before = null, offset = 0)
+                verifyGenericState(instance, command, deviceType, stateId, value + command.stateOffset, before = null) { it }
             } else {
                 accepted
             }
@@ -140,7 +140,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
                     return VehicleDispatchResult.Failure(VehicleDispatchError.PRECONDITION_NOT_MET, requirement.message)
                 }
             }
-            val expectedState = value + command.valueOffset
+            val expectedState = command.signalFor(value)
             val override = command.overrides.firstOrNull { it.whenValue == value }
             val controlId = override?.featureId ?: featureId
             val sent = override?.sendValue ?: expectedState
@@ -149,7 +149,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             val method = findMethod(instance.javaClass, "set", Int::class.java, IntArray::class.java, IntArray::class.java)
             val accepted = toResult(method.invoke(instance, deviceType, intArrayOf(controlId), intArrayOf(sent)))
             if (accepted is VehicleDispatchResult.Success && stateId != null) {
-                verifyGenericState(instance, command, deviceType, stateId, expectedState, before, command.valueOffset)
+                verifyGenericState(instance, command, deviceType, stateId, expectedState, before) { command.valueFor(it) }
             } else {
                 accepted
             }
@@ -172,7 +172,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
     }
 
     /** Polls briefly: the car takes a moment to report a new value after accepting it. The user is
-     * told values as their screen shows them (the command's offset taken back off). For a
+     * told values as their screen shows them ([toValue] takes the command's offset, or inversion, back off). For a
      * [VehicleCommand.gradual] state, [before] is the reading at the time of the set, and "has set off
      * toward the target" counts as success too. */
     private suspend fun verifyGenericState(
@@ -182,7 +182,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         stateId: Int,
         expected: Int,
         before: Int?,
-        offset: Int,
+        toValue: (Int) -> Int,
     ): VehicleDispatchResult {
         var last: Int? = null
         repeat(STATE_VERIFY_ATTEMPTS) {
@@ -191,10 +191,10 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             last = now
             if (now != null) {
                 if (kotlin.math.abs(now - expected) <= command.stateTolerance) {
-                    return VehicleDispatchResult.Success("confirmed: the car now reports ${now - offset}")
+                    return VehicleDispatchResult.Success("confirmed: the car now reports ${toValue(now)}")
                 }
                 if (command.gradual && before != null && now != before && (now - before) * (expected - before) > 0) {
-                    return VehicleDispatchResult.Success("under way: now at ${now - offset}, heading for ${expected - offset}")
+                    return VehicleDispatchResult.Success("under way: now at ${toValue(now)}, heading for ${toValue(expected)}")
                 }
             }
         }
@@ -203,10 +203,10 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         return when {
             actual == null -> VehicleDispatchResult.Success("sent, but the car wouldn't report a value to confirm it")
             command.gradual && actual == before ->
-                VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, "The car accepted it but nothing moved: still at ${actual - offset}")
+                VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, "The car accepted it but nothing moved: still at ${toValue(actual)}")
             else -> VehicleDispatchResult.Failure(
                 VehicleDispatchError.INVOCATION_FAILED,
-                "The car did not apply it: asked for ${expected - offset} but it reports ${actual - offset}",
+                "The car did not apply it: asked for ${toValue(expected)} but it reports ${toValue(actual)}",
             )
         }
     }

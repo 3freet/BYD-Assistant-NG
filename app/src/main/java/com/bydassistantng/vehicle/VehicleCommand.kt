@@ -29,6 +29,9 @@ data class VehicleCommand(
      * signal isn't what the car's own screen shows — e.g. the fridge's cooling set-point reads 13..25
      * for the −6..6 °C on its screen. The value users and the model deal in is always the screen one. */
     val valueOffset: Int = 0,
+    /** The value users and the model deal in runs the other way round from the car's signal: the signal is
+     * [valueOffset] minus the value (a window is spoken of as a percent *closed*, the car counts percent open). */
+    val inverted: Boolean = false,
     /** For [VehicleInvocation.NamedMethod] with a [stateFeatureId]: added to the value to get what the
      * state should read once the method took effect (the method's argument is not always the number the
      * state holds — the ambient brightness argument is 0..5 while the state is 1..6). */
@@ -45,6 +48,11 @@ data class VehicleCommand(
      * write, not an intensity of 0). The read-back still expects the value's normal state. */
     val overrides: List<ValueOverride> = emptyList(),
 )
+
+/** What the car's signal is for the value a user speaks of, and the other way round. */
+fun VehicleCommand.signalFor(value: Int): Int = if (inverted) valueOffset - value else value + valueOffset
+
+fun VehicleCommand.valueFor(signal: Int): Int = if (inverted) valueOffset - signal else signal - valueOffset
 
 /**
  * Whether the command reaches the car's own systems through the vehicle helper (the ADB shell identity). The one

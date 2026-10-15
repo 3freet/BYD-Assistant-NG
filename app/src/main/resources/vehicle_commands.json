@@ -1061,7 +1061,7 @@
   {
     "id": "window.driver.position",
     "domain": "BODYWORK",
-    "displayName": "Driver window position, in percent open (0 = closed, 100 = fully open)",
+    "displayName": "Driver window as a percent closed: 100 = fully closed (raised all the way), 0 = fully open (lowered all the way), 50 = half",
     "label": "Driver window position",
     "labelAr": "وضع نافذة السائق",
     "deviceType": 1001,
@@ -1077,12 +1077,14 @@
     },
     "stateFeatureId": 947912728,
     "stateTolerance": 3,
-    "gradual": true
+    "gradual": true,
+    "valueOffset": 100,
+    "inverted": true
   },
   {
     "id": "window.passenger.position",
     "domain": "BODYWORK",
-    "displayName": "Passenger window position, in percent open (0 = closed, 100 = fully open)",
+    "displayName": "Passenger window as a percent closed: 100 = fully closed (raised all the way), 0 = fully open (lowered all the way), 50 = half",
     "label": "Passenger window position",
     "labelAr": "وضع نافذة الراكب",
     "deviceType": 1001,
@@ -1098,12 +1100,14 @@
     },
     "stateFeatureId": 1267728400,
     "stateTolerance": 3,
-    "gradual": true
+    "gradual": true,
+    "valueOffset": 100,
+    "inverted": true
   },
   {
     "id": "window.rearLeft.position",
     "domain": "BODYWORK",
-    "displayName": "Rear-left window position, in percent open (0 = closed, 100 = fully open)",
+    "displayName": "Rear-left window as a percent closed: 100 = fully closed (raised all the way), 0 = fully open (lowered all the way), 50 = half",
     "label": "Rear-left window position",
     "labelAr": "وضع النافذة الخلفية اليسرى",
     "deviceType": 1001,
@@ -1119,12 +1123,14 @@
     },
     "stateFeatureId": 947912736,
     "stateTolerance": 3,
-    "gradual": true
+    "gradual": true,
+    "valueOffset": 100,
+    "inverted": true
   },
   {
     "id": "window.rearRight.position",
     "domain": "BODYWORK",
-    "displayName": "Rear-right window position, in percent open (0 = closed, 100 = fully open)",
+    "displayName": "Rear-right window as a percent closed: 100 = fully closed (raised all the way), 0 = fully open (lowered all the way), 50 = half",
     "label": "Rear-right window position",
     "labelAr": "وضع النافذة الخلفية اليمنى",
     "deviceType": 1001,
@@ -1140,7 +1146,9 @@
     },
     "stateFeatureId": 947912752,
     "stateTolerance": 3,
-    "gradual": true
+    "gradual": true,
+    "valueOffset": 100,
+    "inverted": true
   },
   {
     "id": "seat.driver.massage",
