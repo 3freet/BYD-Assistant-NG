@@ -15,9 +15,9 @@ import com.bydassistantng.vehicle.VehicleDispatchResult
  * runs a second Android user (999) with its own apps; apps of the main user (0) can be put on it too.
  *
  *     fse screen off|on            the backlight (the car's own power button on that screen does the same)
- *     fse open <user> <package> [<https url>]
+ *     fse open <user> <package> [<https url>]   (switches the backlight on first)
  *     fse close [<package>]        stops the apps that are open on it (never the system's own)
- *     fse key home|back
+ *     fse key home|back            (switches the backlight on first)
  *     fse status
  *
  * Every answer is one line of `key=value` words; [VehicleDispatchResult.Failure] carries a sentence.
@@ -47,27 +47,35 @@ internal object PassengerScreenCommand {
         val display = displayId(context)
         return when (args.firstOrNull()) {
             "screen" -> screen(context, display, args.getOrNull(1))
-            "open" -> open(display, args.drop(1))
+            "open" -> open(context, display, args.drop(1))
             "close" -> close(display, args.getOrNull(1))
-            "key" -> key(display, args.getOrNull(1))
+            "key" -> key(context, display, args.getOrNull(1))
             "status" -> status(display)
             else -> invalid("expected: $NAME screen|open|close|key|status")
         }
     }
 
     private fun screen(context: Context, display: Int, state: String?): VehicleDispatchResult {
-        val method = when (state) {
-            "off" -> "turnBacklightOff"
-            "on" -> "turnBacklightOn"
+        when (state) {
+            "off" -> backlight(context, display, on = false)
+            "on" -> backlight(context, display, on = true)
             else -> return invalid("expected: $NAME screen off|on")
         }
-        val manager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        manager.javaClass.getMethod(method, Int::class.javaPrimitiveType, Long::class.javaPrimitiveType)
-            .invoke(manager, display, SystemClock.uptimeMillis())
         return VehicleDispatchResult.Success("screen=$state display=$display")
     }
 
-    private fun open(display: Int, args: List<String>): VehicleDispatchResult {
+    /**
+     * The backlight of [display]: the same call the screen's own power icon makes. An app put on a screen whose
+     * backlight is off is opened in the dark, so everything that shows something switches it on first.
+     */
+    private fun backlight(context: Context, display: Int, on: Boolean) {
+        val manager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        manager.javaClass
+            .getMethod(if (on) "turnBacklightOn" else "turnBacklightOff", Int::class.javaPrimitiveType, Long::class.javaPrimitiveType)
+            .invoke(manager, display, SystemClock.uptimeMillis())
+    }
+
+    private fun open(context: Context, display: Int, args: List<String>): VehicleDispatchResult {
         val user = args.getOrNull(0)?.toIntOrNull()
         val pkg = args.getOrNull(1)
         val url = args.getOrNull(2)
@@ -75,6 +83,7 @@ internal object PassengerScreenCommand {
         if (pkg == null || !PassengerScreenParsing.isSafePackage(pkg)) return invalid("not a package name")
         if (url != null && !PassengerScreenParsing.isSafeUrl(url)) return invalid("not a plain https link")
 
+        backlight(context, display, on = true)
         val start = mutableListOf("/system/bin/am", "start", "--user", user.toString(), "--display", display.toString())
         if (url != null) {
             start += listOf("-a", "android.intent.action.VIEW", "-d", url, "-p", pkg)
@@ -100,7 +109,7 @@ internal object PassengerScreenCommand {
             focus = waitForFocus(display, pkg, SHOW_WAIT_MS)
         }
         return if (focus != null) {
-            VehicleDispatchResult.Success("opened=$pkg user=${focus.user} display=$display")
+            VehicleDispatchResult.Success("opened=$pkg user=${focus.user} display=$display screen=on")
         } else {
             VehicleDispatchResult.Failure(
                 VehicleDispatchError.INVOCATION_FAILED,
@@ -136,14 +145,15 @@ internal object PassengerScreenCommand {
         return VehicleDispatchResult.Success("closed=${closed.joinToString(",")} kept=${kept.joinToString(",")}")
     }
 
-    private fun key(display: Int, name: String?): VehicleDispatchResult {
+    private fun key(context: Context, display: Int, name: String?): VehicleDispatchResult {
         val code = when (name) {
             "home" -> "KEYCODE_HOME"
             "back" -> "KEYCODE_BACK"
             else -> return invalid("expected: $NAME key home|back")
         }
+        backlight(context, display, on = true)
         exec(listOf("/system/bin/input", "-d", display.toString(), "keyevent", code))
-        return VehicleDispatchResult.Success("key=$name display=$display")
+        return VehicleDispatchResult.Success("key=$name display=$display screen=on")
     }
 
     private fun status(display: Int): VehicleDispatchResult {

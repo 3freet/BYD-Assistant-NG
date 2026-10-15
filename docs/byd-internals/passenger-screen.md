@@ -35,10 +35,10 @@ confirmed on the car:
 
 | Action | How |
 | --- | --- |
-| Open an app | `am start --user <0\|999> --display 2 -n <package>/<launcher activity>`; apps of the main user (YouTube, …) run there too, the passenger user's own apps (video, karaoke, photos, passenger settings…) with `--user 999` |
+| Open an app | the backlight is switched on first (an app opened on a screen that was turned off came up in the dark), then `am start --user <0\|999> --display 2 -n <package>/<launcher activity>`; apps of the main user (YouTube, …) run there too, the passenger user's own apps (video, karaoke, photos, passenger settings…) with `--user 999` |
 | Open YouTube on a search | the link handler always starts YouTube's screen on the main display, so the link is opened and the task is then moved: `am display move-stack <root task id> 2` (`--activity-clear-task` is the last resort) |
 | Close | `am force-stop --user <u> <package>` for each app that has an activity on display 2 (never the system's own; this app is sent home instead) |
-| Home / back | `input -d 2 keyevent KEYCODE_HOME` / `KEYCODE_BACK` |
+| Home / back | the backlight is switched on first, then `input -d 2 keyevent KEYCODE_HOME` / `KEYCODE_BACK` |
 | Screen off / on | `DisplayManager.turnBacklightOff(2, uptime)` / `turnBacklightOn(2, uptime)`: what the power icon on the screen's own navigation strip does; touching the screen wakes it |
 | Status | the focused window of display 2 (`dumpsys window displays`) and its activities (`dumpsys activity activities`) |
 
