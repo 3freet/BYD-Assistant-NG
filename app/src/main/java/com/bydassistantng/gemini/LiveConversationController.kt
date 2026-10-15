@@ -581,6 +581,7 @@ class LiveConversationController @Inject constructor(
                         scope.launch {
                             if (isListening) {
                                 AppLogger.log(TAG, "User stopped speaking — ending the turn (${endpointer.summary()}, sent $chunksThisTurn audio chunks)")
+                                VehicleFunctionDispatcher.newUserTurn()
                                 stopListening()
                             }
                         }
@@ -1011,10 +1012,12 @@ class LiveConversationController @Inject constructor(
                 val responses = event.calls.map { call ->
                     AppLogger.log(TAG, "Tool call: ${call.name}(${call.args})")
                     if (shortTermForSession && call.name != RememberTool.FUNCTION_NAME && call.name != ForgetMemoryTool.FUNCTION_NAME) {
-                        pendingActions += RecentExchanges.describeCall(
+                        val action = RecentExchanges.describeCall(
                             call.name,
                             call.args.mapValues { (_, value) -> (value as? JsonPrimitive)?.content ?: value.toString() },
                         )
+                        // A model that repeats a call is not a longer list of things done.
+                        if (pendingActions.lastOrNull() != action) pendingActions += action
                     }
                     val result = if (call.name == END_CONVERSATION_FUNCTION) {
                         // Ends once the goodbye the model is about to say has been heard.

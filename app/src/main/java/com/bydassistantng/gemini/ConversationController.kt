@@ -78,6 +78,7 @@ class ConversationController @Inject constructor(
 
         mutex.withLock {
             AppLogger.log(TAG, "[turn $turnId] acquired mutex after ${SystemClock.elapsedRealtime() - turnStartMs}ms")
+            VehicleFunctionDispatcher.newUserTurn()
             onStatus(TurnStatus.Thinking)
 
             val apiKey = secureCredentials.getApiKey()

@@ -99,6 +99,8 @@ class DebugToolReceiver : BroadcastReceiver() {
                         // Anything else goes through the dispatcher exactly as a model's call does. "carlink" says whether
                         // vehicle control is armed (default true), to check what still works without it.
                         val carLink = intent.getBooleanExtra("carlink", true)
+                        // "newturn" says the user asked something new, which a repeat of the last command is not.
+                        if (intent.getBooleanExtra("newturn", false)) VehicleFunctionDispatcher.newUserTurn()
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
                         runBlocking { VehicleFunctionDispatcher.dispatch(call, carLink, controller, app) { } }
                     }

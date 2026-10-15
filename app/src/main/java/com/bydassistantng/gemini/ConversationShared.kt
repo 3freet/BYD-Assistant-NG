@@ -25,6 +25,7 @@ import com.bydassistantng.vehicle.InAppVehicleController
 import com.bydassistantng.vehicle.ReadCarTool
 import com.bydassistantng.vehicle.needsCarLink
 import com.bydassistantng.vehicle.SetDriveModeTool
+import com.bydassistantng.vehicle.CommandAnswers
 import com.bydassistantng.vehicle.CommandLookup
 import com.bydassistantng.vehicle.VehicleCommandRegistry
 import com.bydassistantng.vehicle.valuesText
@@ -32,6 +33,7 @@ import com.bydassistantng.vehicle.VehicleController
 import com.bydassistantng.vehicle.VehicleDispatchError
 import com.bydassistantng.vehicle.VehicleDispatchResult
 import com.bydassistantng.vehicle.VehicleQuery
+import com.bydassistantng.vehicle.VehicleRepeatGuard
 import com.bydassistantng.vehicle.labelFor
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -106,6 +108,12 @@ fun assistantTools(
  * protocol. Navigation is handled here; everything else is a
  * [com.bydassistantng.vehicle.VehicleCommand]. */
 object VehicleFunctionDispatcher {
+    // The model sometimes repeats a command it was told was accepted; the car gets it once (see VehicleRepeatGuard).
+    private val repeatGuard = VehicleRepeatGuard()
+
+    /** The user asked something new: asking for the same command again is on purpose, not a repeat. */
+    fun newUserTurn() = repeatGuard.reset()
+
     suspend fun dispatch(
         functionCall: GeminiFunctionCall,
         vehicleControlEnabled: Boolean,
@@ -180,13 +188,15 @@ object VehicleFunctionDispatcher {
                 vehicleControlEnabled -> reflectionController
                 else -> LoggingVehicleController
             }
-            try {
-                controller.dispatch(command, resolvedValue)
-            } catch (e: IllegalStateException) {
-                // VehicleSafety.assertDispatchAllowed rejecting a blocked domain — unreachable in
-                // practice since blocked domains are never in the registry Gemini was given
-                // functions for, but the hard gate stays authoritative over that assumption.
-                VehicleDispatchResult.Blocked(e.message ?: "blocked")
+            repeatGuard.dispatch(command.id, resolvedValue) {
+                try {
+                    controller.dispatch(command, resolvedValue)
+                } catch (e: IllegalStateException) {
+                    // VehicleSafety.assertDispatchAllowed rejecting a blocked domain — unreachable in
+                    // practice since blocked domains are never in the registry Gemini was given
+                    // functions for, but the hard gate stays authoritative over that assumption.
+                    VehicleDispatchResult.Blocked(e.message ?: "blocked")
+                }
             }
         }
         AppLogger.log(TAG, "dispatch ${command.id}(value=$rawValue -> $resolvedValue) -> $result")
@@ -237,7 +247,7 @@ object VehicleFunctionDispatcher {
         when (this@toResponseJson) {
             is VehicleDispatchResult.Success -> {
                 put("status", "ok")
-                note?.let { put("note", it) }
+                CommandAnswers.forModel(note)?.let { put("note", it) }
             }
             is VehicleDispatchResult.Blocked -> {
                 put("status", "blocked")

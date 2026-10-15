@@ -64,6 +64,13 @@ The mapping is `VehicleFamilies.kt`, and the ids, the car's ids and the helper p
 that are plain Android calls (the media volume) do not need the ADB link: they are offered, and run inside the
 app, whatever the switch says, so the audio family is just the volume while vehicle control is off.
 
+The Live model does not always take "accepted" for an answer: given "HAL returned 0" for a window it once called the
+same command 41 times in 19 s without speaking. Two things stop that. `CommandAnswers` rewrites what an accepted
+command tells the model (a control with no read-back says it was sent and cannot be checked; a moving one says it is
+on its way; both say not to send it again). `VehicleRepeatGuard` answers the *same command and value as the one just
+sent* from the first result instead of sending it to the car again, until the user says something new or 15 s pass;
+a different command or value, and a command that failed, always go out.
+
 Read-only questions (`read_car`: tyres, outside temperature, air quality) travel the same way as `query <id>` to the
 helper, which has a fixed list of them (`VehicleQuery`) and calls only getters. They are offered under the same
 switch, since the helper is the same ADB-shell power either way.
