@@ -46,6 +46,13 @@ data class VehicleCommand(
     val overrides: List<ValueOverride> = emptyList(),
 )
 
+/**
+ * Whether the command reaches the car's own systems through the vehicle helper (the ADB shell identity). The one
+ * plain Android call is [VehicleInvocation.AudioStreamVolume]; it runs inside the app, with no ADB link, and is
+ * offered whether or not vehicle control is switched on.
+ */
+val VehicleCommand.needsCarLink: Boolean get() = invocation !is VehicleInvocation.AudioStreamVolume
+
 /** When the command's value is [whenValue], send [sendValue] to [featureId] rather than the usual. */
 data class ValueOverride(val whenValue: Int, val featureId: Int, val sendValue: Int)
 

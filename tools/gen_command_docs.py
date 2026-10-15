@@ -31,7 +31,7 @@ NOTES = {
     "audio.spaceSoundMode": "Devialet Space strength: soft 1, standard 2, strong 3.",
     "audio.headrestSound": "The Devialet Headrest Sound dialog: surround 2, interactive 3, exclusive 4; 1 (off) is accepted by the car but the screen has no button for it. This car has only the driver's headrest speaker.",
     "audio.soundStyle": "The Devialet Sound Features dialog: fidelity 1, soft 2, dynamic 3, heavy 4, speech 5, custom 6.",
-    "audio.volume": "The car's volume is Android's media stream (0–39 here); the older `AUDIO_VOLUME_SET` feature was accepted and ignored. Confirmed by reading the stream back.",
+    "audio.volume": "The car's volume is Android's media stream (0–39 here); the older `AUDIO_VOLUME_SET` feature was accepted and ignored. Confirmed by reading the stream back. A plain Android call: runs inside the app, with no ADB link and whatever the vehicle-control switch says.",
     "dashcam.record": "The answer is the dashcam service's own verdict (1 = done). Stopping is refused for a few seconds while a locked clip is being saved.",
     "dashcam.photo": "The answer is the dashcam service's own verdict (1 = done). Brings the dashcam screen to the front.",
     "dashcam.lock": "The answer is the dashcam service's own verdict (2 or 3 = saving). Brings the dashcam screen to the front.",

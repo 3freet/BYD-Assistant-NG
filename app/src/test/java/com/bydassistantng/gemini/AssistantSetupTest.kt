@@ -22,6 +22,27 @@ class AssistantSetupTest {
     }
 
     @Test
+    fun plainAndroidCommandsAreOfferedWithoutTheCarLinkButCarCommandsAreNot() {
+        val off = names(assistantTools(vehicleControlEnabled = false, conversation = true))
+        // The media volume is a plain Android call: offered (to set and to read) whatever the switch says.
+        assertTrue("audio_volume" in off)
+        assertTrue("get_volume" in off)
+        // Everything that reaches the car's systems is not declared at all.
+        assertFalse(off.any { it.startsWith("seat_") || it.startsWith("ac_") || it.startsWith("dashcam_") || it.startsWith("audio_mediaMute") })
+        assertFalse("read_car" in off)
+        assertFalse("passenger_screen" in off)
+        val on = names(assistantTools(vehicleControlEnabled = true, conversation = true))
+        assertTrue(listOf("audio_volume", "read_car", "passenger_screen", "seat_driver_heating").all { it in on })
+    }
+
+    @Test
+    fun theThreeSensorReadersAreOneToolAndTheOldNamesAreGone() {
+        val on = names(assistantTools(vehicleControlEnabled = true, conversation = true))
+        assertEquals(1, on.count { it == "read_car" })
+        for (old in listOf("get_tyre_pressure", "get_outside_temperature", "get_air_quality")) assertFalse(old, old in on)
+    }
+
+    @Test
     fun vehicleCommandsOnlyWhenArmed() {
         assertTrue(names(assistantTools(vehicleControlEnabled = true)).any { it.startsWith("fridge_") })
     }

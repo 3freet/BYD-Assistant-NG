@@ -209,6 +209,13 @@ class VehicleCommandRegistryTest {
     }
 
     @Test
+    fun onlyTheMediaVolumeIsAPlainAndroidCall() {
+        assertEquals(listOf("audio.volume"), VehicleCommandRegistry.known.filter { !it.needsCarLink }.map { it.id })
+        assertEquals(listOf("audio_volume"), VehicleCommandRegistry.functionDeclarations(carLink = false).map { it.name })
+        assertEquals(VehicleCommandRegistry.known.size, VehicleCommandRegistry.functionDeclarations(carLink = true).size)
+    }
+
+    @Test
     fun volumeIsTheMediaStreamNotTheLegacyHalFeature() {
         // AUDIO_VOLUME_SET returned 0 and changed nothing; the car's volume is AudioManager stream 3, 0..39 here.
         val volume = command("audio.volume")

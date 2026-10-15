@@ -10,10 +10,11 @@ import com.bydassistantng.media.PlayMediaTool
 import com.bydassistantng.media.PlaybackFollowUp
 import com.bydassistantng.passenger.PassengerScreenTool
 import com.bydassistantng.util.AppLogger
+import com.bydassistantng.gemini.VehicleFunctionDispatcher
 import com.bydassistantng.vehicle.AirQualityTool
+import com.bydassistantng.vehicle.ReadCarTool
 import com.bydassistantng.vehicle.VolumeTool
 import com.bydassistantng.vehicle.ShellHelperVehicleController
-import com.bydassistantng.vehicle.VehicleCommandRegistry
 import com.bydassistantng.vehicle.OutsideTemperatureTool
 import com.bydassistantng.vehicle.TyreStatusTool
 import com.bydassistantng.vehicle.VehicleDispatchResult
@@ -24,7 +25,6 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 
 @EntryPoint
@@ -76,6 +76,18 @@ class DebugToolReceiver : BroadcastReceiver() {
                         runBlocking { PassengerScreenTool.handle(app, call, controller, true) { } }
                     }
                     VolumeTool.FUNCTION_NAME -> VolumeTool.read(app)
+                    ReadCarTool.FUNCTION_NAME -> {
+                        val what = ReadCarTool.what(call)
+                        if (what == null) {
+                            "unknown reading"
+                        } else {
+                            val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
+                            when (val answer = runBlocking { controller.query(what.query) }) {
+                                is VehicleDispatchResult.Success -> ReadCarTool.report(what, answer.note) ?: answer
+                                else -> answer
+                            }
+                        }
+                    }
                     AirQualityTool.FUNCTION_NAME -> {
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
                         when (val answer = runBlocking { controller.query(VehicleQuery.AIR_QUALITY) }) {
@@ -83,16 +95,12 @@ class DebugToolReceiver : BroadcastReceiver() {
                             else -> answer
                         }
                     }
-                    else -> VehicleCommandRegistry.byFunctionName(tool)?.let { command ->
-                        // A registry command, sent exactly as a function call would be: value resolved by name or number.
-                        val raw = (args["value"] as? JsonPrimitive)?.content
-                        val value = VehicleCommandRegistry.resolveValue(command, raw)
-                        if (value == null) {
-                            "value '$raw' is not valid for ${command.id}"
-                        } else {
-                            val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
-                            runBlocking { controller.dispatch(command, value) }
-                        }
+                    else -> {
+                        // Anything else goes through the dispatcher exactly as a model's call does. "carlink" says whether
+                        // vehicle control is armed (default true), to check what still works without it.
+                        val carLink = intent.getBooleanExtra("carlink", true)
+                        val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
+                        runBlocking { VehicleFunctionDispatcher.dispatch(call, carLink, controller, app) { } }
                     }
                 }
                 AppLogger.log("DebugTool", "$tool($args) -> $result")

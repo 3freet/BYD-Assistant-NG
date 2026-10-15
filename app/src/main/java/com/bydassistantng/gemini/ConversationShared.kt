@@ -19,12 +19,12 @@ import com.bydassistantng.navigation.NavigationTool
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.LoggingVehicleController
-import com.bydassistantng.vehicle.AirQualityTool
 import com.bydassistantng.vehicle.VolumeTool
 import com.bydassistantng.passenger.PassengerScreenTool
-import com.bydassistantng.vehicle.OutsideTemperatureTool
+import com.bydassistantng.vehicle.InAppVehicleController
+import com.bydassistantng.vehicle.ReadCarTool
+import com.bydassistantng.vehicle.needsCarLink
 import com.bydassistantng.vehicle.SetDriveModeTool
-import com.bydassistantng.vehicle.TyreStatusTool
 import com.bydassistantng.vehicle.VehicleCommandRegistry
 import com.bydassistantng.vehicle.VehicleController
 import com.bydassistantng.vehicle.VehicleDispatchError
@@ -77,11 +77,11 @@ fun assistantTools(
             add(RememberTool.declaration)
             add(ForgetMemoryTool.declaration)
         }
+        // The commands that are plain Android calls (the media volume) are offered whatever the switch says; the
+        // ones that reach the car's own systems through the ADB helper only when vehicle control is armed.
+        addAll(VehicleCommandRegistry.functionDeclarations(carLink = vehicleControlEnabled))
         if (vehicleControlEnabled) {
-            addAll(VehicleCommandRegistry.functionDeclarations())
-            add(TyreStatusTool.declaration)
-            add(OutsideTemperatureTool.declaration)
-            add(AirQualityTool.declaration)
+            add(ReadCarTool.declaration)
             add(PassengerScreenTool.declaration)
             // Needs a build that can switch the exterior speaker, and counts as controlling the car.
             if (conversation && exteriorSpeaker) {
@@ -127,13 +127,8 @@ object VehicleFunctionDispatcher {
             return MediaControlTool.handle(context, functionCall)
         }
 
-        if (functionCall.name == TyreStatusTool.FUNCTION_NAME) {
-            onDispatching(AppLanguage.string(context, R.string.banner_tyres))
-            return readTyres(vehicleControlEnabled, reflectionController)
-        }
-        if (functionCall.name == OutsideTemperatureTool.FUNCTION_NAME) {
-            onDispatching(AppLanguage.string(context, R.string.banner_outside_temperature))
-            return readOutsideTemperature(vehicleControlEnabled, reflectionController)
+        if (functionCall.name == ReadCarTool.FUNCTION_NAME) {
+            return readCar(functionCall, vehicleControlEnabled, reflectionController, context, onDispatching)
         }
 
         if (functionCall.name == PassengerScreenTool.FUNCTION_NAME) {
@@ -143,11 +138,6 @@ object VehicleFunctionDispatcher {
             onDispatching(AppLanguage.string(context, R.string.banner_volume))
             return VolumeTool.read(context)
         }
-        if (functionCall.name == AirQualityTool.FUNCTION_NAME) {
-            onDispatching(AppLanguage.string(context, R.string.banner_air_quality))
-            return readAirQuality(vehicleControlEnabled, reflectionController)
-        }
-
         val command = VehicleCommandRegistry.byFunctionName(functionCall.name)
             ?: return buildJsonObject { put("error", "Unknown command '${functionCall.name}'") }
 
@@ -162,7 +152,12 @@ object VehicleFunctionDispatcher {
             // when tools were declared — this check is a second, independent gate against that
             // same fact, the same "two layers, not one" posture VehicleSafety itself documents,
             // rather than a currently-reachable branch.
-            val controller = if (vehicleControlEnabled) reflectionController else LoggingVehicleController
+            val controller = when {
+                // A plain Android call: no ADB link and no vehicle-control switch involved.
+                !command.needsCarLink -> InAppVehicleController(context)
+                vehicleControlEnabled -> reflectionController
+                else -> LoggingVehicleController
+            }
             try {
                 controller.dispatch(command, resolvedValue)
             } catch (e: IllegalStateException) {
@@ -176,69 +171,41 @@ object VehicleFunctionDispatcher {
         return result.toResponseJson()
     }
 
-    /** Reading is gated by the same switch as control: the helper is the same ADB-shell power either way. */
-    private suspend fun readTyres(vehicleControlEnabled: Boolean, controller: VehicleController): JsonObject {
+    /** Reading the car's sensors is gated by the same switch as control: the helper is the same ADB-shell power. */
+    private suspend fun readCar(
+        call: GeminiFunctionCall,
+        vehicleControlEnabled: Boolean,
+        controller: VehicleController,
+        context: Context,
+        onDispatching: suspend (String) -> Unit,
+    ): JsonObject {
+        val what = ReadCarTool.what(call)
+            ?: return buildJsonObject {
+                put("status", "error")
+                put("error", "Unknown reading. Use one of: ${ReadCarTool.What.entries.joinToString { it.word }}.")
+            }
+        val banner = when (what) {
+            ReadCarTool.What.TYRES -> R.string.banner_tyres
+            ReadCarTool.What.OUTSIDE_TEMPERATURE -> R.string.banner_outside_temperature
+            ReadCarTool.What.AIR_QUALITY -> R.string.banner_air_quality
+        }
+        onDispatching(AppLanguage.string(context, banner))
         if (!vehicleControlEnabled) {
             return buildJsonObject {
                 put("status", "error")
                 put("error", "Vehicle features are switched off in the app's settings.")
             }
         }
-        return when (val result = controller.query(VehicleQuery.TYRES)) {
+        return when (val result = controller.query(what.query)) {
             is VehicleDispatchResult.Success -> {
-                val snapshot = result.note?.let { TyreStatusTool.parse(it) }
-                AppLogger.log(TAG, "tyres -> ${result.note}")
-                snapshot?.let { TyreStatusTool.report(it) } ?: buildJsonObject {
+                AppLogger.log(TAG, "read_car ${what.word} -> ${result.note}")
+                ReadCarTool.report(what, result.note) ?: buildJsonObject {
                     put("status", "error")
                     put("error", "The car's answer could not be read.")
                 }
             }
             else -> {
-                AppLogger.log(TAG, "tyres -> $result")
-                result.toResponseJson()
-            }
-        }
-    }
-
-    private suspend fun readOutsideTemperature(vehicleControlEnabled: Boolean, controller: VehicleController): JsonObject {
-        if (!vehicleControlEnabled) {
-            return buildJsonObject {
-                put("status", "error")
-                put("error", "Vehicle features are switched off in the app's settings.")
-            }
-        }
-        return when (val result = controller.query(VehicleQuery.OUTSIDE_TEMPERATURE)) {
-            is VehicleDispatchResult.Success -> {
-                AppLogger.log(TAG, "outside temperature -> ${result.note}")
-                result.note?.let { OutsideTemperatureTool.parse(it) }?.let { OutsideTemperatureTool.report(it) } ?: buildJsonObject {
-                    put("status", "error")
-                    put("error", "The car's answer could not be read.")
-                }
-            }
-            else -> {
-                AppLogger.log(TAG, "outside temperature -> $result")
-                result.toResponseJson()
-            }
-        }
-    }
-
-    private suspend fun readAirQuality(vehicleControlEnabled: Boolean, controller: VehicleController): JsonObject {
-        if (!vehicleControlEnabled) {
-            return buildJsonObject {
-                put("status", "error")
-                put("error", "Vehicle features are switched off in the app's settings.")
-            }
-        }
-        return when (val result = controller.query(VehicleQuery.AIR_QUALITY)) {
-            is VehicleDispatchResult.Success -> {
-                AppLogger.log(TAG, "air quality -> ${result.note}")
-                result.note?.let { AirQualityTool.parse(it) }?.let { AirQualityTool.report(it) } ?: buildJsonObject {
-                    put("status", "error")
-                    put("error", "The car's answer could not be read.")
-                }
-            }
-            else -> {
-                AppLogger.log(TAG, "air quality -> $result")
+                AppLogger.log(TAG, "read_car ${what.word} -> $result")
                 result.toResponseJson()
             }
         }

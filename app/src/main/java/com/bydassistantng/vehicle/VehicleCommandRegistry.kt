@@ -37,8 +37,12 @@ object VehicleCommandRegistry {
     fun byId(id: String): VehicleCommand? = known.find { it.id == id }
     fun byFunctionName(name: String): VehicleCommand? = byFunctionName[name]
 
-    /** One Gemini function per known (non-blocked) command. */
-    fun functionDeclarations(): List<GeminiFunctionDeclaration> = known.map { it.toFunctionDeclaration() }
+    /**
+     * One Gemini function per known (non-blocked) command. With [carLink] false only the commands that are plain
+     * Android calls ([needsCarLink] false) are offered: the model cannot emit a call to the others.
+     */
+    fun functionDeclarations(carLink: Boolean = true): List<GeminiFunctionDeclaration> =
+        known.filter { carLink || !it.needsCarLink }.map { it.toFunctionDeclaration() }
 
     /** Resolves the "value" argument from a Gemini function call into the concrete int this
      * command's [VehicleController] expects — an enum option name for [VehicleParameter.FixedEnum],
