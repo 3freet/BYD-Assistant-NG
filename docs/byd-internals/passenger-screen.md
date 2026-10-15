@@ -40,6 +40,7 @@ confirmed on the car:
 | Close | `am force-stop --user <u> <package>` for each app that has an activity on display 2 (never the system's own; this app is sent home instead) |
 | Home / back | the backlight is switched on first, then `input -d 2 keyevent KEYCODE_HOME` / `KEYCODE_BACK` |
 | Screen off / on | `DisplayManager.turnBacklightOff(2, uptime)` / `turnBacklightOn(2, uptime)`: what the power icon on the screen's own navigation strip does; touching the screen wakes it |
+| Brightness | the `screen_brightness` system setting of user 999, `settings --user 999 put system screen_brightness <10..255>`; see below |
 | Status | the focused window of display 2 (`dumpsys window displays`) and its activities (`dumpsys activity activities`) |
 
 `Settings.Global.screen_saver_switch_fse` (0 = black, 1 = clock screensaver) chooses what that power icon does;
@@ -61,3 +62,25 @@ moves a seat), roof projection status, camera projection to the screen
   the passenger headrest).
 - Whether the car restricts what the passenger screen shows while driving.
 - How a second app instance would behave with the wheel microphone button (both copies register for it).
+
+## Brightness
+
+How the screen's own slider does it, from the system log while the slider was moved (the panel is the passenger
+settings app's `AdjustPanelViewFse`, running as user 999):
+
+1. While the finger is down it calls the display manager's temporary brightness for display 2 with a fraction
+   (`setTemporaryBrightness`): the display's power controller logs reason `temporary`. Nothing is stored.
+2. On release it stores the value: the `screen_brightness` system setting of user 999 (an integer, the slider runs
+   from 10 to 255) and the matching fraction `(value - 1) / 254`, which the framework's brightness synchronizer
+   keeps in step. The display's power controller (`DisplayPowerController[2]`) logs reason `manual`, and a BYD
+   "derating" controller sits in between (`BydDeratingBrightnessController[2]`; the brightness it applied was about
+   0.1 above the user's fraction).
+3. The car's own settings then keep the value for the light mode: `UserFseBrightness` writes
+   `lighting_backlight_night_brightness_fse` (or the day key) in the `carsettings` global table, which also
+   holds `auto_brightness_fse` and, for the cluster, `screen_brightness_instrument` and `auto_brightness_instrument`.
+
+Writing the setting alone is enough: `settings --user 999 put system screen_brightness 120` as the ADB shell
+identity gave the same sequence as a slider release (synchronizer, power controller, the panel's own slider moved
+to the new position, the night key saved). The `passenger_screen` tool's `brightness` action does that with a
+percentage (0 is 10, 100 is 255), `up` / `down` (a fifth of the slider) or `min` / `max`, and reads it back.
+Not tried: switching `auto_brightness_fse`, and whether auto brightness overrides a manual value later on.

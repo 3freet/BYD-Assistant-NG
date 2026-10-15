@@ -18,6 +18,7 @@ import com.bydassistantng.vehicle.VehicleDispatchResult
  *     fse open <user> <package> [<https url>]   (switches the backlight on first)
  *     fse close [<package>]        stops the apps that are open on it (never the system's own)
  *     fse key home|back            (switches the backlight on first)
+ *     fse brightness get|up|down|<0..100>   the screen's own brightness slider, in percent
  *     fse status
  *
  * Every answer is one line of `key=value` words; [VehicleDispatchResult.Failure] carries a sentence.
@@ -28,6 +29,7 @@ internal object PassengerScreenCommand {
     private const val DISPLAY_NAME = "fse"
     private const val FALLBACK_DISPLAY_ID = 2
     private const val PASSENGER_USER = 999
+    private const val BRIGHTNESS_KEY = "screen_brightness"
     private const val SAFE_LAUNCHER_PACKAGE = "com.android.launcher3.fse"
     private const val OWN_PACKAGE_PREFIX = "com.bydassistantng"
 
@@ -50,8 +52,9 @@ internal object PassengerScreenCommand {
             "open" -> open(context, display, args.drop(1))
             "close" -> close(display, args.getOrNull(1))
             "key" -> key(context, display, args.getOrNull(1))
+            "brightness" -> brightness(args.getOrNull(1))
             "status" -> status(display)
-            else -> invalid("expected: $NAME screen|open|close|key|status")
+            else -> invalid("expected: $NAME screen|open|close|key|brightness|status")
         }
     }
 
@@ -156,12 +159,40 @@ internal object PassengerScreenCommand {
         return VehicleDispatchResult.Success("key=$name display=$display screen=on")
     }
 
+    /**
+     * The brightness, the way the screen's own slider sets it: the `screen_brightness` setting of the passenger user.
+     * The system takes it from there (the display's brightness follows it and the car's own settings keep it for the
+     * day or night mode), exactly as when the slider is released.
+     */
+    private fun brightness(request: String?): VehicleDispatchResult {
+        val current = readBrightness()
+        if (request == null || request == "get") {
+            return current?.let { VehicleDispatchResult.Success(brightnessWords(it)) }
+                ?: VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, "the brightness could not be read")
+        }
+        val target = PassengerScreenParsing.brightnessTarget(request, current)
+            ?: return invalid("expected: $NAME brightness get|up|down|min|max|<0..100>")
+        exec(listOf("/system/bin/settings", "--user", PASSENGER_USER.toString(), "put", "system", BRIGHTNESS_KEY, target.toString()))
+        val now = readBrightness()
+        return if (now == target) {
+            VehicleDispatchResult.Success(brightnessWords(now))
+        } else {
+            VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, "the brightness did not change")
+        }
+    }
+
+    private fun readBrightness(): Int? =
+        exec(listOf("/system/bin/settings", "--user", PASSENGER_USER.toString(), "get", "system", BRIGHTNESS_KEY)).trim().toIntOrNull()
+
+    private fun brightnessWords(value: Int) = "brightness=${PassengerScreenParsing.brightnessPercent(value)} value=$value"
+
     private fun status(display: Int): VehicleDispatchResult {
         val top = currentTop(display)
         val open = PassengerScreenParsing.appsOn(exec(listOf("/system/bin/dumpsys", "activity", "activities")), display)
             .map { it.packageName }.filter { it != SAFE_LAUNCHER_PACKAGE }
         return VehicleDispatchResult.Success(
-            "top=${top?.packageName ?: "none"} open=${open.joinToString(",")} display=$display",
+            "top=${top?.packageName ?: "none"} open=${open.joinToString(",")} display=$display" +
+                (readBrightness()?.let { " brightness=${PassengerScreenParsing.brightnessPercent(it)}" } ?: ""),
         )
     }
 

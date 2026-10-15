@@ -49,6 +49,10 @@
     <string name="banner_passenger_screen_off">Turning the passenger screen off</string>
     <string name="banner_passenger_screen_on">Turning the passenger screen on</string>
     <string name="banner_passenger_status">Checking the passenger screen</string>
+    <string name="banner_passenger_brightness">Setting the passenger screen\'s brightness</string>
+    <string name="banner_cluster_open">Putting %1$s on the instrument cluster</string>
+    <string name="banner_cluster_close">Giving the instrument cluster back</string>
+    <string name="banner_cluster_status">Checking the instrument cluster</string>
     <string name="banner_speak_outside">Speaking outside the car</string>
     <string name="banner_play_sound_outside">Playing a sound outside the car</string>
     <string name="banner_drive_mode">Drive mode: %1$s</string>
@@ -230,6 +234,11 @@
     <string name="advanced_exterior_enable_desc">Lets the assistant speak and play sounds through the car\'s exterior speaker, so people outside hear it. Off by default.</string>
     <string name="advanced_drive_modes_title">Drive mode switching</string>
     <string name="advanced_drive_modes_desc">Lets the assistant change the car\'s drive mode (snow, sand, mud, mountain, rock, auto, eco, sport) when you ask. The car still decides whether it accepts. Off by default.</string>
+    <string name="advanced_cluster_title">Cluster screen (development)</string>
+    <string name="advanced_cluster_enable_title">Show apps on the instrument cluster</string>
+    <string name="advanced_cluster_enable_desc">Lets the assistant put an app on the instrument cluster and take it off again. While an app is shown there it replaces the gauges. It needs BYD Maps, which the assistant turns on for it. Off by default.</string>
+    <string name="advanced_cluster_keep_title">Keep BYD Maps disabled afterwards</string>
+    <string name="advanced_cluster_keep_desc">On: BYD Maps is disabled again once the app has left the cluster and the gauges are back. Off: it stays enabled (it then also appears in the home screen switcher). Off by default.</string>
     <string name="advanced_exterior_confirm_title">Enable the exterior speaker?</string>
     <string name="advanced_exterior_confirm_body">This is an experimental feature. It sends the assistant\'s voice and sounds out of the car, which can startle or disturb people nearby, and it works through a car function this app was not made for. It has only been tried on one car model and may stop working after a car software update. You use it entirely at your own risk and remain responsible for how and where it is used.</string>
     <string name="advanced_drive_modes_confirm_title">Enable drive mode switching?</string>

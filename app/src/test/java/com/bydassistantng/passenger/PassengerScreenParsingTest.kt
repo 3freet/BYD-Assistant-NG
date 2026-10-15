@@ -112,4 +112,37 @@ Display #2 (activities from top to bottom):
             assertTrue(ordinary, PassengerScreenParsing.mayClose(ordinary))
         }
     }
+
+    @Test
+    fun theBrightnessSliderMapsToTheSettingAndBack() {
+        assertEquals(10, PassengerScreenParsing.brightnessValue(0))
+        assertEquals(255, PassengerScreenParsing.brightnessValue(100))
+        assertEquals(133, PassengerScreenParsing.brightnessValue(50))
+        assertEquals(0, PassengerScreenParsing.brightnessPercent(10))
+        assertEquals(100, PassengerScreenParsing.brightnessPercent(255))
+        assertEquals(50, PassengerScreenParsing.brightnessPercent(133))
+        // Out-of-range input stays on the slider.
+        assertEquals(255, PassengerScreenParsing.brightnessValue(180))
+        assertEquals(0, PassengerScreenParsing.brightnessPercent(3))
+    }
+
+    @Test
+    fun aBrightnessRequestIsAPercentageAStepOrAnEnd() {
+        assertEquals(133, PassengerScreenParsing.brightnessTarget("50", current = null))
+        assertEquals(133, PassengerScreenParsing.brightnessTarget("50%", current = null))
+        assertEquals(255, PassengerScreenParsing.brightnessTarget("max", current = 30))
+        assertEquals(10, PassengerScreenParsing.brightnessTarget("MIN", current = 30))
+        // One step is a fifth of the slider: from 50 percent up to 70, down to 30.
+        assertEquals(PassengerScreenParsing.brightnessValue(70), PassengerScreenParsing.brightnessTarget("up", current = 133))
+        assertEquals(PassengerScreenParsing.brightnessValue(30), PassengerScreenParsing.brightnessTarget("down", current = 133))
+        // Steps stop at the ends.
+        assertEquals(255, PassengerScreenParsing.brightnessTarget("up", current = 250))
+        assertEquals(10, PassengerScreenParsing.brightnessTarget("down", current = 12))
+        // Anything else is refused, and a step needs a reading to start from.
+        assertNull(PassengerScreenParsing.brightnessTarget("101", current = 100))
+        assertNull(PassengerScreenParsing.brightnessTarget("-5", current = 100))
+        assertNull(PassengerScreenParsing.brightnessTarget("a bit", current = 100))
+        assertNull(PassengerScreenParsing.brightnessTarget("up", current = null))
+        assertNull(PassengerScreenParsing.brightnessTarget(null, current = 100))
+    }
 }

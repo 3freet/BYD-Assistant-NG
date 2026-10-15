@@ -48,6 +48,10 @@
     <string name="banner_passenger_screen_off">جارٍ إطفاء شاشة الراكب</string>
     <string name="banner_passenger_screen_on">جارٍ تشغيل شاشة الراكب</string>
     <string name="banner_passenger_status">جارٍ فحص شاشة الراكب</string>
+    <string name="banner_passenger_brightness">جارٍ ضبط سطوع شاشة الراكب</string>
+    <string name="banner_cluster_open">جارٍ وضع %1$s على لوحة العدادات</string>
+    <string name="banner_cluster_close">جارٍ إعادة لوحة العدادات</string>
+    <string name="banner_cluster_status">جارٍ فحص لوحة العدادات</string>
     <string name="banner_speak_outside">جارٍ التحدث خارج السيارة</string>
     <string name="banner_play_sound_outside">جارٍ تشغيل صوت خارج السيارة</string>
     <string name="banner_drive_mode">وضع القيادة: %1$s</string>
@@ -229,6 +233,11 @@
     <string name="advanced_exterior_enable_desc">تسمح للمساعد بالتحدث وتشغيل الأصوات عبر السماعة الخارجية للسيارة ليسمعها من هم خارجها. معطّلة افتراضيًا.</string>
     <string name="advanced_drive_modes_title">تبديل وضع القيادة</string>
     <string name="advanced_drive_modes_desc">تسمح للمساعد بتغيير وضع القيادة (ثلج، رمل، طين، جبل، صخور، تلقائي، اقتصادي، رياضي) عندما تطلب ذلك. وتبقى السيارة هي التي تقرر قبوله. معطّلة افتراضيًا.</string>
+    <string name="advanced_cluster_title">شاشة لوحة العدادات (للتطوير)</string>
+    <string name="advanced_cluster_enable_title">عرض التطبيقات على لوحة العدادات</string>
+    <string name="advanced_cluster_enable_desc">تسمح للمساعد بوضع تطبيق على لوحة العدادات وإزالته منها. أثناء عرض التطبيق هناك يحلّ محلّ العدادات. تحتاج إلى BYD Maps ويقوم المساعد بتشغيله لها. متوقفة افتراضيًا.</string>
+    <string name="advanced_cluster_keep_title">إبقاء BYD Maps معطّلًا بعد ذلك</string>
+    <string name="advanced_cluster_keep_desc">مفعّل: يُعطَّل BYD Maps من جديد بعد أن يغادر التطبيق لوحة العدادات وتعود العدادات. متوقف: يبقى مفعّلًا (ويظهر عندها أيضًا في مبدّل الشاشة الرئيسية). متوقف افتراضيًا.</string>
     <string name="advanced_exterior_confirm_title">تفعيل السماعة الخارجية؟</string>
     <string name="advanced_exterior_confirm_body">هذه ميزة تجريبية. تُخرج صوت المساعد وأصواتًا أخرى من السيارة، وقد يُفزع ذلك من حولك أو يزعجهم، وتعمل عبر وظيفة في السيارة لم يُصمَّم التطبيق لها. جُرّبت على طراز واحد فقط من السيارات وقد تتوقف عن العمل بعد تحديث برنامج السيارة. تستخدمها على مسؤوليتك الخاصة بالكامل وتبقى مسؤولًا عن كيفية استخدامها ومكانها.</string>
     <string name="advanced_drive_modes_confirm_title">تفعيل تبديل وضع القيادة؟</string>

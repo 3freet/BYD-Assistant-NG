@@ -144,6 +144,7 @@ setting is off by default; on a free key Google refuses the session, and the app
 | | |
 | --- | --- |
 | [docs/byd-internals](docs/byd-internals/README.md) | How the app reaches the car's internals, the ids and values found, the research method, and what did **not** work |
+| [docs/roadmap.md](docs/roadmap.md) | What is planned, and the leads that have not been tried on a car yet |
 | [docs/architecture.md](docs/architecture.md) | How the app is put together |
 | [tools/probes](tools/probes) | The read-only probes used to explore a head unit |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Branches, releases, adding a control, translations |

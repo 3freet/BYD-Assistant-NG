@@ -44,6 +44,36 @@ object PassengerScreenParsing {
         return Regex("""\* Task\{[0-9a-f]+ #(\d+) [^}]*A=\d+:$pkg[ }]""").find(activityDump)?.groupValues?.get(1)?.toIntOrNull()
     }
 
+    // The passenger screen's brightness is the `screen_brightness` system setting of user 999 (0..255). Its own
+    // slider runs from 10 to 255; below 10 the screen is nearly black.
+    const val BRIGHTNESS_MIN = 10
+    const val BRIGHTNESS_MAX = 255
+    private const val BRIGHTNESS_STEP_PERCENT = 20
+
+    /** The setting value for [percent] of the slider (clamped to 0..100). */
+    fun brightnessValue(percent: Int): Int =
+        BRIGHTNESS_MIN + (percent.coerceIn(0, 100) * (BRIGHTNESS_MAX - BRIGHTNESS_MIN) + 50) / 100
+
+    /** How far up the slider the setting [value] is, in percent. */
+    fun brightnessPercent(value: Int): Int =
+        (((value.coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX) - BRIGHTNESS_MIN) * 100 + (BRIGHTNESS_MAX - BRIGHTNESS_MIN) / 2) /
+            (BRIGHTNESS_MAX - BRIGHTNESS_MIN))
+
+    /**
+     * What a request ("up", "down", "min", "max" or a percentage) makes of the brightness, as a setting value;
+     * null when it is none of those. "up" and "down" move by a fifth of the slider from [current].
+     */
+    fun brightnessTarget(request: String?, current: Int?): Int? {
+        val word = request?.trim()?.lowercase()?.removeSuffix("%")?.trim() ?: return null
+        return when (word) {
+            "max", "maximum", "full" -> BRIGHTNESS_MAX
+            "min", "minimum" -> BRIGHTNESS_MIN
+            "up", "brighter" -> brightnessValue(brightnessPercent(current ?: return null) + BRIGHTNESS_STEP_PERCENT)
+            "down", "dimmer" -> brightnessValue(brightnessPercent(current ?: return null) - BRIGHTNESS_STEP_PERCENT)
+            else -> word.toIntOrNull()?.takeIf { it in 0..100 }?.let { brightnessValue(it) }
+        }
+    }
+
     fun isSafePackage(name: String): Boolean = PACKAGE.matches(name) && name.length <= 120
 
     /** Only https links with plain URL characters: no spaces, quotes or anything a shell would read. */

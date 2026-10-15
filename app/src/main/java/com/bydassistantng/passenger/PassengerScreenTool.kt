@@ -38,6 +38,7 @@ enum class PassengerAction(val word: String) {
     BACK("back"),
     SCREEN_OFF("screen_off"),
     SCREEN_ON("screen_on"),
+    BRIGHTNESS("brightness"),
     STATUS("status"),
     ;
 
@@ -83,7 +84,9 @@ object PassengerScreenTool {
             "called the FSE or passenger display). Actions: open_app puts an app on it (set \"app\", for example " +
             "YouTube; for YouTube \"search\" opens the results for what to look for), close stops what is open on " +
             "it (everything, or the app named in \"app\"), home and back are its home and back buttons, " +
-            "screen_off turns its backlight off and screen_on turns it back on, status says what is open. " +
+            "screen_off turns its backlight off and screen_on turns it back on, brightness sets how bright it is " +
+            "(set \"level\": a percentage, or up / down for one step, or min / max; with no level it just says " +
+            "how bright it is), status says what is open. " +
             "Use whenever the user mentions the passenger screen, the front-passenger screen, the screen in front " +
             "of the passenger or the FSE. For the driver's own screen use open_app instead. Never use it just to try.",
         parameters = GeminiSchema(
@@ -101,6 +104,10 @@ object PassengerScreenTool {
                 "search" to GeminiSchema(
                     type = "STRING",
                     description = "For open_app with YouTube only: what to search for, so the results are shown.",
+                ),
+                "level" to GeminiSchema(
+                    type = "STRING",
+                    description = "For brightness: 0 to 100 (percent), or up, down, min, max.",
                 ),
             ),
             required = listOf("action"),
@@ -128,6 +135,7 @@ object PassengerScreenTool {
         controller: VehicleController,
         vehicleControlEnabled: Boolean,
         onDispatching: suspend (String) -> Unit,
+        beforeLaunch: suspend (String) -> Unit = {},
     ): JsonObject {
         if (!vehicleControlEnabled) return error("Vehicle features are switched off in the app's settings.")
         val action = PassengerAction.from((call.args["action"] as? JsonPrimitive)?.content)
@@ -136,7 +144,7 @@ object PassengerScreenTool {
         val search = (call.args["search"] as? JsonPrimitive)?.content?.trim().orEmpty().take(MAX_TEXT)
 
         return when (action) {
-            PassengerAction.OPEN_APP -> openApp(context, controller, app, search, onDispatching)
+            PassengerAction.OPEN_APP -> openApp(context, controller, app, search, onDispatching, beforeLaunch)
             PassengerAction.CLOSE -> {
                 onDispatching(AppLanguage.string(context, R.string.banner_passenger_close))
                 val target = if (app.isEmpty()) null else resolve(app, installedApps(context))
@@ -167,6 +175,15 @@ object PassengerScreenTool {
                 onDispatching(AppLanguage.string(context, R.string.banner_passenger_screen_on))
                 answer(send(controller, "screen on"), AnswerKind.PLAIN, "The passenger screen is turned on.")
             }
+            PassengerAction.BRIGHTNESS -> {
+                onDispatching(AppLanguage.string(context, R.string.banner_passenger_brightness))
+                val level = (call.args["level"] as? JsonPrimitive)?.content?.trim().orEmpty().take(MAX_TEXT)
+                if (level.isNotEmpty() && PassengerScreenParsing.brightnessTarget(level, 50) == null) {
+                    error("The level must be a percentage from 0 to 100, or up, down, min or max.")
+                } else {
+                    answer(send(controller, "brightness " + level.ifEmpty { "get" }.lowercase()), AnswerKind.BRIGHTNESS)
+                }
+            }
             PassengerAction.STATUS -> {
                 onDispatching(AppLanguage.string(context, R.string.banner_passenger_status))
                 answer(send(controller, "status"), AnswerKind.STATUS)
@@ -180,6 +197,7 @@ object PassengerScreenTool {
         name: String,
         search: String,
         onDispatching: suspend (String) -> Unit,
+        beforeLaunch: suspend (String) -> Unit,
     ): JsonObject {
         if (name.isEmpty()) return error("No app name was given.")
         val installed = installedApps(context)
@@ -205,6 +223,7 @@ object PassengerScreenTool {
             }
             is PassengerTarget.Main -> {
                 onDispatching(AppLanguage.string(context, R.string.banner_passenger_open, target.app.label))
+                beforeLaunch(target.app.packageName)
                 val link = if (search.isNotEmpty() && target.app.packageName == YOUTUBE_PACKAGE) YouTubeLibrary.searchUrl(search) else null
                 val line = "open 0 ${target.app.packageName}" + (link?.let { " $it" } ?: "")
                 answer(send(controller, line), AnswerKind.OPEN, label = target.app.label, searched = link != null)
@@ -216,7 +235,7 @@ object PassengerScreenTool {
     private suspend fun send(controller: VehicleController, line: String): VehicleDispatchResult =
         controller.passengerScreen(line).also { AppLogger.log(TAG, "$line -> $it") }
 
-    internal enum class AnswerKind { OPEN, CLOSE, STATUS, PLAIN }
+    internal enum class AnswerKind { OPEN, CLOSE, STATUS, BRIGHTNESS, PLAIN }
 
     internal fun answer(
         result: VehicleDispatchResult,
@@ -252,6 +271,10 @@ object PassengerScreenTool {
                             )
                             put("top_package", top)
                         }
+                        AnswerKind.BRIGHTNESS -> put(
+                            "note",
+                            "The passenger screen's brightness is ${words["brightness"] ?: "unknown"} percent.",
+                        )
                         AnswerKind.PLAIN -> put("note", done.orEmpty())
                     }
                     put("instruction", "Done. Tell the user in a few words. Do not call this again for the same request.")
