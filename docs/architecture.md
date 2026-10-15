@@ -57,9 +57,16 @@ a non-blocked domain are in the registry at all, so the model has no function it
 affects driving. The helper process re-checks every command, value and domain, and a dispatch refuses a
 blocked domain again. Every command that has a state id is confirmed by reading it back.
 
-Read-only questions (`get_tyre_pressure`) travel the same way as `query <id>` to the helper, which has a fixed list
-of them (`VehicleQuery`) and calls only getters. They are offered under the same switch, since the helper is the
-same ADB-shell power either way.
+The registry is not offered as one function per command (that was about 3,400 tokens of declarations on every
+request). Commands are folded by **family**, the part of the id before the first dot, into one function each
+(`seat`, `window`, `dashcam`, … fourteen of them); a call carries a `setting` (the rest of the id) and a `value`.
+The mapping is `VehicleFamilies.kt`, and the ids, the car's ids and the helper protocol are unchanged. Commands
+that are plain Android calls (the media volume) do not need the ADB link: they are offered, and run inside the
+app, whatever the switch says, so the audio family is just the volume while vehicle control is off.
+
+Read-only questions (`read_car`: tyres, outside temperature, air quality) travel the same way as `query <id>` to the
+helper, which has a fixed list of them (`VehicleQuery`) and calls only getters. They are offered under the same
+switch, since the helper is the same ADB-shell power either way.
 
 Vehicle control is **on by default** (it is what the assistant is for); the user can switch it off in Settings.
 

@@ -25,7 +25,9 @@ import com.bydassistantng.vehicle.InAppVehicleController
 import com.bydassistantng.vehicle.ReadCarTool
 import com.bydassistantng.vehicle.needsCarLink
 import com.bydassistantng.vehicle.SetDriveModeTool
+import com.bydassistantng.vehicle.CommandLookup
 import com.bydassistantng.vehicle.VehicleCommandRegistry
+import com.bydassistantng.vehicle.valuesText
 import com.bydassistantng.vehicle.VehicleController
 import com.bydassistantng.vehicle.VehicleDispatchError
 import com.bydassistantng.vehicle.VehicleDispatchResult
@@ -138,15 +140,35 @@ object VehicleFunctionDispatcher {
             onDispatching(AppLanguage.string(context, R.string.banner_volume))
             return VolumeTool.read(context)
         }
-        val command = VehicleCommandRegistry.byFunctionName(functionCall.name)
-            ?: return buildJsonObject { put("error", "Unknown command '${functionCall.name}'") }
+        // A vehicle control is a family function (`seat`, `window`, …) naming one of its settings.
+        val setting = (functionCall.args["setting"] as? JsonPrimitive)?.content
+        val command = when (val lookup = VehicleCommandRegistry.resolve(functionCall.name, setting, vehicleControlEnabled)) {
+            is CommandLookup.Found -> lookup.command
+            CommandLookup.UnknownFunction -> return buildJsonObject { put("error", "Unknown command '${functionCall.name}'") }
+            is CommandLookup.UnknownSetting -> return buildJsonObject {
+                put("status", "error")
+                put("error", "INVALID_ARGUMENT")
+                val available = lookup.settings.joinToString(", ")
+                put(
+                    "detail",
+                    when {
+                        lookup.settings.isEmpty() -> "${functionCall.name} is not available."
+                        setting.isNullOrBlank() -> "${functionCall.name} needs a setting: $available."
+                        else -> "Unknown setting '$setting' for ${functionCall.name}. Settings: $available."
+                    },
+                )
+            }
+        }
 
         onDispatching(command.labelFor(AppLanguage.isArabic(context)))
 
         val rawValue = (functionCall.args["value"] as? JsonPrimitive)?.content
         val resolvedValue = VehicleCommandRegistry.resolveValue(command, rawValue)
         val result = if (resolvedValue == null) {
-            VehicleDispatchResult.Failure(VehicleDispatchError.INVALID_ARGUMENT, "Could not resolve value '$rawValue' for ${command.id}")
+            VehicleDispatchResult.Failure(
+                VehicleDispatchError.INVALID_ARGUMENT,
+                "Could not resolve value '$rawValue' for ${command.id}. Use: ${command.valuesText()}.",
+            )
         } else {
             // A functionCall reaching here at all already implies vehicleControlEnabled was true
             // when tools were declared — this check is a second, independent gate against that

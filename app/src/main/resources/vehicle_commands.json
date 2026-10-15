@@ -492,7 +492,7 @@
   {
     "id": "ambient.color",
     "domain": "SETTING",
-    "displayName": "Ambient light colour for the whole cabin. If the lights keep changing colour by themselves, switch dynamic colours off first (ambient_dynamic)",
+    "displayName": "Ambient light colour for the whole cabin. If the lights keep changing colour by themselves, switch the dynamic setting off first",
     "label": "Ambient colour",
     "labelAr": "لون الإضاءة المحيطة",
     "deviceType": 1023,

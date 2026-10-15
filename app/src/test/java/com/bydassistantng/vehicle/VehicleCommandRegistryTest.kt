@@ -211,8 +211,9 @@ class VehicleCommandRegistryTest {
     @Test
     fun onlyTheMediaVolumeIsAPlainAndroidCall() {
         assertEquals(listOf("audio.volume"), VehicleCommandRegistry.known.filter { !it.needsCarLink }.map { it.id })
-        assertEquals(listOf("audio_volume"), VehicleCommandRegistry.functionDeclarations(carLink = false).map { it.name })
-        assertEquals(VehicleCommandRegistry.known.size, VehicleCommandRegistry.functionDeclarations(carLink = true).size)
+        // Without the link only the audio family is offered, and only with the volume in it.
+        assertEquals(listOf("audio"), VehicleCommandRegistry.functionNames(carLink = false))
+        assertEquals(VehicleCommandRegistry.known.map { it.id.substringBefore('.') }.toSet().size, VehicleCommandRegistry.functionDeclarations(carLink = true).size)
     }
 
     @Test

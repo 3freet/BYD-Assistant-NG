@@ -2,7 +2,6 @@ package com.bydassistantng.vehicle
 
 import android.util.Log
 import com.bydassistantng.gemini.GeminiFunctionDeclaration
-import com.bydassistantng.gemini.GeminiSchema
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -12,8 +11,8 @@ private const val TAG = "VehicleCommandRegistry"
 /**
  * Known BYD vehicle controls, loaded from `vehicle_commands.json` (a classpath resource, so the exact
  * same file works in plain JUnit tests and on a real device). There are no per-command phrase lists:
- * Gemini function calling does the matching (see [functionDeclarations]), in any language it
- * understands.
+ * Gemini function calling does the matching (see [functionDeclarations], one function per family of
+ * commands), in any language it understands.
  *
  * Loading fails **per-entry, not for the whole registry**: a malformed/blocked-domain/duplicate
  * entry is dropped and logged instead of thrown, since one bad hand-edit to the JSON must never
@@ -32,25 +31,54 @@ object VehicleCommandRegistry {
 
     val known: List<VehicleCommand> = entries.toSafeVehicleCommands()
 
-    private val byFunctionName: Map<String, VehicleCommand> = known.associateBy { it.functionName() }
+    private val families: Map<String, List<VehicleCommand>> = known.byFamily()
 
     fun byId(id: String): VehicleCommand? = known.find { it.id == id }
-    fun byFunctionName(name: String): VehicleCommand? = byFunctionName[name]
 
     /**
-     * One Gemini function per known (non-blocked) command. With [carLink] false only the commands that are plain
-     * Android calls ([needsCarLink] false) are offered: the model cannot emit a call to the others.
+     * One Gemini function per family of known (non-blocked) commands, each with a `setting` and a `value` (see
+     * [familyDeclaration]). With [carLink] false only the commands that are plain Android calls ([needsCarLink]
+     * false) are listed, and a family with none of them is not offered at all.
      */
     fun functionDeclarations(carLink: Boolean = true): List<GeminiFunctionDeclaration> =
-        known.filter { carLink || !it.needsCarLink }.map { it.toFunctionDeclaration() }
+        known.filter { carLink || !it.needsCarLink }.byFamily().map { (family, commands) -> familyDeclaration(family, commands) }
+
+    /** The names of the functions [functionDeclarations] offers. */
+    fun functionNames(carLink: Boolean = true): List<String> = functionDeclarations(carLink).map { it.name }
+
+    /**
+     * The command a call to a family function means. A [setting] names it among the family's own; left out, it is
+     * the family's only setting, or its only one offered with [carLink] off (so the audio family is just the volume
+     * without the link). A command that exists but is not offered with [carLink] off still resolves: the
+     * dispatcher's own gate decides what happens to it, not this lookup.
+     */
+    fun resolve(functionName: String, setting: String?, carLink: Boolean = true): CommandLookup {
+        val family = families[functionName] ?: return CommandLookup.UnknownFunction
+        val wanted = setting?.trim().orEmpty()
+        if (wanted.isEmpty()) {
+            val offered = family.filter { carLink || !it.needsCarLink }
+            return (family.singleOrNull() ?: offered.singleOrNull())?.let { CommandLookup.Found(it) }
+                ?: CommandLookup.UnknownSetting(offered.map { it.setting })
+        }
+        val match = family.firstOrNull { it.setting.equals(wanted, ignoreCase = true) }
+        return match?.let { CommandLookup.Found(it) }
+            ?: CommandLookup.UnknownSetting(family.filter { carLink || !it.needsCarLink }.map { it.setting })
+    }
 
     /** Resolves the "value" argument from a Gemini function call into the concrete int this
      * command's [VehicleController] expects — an enum option name for [VehicleParameter.FixedEnum],
      * or a clamped integer for [VehicleParameter.Range] (defensive clamping, since nothing
      * guarantees Gemini strictly respects a schema's numeric bounds). */
     fun resolveValue(command: VehicleCommand, rawValue: String?): Int? = when (val param = command.parameter) {
-        is VehicleParameter.FixedEnum -> rawValue?.let { param.options[it] }
-        is VehicleParameter.Range -> rawValue?.toIntOrNull()?.coerceIn(param.min, param.max)
+        is VehicleParameter.FixedEnum -> rawValue?.trim()?.let { word -> param.options[word] ?: param.options.entries.firstOrNull { it.key.equals(word, ignoreCase = true) }?.value }
+        is VehicleParameter.Range -> rawValue?.let(::wholeNumber)?.coerceIn(param.min, param.max)
+    }
+
+    /** "22" or a JSON number that came through as "22.0"; anything with a fraction is not a whole number. */
+    private fun wholeNumber(text: String): Int? {
+        text.trim().toIntOrNull()?.let { return it }
+        val asDouble = text.trim().toDoubleOrNull() ?: return null
+        return asDouble.takeIf { it == Math.rint(it) && Math.abs(it) < Int.MAX_VALUE }?.toInt()
     }
 
     private fun loadEntriesSafely(): List<CommandEntryDto> = try {
@@ -61,29 +89,6 @@ object VehicleCommandRegistry {
         Log.e(TAG, "Failed to load $RESOURCE_NAME — vehicle control is unavailable this session", e)
         emptyList()
     }
-}
-
-private fun VehicleCommand.functionName(): String = id.replace(".", "_")
-
-private fun VehicleCommand.toFunctionDeclaration(): GeminiFunctionDeclaration {
-    val (valueSchema, hint) = when (val param = parameter) {
-        is VehicleParameter.FixedEnum ->
-            GeminiSchema(type = "STRING", enum = param.options.keys.toList()) to
-                "Options: ${param.options.keys.joinToString(", ")}."
-        is VehicleParameter.Range -> {
-            val unitText = param.unit?.let { " $it" } ?: ""
-            GeminiSchema(type = "INTEGER") to "Value from ${param.min} to ${param.max}$unitText."
-        }
-    }
-    return GeminiFunctionDeclaration(
-        name = functionName(),
-        description = "$displayName. $hint",
-        parameters = GeminiSchema(
-            type = "OBJECT",
-            properties = mapOf("value" to valueSchema),
-            required = listOf("value"),
-        ),
-    )
 }
 
 // ── JSON DTOs and mapping to the sealed domain types ────────────────────────────────────────

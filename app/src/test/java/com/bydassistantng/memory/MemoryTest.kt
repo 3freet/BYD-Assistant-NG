@@ -125,6 +125,7 @@ class RecentExchangesTest {
     fun callsAreWrittenCompactly() {
         assertEquals("open_app", RecentExchanges.describeCall("open_app", emptyMap()))
         assertEquals("fridge_power(on)", RecentExchanges.describeCall("fridge_power", mapOf("value" to "on")))
+        assertEquals("seat.driver.heating(high)", RecentExchanges.describeCall("seat", linkedMapOf("setting" to "driver.heating", "value" to "high")))
         assertEquals("play_media(app=Spotify, query=jazz)", RecentExchanges.describeCall("play_media", linkedMapOf("app" to "Spotify", "query" to "jazz")))
     }
 

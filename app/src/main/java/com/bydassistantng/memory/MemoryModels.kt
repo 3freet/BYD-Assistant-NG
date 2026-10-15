@@ -103,9 +103,14 @@ object RecentExchanges {
             "such as \"do the same for the passenger\" makes sense; never mention that you were given this: $lines"
     }
 
-    /** A function call written compactly: `name(value)` for one argument called value, else `name(key=value, …)`. */
+    /**
+     * A function call written compactly: `name.setting(value)` for a vehicle family call (`seat.driver.heating(high)`),
+     * `name(value)` for one argument called value, else `name(key=value, …)`.
+     */
     fun describeCall(name: String, args: Map<String, String>): String = when {
         args.isEmpty() -> name
+        args.size == 2 && args.containsKey("setting") && args.containsKey("value") ->
+            "$name.${args.getValue("setting")}(${args.getValue("value")})"
         args.size == 1 && args.containsKey("value") -> "$name(${args.getValue("value")})"
         else -> "$name(" + args.entries.joinToString(", ") { "${it.key}=${it.value}" } + ")"
     }

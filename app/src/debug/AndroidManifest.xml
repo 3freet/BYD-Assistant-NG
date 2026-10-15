@@ -52,5 +52,12 @@
                 <action android:name="com.bydassistantng.debug.UPDATE" />
             </intent-filter>
         </receiver>
+        <receiver
+            android:name="com.bydassistantng.debug.DebugModelReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.MODEL_CHECK" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

@@ -111,7 +111,7 @@ in step with [exterior-speaker.md](docs/byd-internals/exterior-speaker.md) and
 
    | Field | Meaning |
    | --- | --- |
-   | `id`, `domain` | e.g. `seat.driver.heating`, `SETTING`. A blocked domain is dropped at load time |
+   | `id`, `domain` | e.g. `seat.driver.heating`, `SETTING`. The part before the first dot is the **family** (the function the model calls, here `seat`) and the rest its **setting** (`driver.heating`); keep to the existing families unless there really is a new part of the car. A blocked domain is dropped at load time |
    | `displayName` | A description for the model (long is fine) |
    | `label`, `labelAr` | Short names for the status banner, English and Arabic |
    | `deviceType`, `featureId` | The device and the **control** id (generic route), or the A/C `propertyId` and `area` |

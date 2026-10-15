@@ -18,21 +18,27 @@ class AssistantSetupTest {
     fun navigationAppsAndMediaAreAlwaysOffered() {
         val names = names(assistantTools(vehicleControlEnabled = false, conversation = true))
         assertTrue(names.containsAll(listOf("navigate_to", "open_app", "media_control", "end_conversation")))
-        assertFalse(names.any { it.startsWith("fridge_") || it.startsWith("window_") })
+        assertFalse(names.any { it == "fridge" || it == "window" || it == "seat" })
     }
 
     @Test
     fun plainAndroidCommandsAreOfferedWithoutTheCarLinkButCarCommandsAreNot() {
         val off = names(assistantTools(vehicleControlEnabled = false, conversation = true))
         // The media volume is a plain Android call: offered (to set and to read) whatever the switch says.
-        assertTrue("audio_volume" in off)
+        assertTrue("audio" in off)
         assertTrue("get_volume" in off)
-        // Everything that reaches the car's systems is not declared at all.
-        assertFalse(off.any { it.startsWith("seat_") || it.startsWith("ac_") || it.startsWith("dashcam_") || it.startsWith("audio_mediaMute") })
+        // Everything that reaches the car's systems is not declared at all: no family but audio, and only the volume in it.
+        assertFalse(off.any { it == "seat" || it == "ac" || it == "dashcam" || it == "window" })
+        val audio = assistantTools(vehicleControlEnabled = false, conversation = true)
+            .flatMap { it.functionDeclarations.orEmpty() }.single { it.name == "audio" }
+        assertEquals(setOf("value"), audio.parameters?.properties?.keys)
+        assertFalse(audio.description.contains("mediaMute"))
         assertFalse("read_car" in off)
         assertFalse("passenger_screen" in off)
         val on = names(assistantTools(vehicleControlEnabled = true, conversation = true))
-        assertTrue(listOf("audio_volume", "read_car", "passenger_screen", "seat_driver_heating").all { it in on })
+        assertTrue(listOf("audio", "read_car", "passenger_screen", "seat", "ac", "window", "dashcam").all { it in on })
+        // No flat per-command function is left.
+        assertFalse(on.any { it.contains('_') && it.substringBefore('_') in setOf("seat", "ac", "window", "audio", "fridge", "dashcam") })
     }
 
     @Test
@@ -44,7 +50,7 @@ class AssistantSetupTest {
 
     @Test
     fun vehicleCommandsOnlyWhenArmed() {
-        assertTrue(names(assistantTools(vehicleControlEnabled = true)).any { it.startsWith("fridge_") })
+        assertTrue("fridge" in names(assistantTools(vehicleControlEnabled = true)))
     }
 
     @Test

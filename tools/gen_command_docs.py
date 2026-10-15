@@ -50,6 +50,12 @@ NOTES = {
 }
 
 
+def call(c):
+    """The function and setting the model names for this command (see VehicleFamilies.kt)."""
+    family, _, setting = c["id"].partition(".")
+    return f"`{family}`" + (f" · `{setting}`" if setting else " · `state`")
+
+
 def values(c):
     p = c["parameter"]
     if p["type"] == "fixedEnum":
@@ -107,11 +113,16 @@ lines = [
     "accepted by the HAL but were not independently verified. Values are what the user and the model deal in;",
     "where the car's own signal differs, the offset is shown.",
     "",
-    "| Command | Reaches the car through | Values | Read-back | Notes |",
-    "| --- | --- | --- | --- | --- |",
+    "The model is not given one function per command. The commands are folded into one function per family (the",
+    "part of the id before the first dot), and a call names the *setting* (the rest of the id; a family's only",
+    "setting needs no name, and an id without a dot is that family's `state`) and one `value`. The *Call* column",
+    "shows the pair; the ids and the car's own ids are unchanged.",
+    "",
+    "| Command | Call | Reaches the car through | Values | Read-back | Notes |",
+    "| --- | --- | --- | --- | --- | --- |",
 ]
 for c in rows:
-    lines.append(f"| `{c['id']}` — {c.get('label', c['displayName'])} | {route(c)} | {values(c)} | {state(c)} | {status(c)} |")
+    lines.append(f"| `{c['id']}` — {c.get('label', c['displayName'])} | {call(c)} | {route(c)} | {values(c)} | {state(c)} | {status(c)} |")
 lines += [
     "",
     f"{len(rows)} commands. Domains that affect driving (engine, gearbox, motor, driver assistance, radar, security, power)",
