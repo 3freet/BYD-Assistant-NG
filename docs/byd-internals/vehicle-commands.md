@@ -27,6 +27,8 @@ where the car's own signal differs, the offset is shown.
 | `audio.soundFocus` — Sound focus | Audio device (1002), control id 470810653 | `whole_car`=6, `front`=7, `back_seats`=4 | state id 1339031565 | The Devialet Sound Staging choice: whole car 6, front 7, back seats 4 (as the screen wrote them). |
 | `audio.spaceSound` — Space sound | Audio device (1002), control id 372244496 | `off`=1, `on`=2 | state id 1263534096 | Devialet Space switch: off 1, on 2. |
 | `audio.spaceSoundMode` — Space sound strength | Audio device (1002), control id 372244498 | `soft`=1, `standard`=2, `strong`=3 | state id 1263534098 | Devialet Space strength: soft 1, standard 2, strong 3. |
+| `audio.headrestSound` — Headrest sound | Audio device (1002), control id -1676672971 | `off`=1, `surround`=2, `interactive`=3, `exclusive`=4 | state id 1253048341 | The Devialet Headrest Sound dialog: surround 2, interactive 3, exclusive 4; 1 (off) is accepted by the car but the screen has no button for it. This car has only the driver's headrest speaker. |
+| `audio.soundStyle` — Sound style | Audio device (1002), control id -1693450216 | `fidelity`=1, `soft`=2, `dynamic`=3, `heavy`=4, `speech`=5, `custom`=6 | state id 1281359880 | The Devialet Sound Features dialog: fidelity 1, soft 2, dynamic 3, heavy 4, speech 5, custom 6. |
 | `trunk` — Trunk | Setting device (1023), control id 1125122080 | `open`=1, `stop`=2, `close`=3 | — | Accepted by the HAL; no read-back, so not independently verified. |
 | `screen.rotation` — Screen rotation | `setting` method `setPadRotation` | `horizontal`=1, `vertical`=2 | — | Accepted by the HAL; no read-back, so not independently verified. |
 | `mirrors.autoFold` — Mirror auto fold | Setting device (1023), control id 1312817178 | `off`=0, `on`=1 | state id 1081081884 | The 'Side mirror auto fold' switch on the Driving screen. A manual fold or unfold command was not found. |
@@ -65,5 +67,5 @@ where the car's own signal differs, the offset is shown.
 | `ac.frontDefrost` — Windshield defrost | A/C service, property 107, area 256 | `on`=1, `off`=0 | read back through the A/C service | On forces fan 7, face/defrost vents and outside air; off falls back to auto. |
 | `ac.rearDefrost` — Rear window defrost | A/C service, property 108, area 256 | `on`=1, `off`=0 | read back through the A/C service | Confirmed by read-back. |
 
-54 commands. Domains that affect driving (engine, gearbox, motor, driver assistance, radar, security, power)
+56 commands. Domains that affect driving (engine, gearbox, motor, driver assistance, radar, security, power)
 are deliberately absent: the registry refuses to load an entry in one of them. See [safety](../../README.md#safety).

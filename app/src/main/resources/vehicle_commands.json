@@ -353,6 +353,52 @@
     "stateFeatureId": 1263534098
   },
   {
+    "id": "audio.headrestSound",
+    "domain": "AUDIO",
+    "displayName": "Devialet Headrest Sound of the driver's headrest speaker: off, surround (car speakers plus headrest), interactive (calls and navigation in the headrest) or exclusive (music in the headrest only)",
+    "label": "Headrest sound",
+    "labelAr": "صوت مسند الرأس",
+    "deviceType": 1002,
+    "featureId": -1676672971,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "off": 1,
+        "surround": 2,
+        "interactive": 3,
+        "exclusive": 4
+      }
+    },
+    "stateFeatureId": 1253048341
+  },
+  {
+    "id": "audio.soundStyle",
+    "domain": "AUDIO",
+    "displayName": "Devialet Sound Features, the sound style of the car speakers: fidelity, soft, dynamic, heavy, speech or custom",
+    "label": "Sound style",
+    "labelAr": "نمط الصوت",
+    "deviceType": 1002,
+    "featureId": -1693450216,
+    "invocation": {
+      "type": "genericFeatureSet"
+    },
+    "parameter": {
+      "type": "fixedEnum",
+      "options": {
+        "fidelity": 1,
+        "soft": 2,
+        "dynamic": 3,
+        "heavy": 4,
+        "speech": 5,
+        "custom": 6
+      }
+    },
+    "stateFeatureId": 1281359880
+  },
+  {
     "id": "trunk",
     "domain": "SETTING",
     "displayName": "Trunk",

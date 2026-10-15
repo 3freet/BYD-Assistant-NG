@@ -209,6 +209,23 @@ class VehicleCommandRegistryTest {
     }
 
     @Test
+    fun headrestSoundAndSoundStyleMatchWhatTheScreenWrote() {
+        // Recorded from the Devialet dialogs: the screen wrote 0x9C100035 (2 surround, 3 interactive, 4 exclusive)
+        // and 0x9B100018 (1..6); 1 (off) was written once by hand and read back.
+        val headrest = command("audio.headrestSound")
+        assertEquals(0x9C100035.toInt(), headrest.featureId)
+        assertEquals(mapOf("off" to 1, "surround" to 2, "interactive" to 3, "exclusive" to 4), (headrest.parameter as VehicleParameter.FixedEnum).options)
+        assertEquals(1253048341, headrest.stateFeatureId)
+        val style = command("audio.soundStyle")
+        assertEquals(0x9B100018.toInt(), style.featureId)
+        assertEquals(
+            mapOf("fidelity" to 1, "soft" to 2, "dynamic" to 3, "heavy" to 4, "speech" to 5, "custom" to 6),
+            (style.parameter as VehicleParameter.FixedEnum).options,
+        )
+        assertEquals(0x4C600008, style.stateFeatureId)
+    }
+
+    @Test
     fun dashcamCommandsAreBinderCommandsToTheRecorderService() {
         val expected = mapOf(
             "dashcam.record" to 0, "dashcam.photo" to 1, "dashcam.lock" to 2,

@@ -86,6 +86,8 @@ Screen: Sound & Display → Audio (Devialet Sound Staging, Devialet Space). Reco
 | Sound focus | `AUDIO_LEFT_RIGHT_FIELD_SET_SET` (470810653), typed `setDynaSoundFieldFocus` | whole car 6, front 7, back seats 4 | `AUDIO_SOUND_FIELD_FOCUS_STATE` (1339031565) |
 | Space on / off | `AUDIO_SPACE_SOUND_EFFECT_STATUS_IVI_SET` (372244496) | off 1, on 2 | `AUDIO_SPACE_SOUND_EFFECT_STATUS_IVI` (1263534096) |
 | Space strength | `AUDIO_SPACE_SOUND_MODE_STATUS_IVI_SET` (372244498) | soft 1, standard 2, strong 3 | `AUDIO_SPACE_SOUND_MODE_STATUS_IVI` (1263534098) |
+| Headrest sound (driver's headrest speaker) | `AUDIO_HEADREST_SOUND_EFFECT_STATUS_SET` (-1676672971 = 0x9C100035), typed `setDynaHeadrestSoundEffect` | off 1, surround 2, interactive 3, exclusive 4 | `AUDIO_HEADREST_SOUND_EFFECT_STATUS_IVI` (1253048341) |
+| Sound style of the car speakers (Devialet Sound Features) | `AUDIO_DYNAUDIO_SOUND_FEATURES_SET` (-1693450216 = 0x9B100018) | fidelity 1, soft 2, dynamic 3, heavy 4, speech 5, custom 6 | `AUDIO_DYNAUDIO_SOUND_FEATURES_IVI` (1281359880) |
 | Media mute | `AUDIO_MEDIA_SOUND_MUTE_SET_SET` (470810680) | normal 1, muted 2 | `AUDIO_MEDIA_SOUND_MUTE_STATE` (1339031597) |
 | Navigation volume | `AUDIO_NAVI_VOLUME_SET` (1309081616), typed `setNaviVolume` | 0…10 | `AUDIO_NAVI_VOLUME` (1108344868) |
 | All-sound mute | `AUDIO_MUTE_STATUS_SET` (1309024272), typed `setMuteState` | 0 / 1 | `AUDIO_MUTE_STATUS` (1108344846) |
@@ -100,6 +102,11 @@ Notes:
   `AUDIO_NEW_NAVIGATION_VOLUME_SET_STATUS`). Only the first follows the typed setter; whether the navigation
   app's spoken voice follows it was not heard.
 - Devialet is a feature of this car's sound system; another model will not have these.
+- **Headrest sound**: the screen (Sound & Display → Audio → Devialet Headrest Sound) offers surround, interactive
+  and exclusive; the car also accepts 1 (off) and reads it back. `getDynaHeadrestSpeakerConfig()` is 2 here, the
+  left-front headrest only, so it is the driver's headrest speaker that changes. Per-seat headrest volumes
+  (`AUDIO_*_HEADREST_VOLUME_SET`) and speaker switches (`AUDIO_LF_HEADREST_SPEAKER_SWITCH_SET`) exist but their
+  screens were not found, so they were not exercised.
 
 ## The dashcam
 

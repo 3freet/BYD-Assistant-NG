@@ -29,6 +29,8 @@ NOTES = {
     "audio.soundFocus": "The Devialet Sound Staging choice: whole car 6, front 7, back seats 4 (as the screen wrote them).",
     "audio.spaceSound": "Devialet Space switch: off 1, on 2.",
     "audio.spaceSoundMode": "Devialet Space strength: soft 1, standard 2, strong 3.",
+    "audio.headrestSound": "The Devialet Headrest Sound dialog: surround 2, interactive 3, exclusive 4; 1 (off) is accepted by the car but the screen has no button for it. This car has only the driver's headrest speaker.",
+    "audio.soundStyle": "The Devialet Sound Features dialog: fidelity 1, soft 2, dynamic 3, heavy 4, speech 5, custom 6.",
     "dashcam.record": "The answer is the dashcam service's own verdict (1 = done). Stopping is refused for a few seconds while a locked clip is being saved.",
     "dashcam.photo": "The answer is the dashcam service's own verdict (1 = done). Brings the dashcam screen to the front.",
     "dashcam.lock": "The answer is the dashcam service's own verdict (2 or 3 = saving). Brings the dashcam screen to the front.",
