@@ -60,6 +60,18 @@ tilt in reverse) are controllable.
 changes nothing; the screen writes `AUDIO_LEFT_RIGHT_FIELD_SET_SET` for the same choice. Find what the screen
 writes in the system log (`set featureID is …`) rather than guessing from names.
 
+**The cluster's normal / sport gauge view could not be switched from the head unit.** The steering-wheel switch
+shows up on the head unit only as a cluster message (type 11 on the cluster intercom, subsystem 1, command 1001,
+parameter 1 for the first switch and 2 for the second, logged by `BydResMgr-ClusterMgr`) and as pulses of
+`BODYWORK_REARVIEW_MIRROR_CONFIRMATION_KEY`; no readable state changes (`getInstrumentView` stays 1,
+`getViewStatus` is 65535 in both views). Writing the typed `setViewSwitch(1)` and `(2)` (`INSTRUMET_2IN1_VIEW_SWITCH_SET`)
+is accepted and nothing changes. The car's own `com.byd.clusterdebug` app sends numbered commands to the cluster
+through the `auto_container` service (`AutoContainerManager.sendInfo(1000, command, "")`; the shell identity is
+refused by its caller check, an installed app is not); its racing-mode style commands 278 and 279 changed nothing
+visible either. Classic / tech mode (8, 9), day / night (6, 7) and the theme setters were not tried. The same list
+holds commands that blank the cluster (1, "disconnect the cluster video") or run a stress test (41), so do not
+send numbers from it at random.
+
 **Large vendor apps are not a source of ids.** One app's 467 MB package was assets; its dex held no raw ids.
 
 **Polling cannot see short pulses** (see [research-method.md](research-method.md#pitfalls)).
