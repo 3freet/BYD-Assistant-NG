@@ -18,6 +18,14 @@ interface VehicleController {
      */
     suspend fun passengerScreen(command: String): VehicleDispatchResult =
         VehicleDispatchResult.Failure(VehicleDispatchError.HELPER_UNAVAILABLE, "This controller cannot reach the passenger screen.")
+
+    /**
+     * Runs one instrument-cluster command (`open <package>`, `close keep|disable`, `status`, see
+     * [com.bydassistantng.cluster.ClusterScreenCommand]) in the vehicle helper and returns its answer. Controllers
+     * that have no helper say so.
+     */
+    suspend fun clusterScreen(command: String): VehicleDispatchResult =
+        VehicleDispatchResult.Failure(VehicleDispatchError.HELPER_UNAVAILABLE, "This controller cannot reach the instrument cluster.")
 }
 
 sealed interface VehicleDispatchResult {

@@ -2,6 +2,7 @@ package com.bydassistantng.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bydassistantng.BuildConfig
 import com.bydassistantng.audio.ExteriorSpeaker
 import com.bydassistantng.audio.ExteriorVolume
 import com.bydassistantng.data.OptInFeatures
@@ -45,6 +46,15 @@ class AdvancedSettingsViewModel @Inject constructor(
     val driveModesEnabled: StateFlow<Boolean> = preferences.driveModesEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.DRIVE_MODES_DEFAULT)
 
+    /** Whether this build has the cluster screen feature: a debug (development) build only; it turns BYD Maps on and off. */
+    val clusterSupported: Boolean = BuildConfig.DEBUG
+
+    val clusterScreenEnabled: StateFlow<Boolean> = preferences.clusterScreenEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.CLUSTER_SCREEN_DEFAULT)
+
+    val clusterKeepMapsDisabled: StateFlow<Boolean> = preferences.clusterKeepMapsDisabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.CLUSTER_KEEP_MAPS_DISABLED_DEFAULT)
+
     val exteriorVolume: StateFlow<ExteriorVolume> = preferences.exteriorVolume
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExteriorVolume.DEFAULT)
 
@@ -58,5 +68,11 @@ class AdvancedSettingsViewModel @Inject constructor(
     }
     fun setDriveModesEnabled(enabled: Boolean) {
         viewModelScope.launch { preferences.setDriveModesEnabled(enabled) }
+    }
+    fun setClusterScreenEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferences.setClusterScreenEnabled(enabled) }
+    }
+    fun setClusterKeepMapsDisabled(disabled: Boolean) {
+        viewModelScope.launch { preferences.setClusterKeepMapsDisabled(disabled) }
     }
 }

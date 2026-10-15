@@ -31,6 +31,8 @@ fun AdvancedSettingsScreen(
     val exteriorVolume by viewModel.exteriorVolume.collectAsState()
     val exteriorEnabled by viewModel.exteriorSpeakerEnabled.collectAsState()
     val driveModesEnabled by viewModel.driveModesEnabled.collectAsState()
+    val clusterEnabled by viewModel.clusterScreenEnabled.collectAsState()
+    val clusterKeepMapsDisabled by viewModel.clusterKeepMapsDisabled.collectAsState()
     var showChannelChoice by remember { mutableStateOf(false) }
     var confirmBeta by remember { mutableStateOf(false) }
     var showVolumeChoice by remember { mutableStateOf(false) }
@@ -190,6 +192,27 @@ fun AdvancedSettingsScreen(
                             subtitle = stringResource(R.string.advanced_drive_modes_desc),
                             checked = driveModesEnabled,
                             onCheckedChange = { on -> if (on) confirmDriveModes = true else viewModel.setDriveModesEnabled(false) },
+                        )
+                    }
+                }
+            }
+            // The cluster screen: a development build only. It turns BYD Maps on while an app is on the cluster.
+            if (viewModel.clusterSupported) {
+                SettingsSection(stringResource(R.string.advanced_cluster_title)) {
+                    row {
+                        SwitchSetting(
+                            title = stringResource(R.string.advanced_cluster_enable_title),
+                            subtitle = stringResource(R.string.advanced_cluster_enable_desc),
+                            checked = clusterEnabled,
+                            onCheckedChange = { viewModel.setClusterScreenEnabled(it) },
+                        )
+                    }
+                    row {
+                        SwitchSetting(
+                            title = stringResource(R.string.advanced_cluster_keep_title),
+                            subtitle = stringResource(R.string.advanced_cluster_keep_desc),
+                            checked = clusterKeepMapsDisabled,
+                            onCheckedChange = { viewModel.setClusterKeepMapsDisabled(it) },
                         )
                     }
                 }

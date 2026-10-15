@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.bydassistantng.apps.AppLauncherTool
+import com.bydassistantng.cluster.ClusterOptions
+import com.bydassistantng.cluster.ClusterScreenTool
 import com.bydassistantng.gemini.GeminiFunctionCall
 import com.bydassistantng.media.MediaControlTool
 import com.bydassistantng.media.PlayMediaTool
@@ -48,7 +50,12 @@ class DebugToolReceiver : BroadcastReceiver() {
         Thread {
             try {
                 val result = when (tool) {
-                    AppLauncherTool.FUNCTION_NAME -> runBlocking { AppLauncherTool.handle(app, call) { } }
+                    AppLauncherTool.FUNCTION_NAME -> {
+                        val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
+                        runBlocking {
+                            AppLauncherTool.handle(app, call, onOpening = { }, beforeLaunch = { pkg -> ClusterScreenTool.leaving(controller, pkg) })
+                        }
+                    }
                     MediaControlTool.FUNCTION_NAME -> MediaControlTool.handle(app, call)
                     OutsideTemperatureTool.FUNCTION_NAME -> {
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
@@ -73,7 +80,18 @@ class DebugToolReceiver : BroadcastReceiver() {
                     }
                     PassengerScreenTool.FUNCTION_NAME -> {
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
-                        runBlocking { PassengerScreenTool.handle(app, call, controller, true) { } }
+                        runBlocking {
+                            PassengerScreenTool.handle(
+                                app, call, controller, true, onDispatching = { },
+                                beforeLaunch = { pkg -> ClusterScreenTool.leaving(controller, pkg) },
+                            )
+                        }
+                    }
+                    ClusterScreenTool.FUNCTION_NAME -> {
+                        // "keepdisabled" says whether BYD Maps is disabled again once the app leaves the cluster (default: yes).
+                        val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
+                        val options = ClusterOptions(enabled = true, keepMapsDisabled = intent.getBooleanExtra("keepdisabled", true))
+                        runBlocking { ClusterScreenTool.handle(app, call, controller, true, options) { } }
                     }
                     VolumeTool.FUNCTION_NAME -> VolumeTool.read(app)
                     ReadCarTool.FUNCTION_NAME -> {

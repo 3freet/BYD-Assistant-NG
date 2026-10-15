@@ -66,6 +66,8 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val LONG_TERM_MEMORY = booleanPreferencesKey("long_term_memory_enabled")
         val EXTERIOR_SPEAKER_ENABLED = booleanPreferencesKey("exterior_speaker_enabled")
         val DRIVE_MODES_ENABLED = booleanPreferencesKey("drive_modes_enabled")
+        val CLUSTER_SCREEN_ENABLED = booleanPreferencesKey("cluster_screen_enabled")
+        val CLUSTER_KEEP_MAPS_DISABLED = booleanPreferencesKey("cluster_keep_maps_disabled")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -160,6 +162,27 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.data.map { it[Keys.DRIVE_MODES_ENABLED] ?: OptInFeatures.DRIVE_MODES_DEFAULT }
     suspend fun setDriveModesEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.DRIVE_MODES_ENABLED] = enabled }
+    }
+
+    /**
+     * Whether the assistant may put an app on the car's instrument cluster (the cluster screen feature of a
+     * development build). Off by default; when off the tool is not offered and a request is refused.
+     */
+    val clusterScreenEnabled: Flow<Boolean> =
+        dataStore.data.map { it[Keys.CLUSTER_SCREEN_ENABLED] ?: OptInFeatures.CLUSTER_SCREEN_DEFAULT }
+    suspend fun setClusterScreenEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.CLUSTER_SCREEN_ENABLED] = enabled }
+    }
+
+    /**
+     * What happens to BYD Maps once the app has left the cluster: on = it is disabled again (once the cluster has
+     * its gauges back), off = it stays enabled. The cluster tool always starts from "BYD Maps is disabled", so it
+     * enables it first.
+     */
+    val clusterKeepMapsDisabled: Flow<Boolean> =
+        dataStore.data.map { it[Keys.CLUSTER_KEEP_MAPS_DISABLED] ?: OptInFeatures.CLUSTER_KEEP_MAPS_DISABLED_DEFAULT }
+    suspend fun setClusterKeepMapsDisabled(disabled: Boolean) {
+        dataStore.edit { it[Keys.CLUSTER_KEEP_MAPS_DISABLED] = disabled }
     }
 
     /** How loud the assistant is when it speaks or plays a sound on the exterior speaker, unless asked for another level. */

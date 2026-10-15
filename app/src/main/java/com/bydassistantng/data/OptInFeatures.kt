@@ -9,6 +9,12 @@ package com.bydassistantng.data
 object OptInFeatures {
     const val EXTERIOR_SPEAKER_DEFAULT = false
     const val DRIVE_MODES_DEFAULT = false
+
+    /** Putting an app on the instrument cluster (development builds only). */
+    const val CLUSTER_SCREEN_DEFAULT = false
+
+    /** BYD Maps is left enabled once the app has left the cluster, unless the user chooses to keep it disabled. */
+    const val CLUSTER_KEEP_MAPS_DISABLED_DEFAULT = false
 }
 
 /**

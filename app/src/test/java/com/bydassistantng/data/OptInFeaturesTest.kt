@@ -10,6 +10,9 @@ class OptInFeaturesTest {
     fun theOptInCarFeaturesAreOffUntilTheUserSwitchesThemOn() {
         assertFalse(OptInFeatures.EXTERIOR_SPEAKER_DEFAULT)
         assertFalse(OptInFeatures.DRIVE_MODES_DEFAULT)
+        assertFalse(OptInFeatures.CLUSTER_SCREEN_DEFAULT)
+        // BYD Maps is left as it is once the app has left the cluster unless the user asks for it to be disabled.
+        assertFalse(OptInFeatures.CLUSTER_KEEP_MAPS_DISABLED_DEFAULT)
     }
 
     @Test

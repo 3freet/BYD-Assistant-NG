@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Looper
 import androidx.annotation.Keep
 import com.bydassistantng.BuildConfig
+import com.bydassistantng.cluster.ClusterScreenCommand
 import com.bydassistantng.passenger.PassengerScreenCommand
 import kotlinx.coroutines.runBlocking
 
@@ -86,6 +87,11 @@ object VehicleShellHelper {
         }
         // The passenger screen: "fse <action> ...". Its own command set (see PassengerScreenCommand), not the registry.
         if (args.firstOrNull() == PassengerScreenCommand.NAME) return PassengerScreenCommand.run(args.drop(1))
+        // The instrument cluster: "cluster <action> ...", a development feature of debug builds only (it turns BYD
+        // Maps on and off), and likewise not a registry entry.
+        if (args.firstOrNull() == ClusterScreenCommand.NAME) {
+            return if (BuildConfig.DEBUG) ClusterScreenCommand.run(args.drop(1)) else invalid("unknown command '${args[0]}'")
+        }
         // Read-only questions: "query <id>". Only the queries in VehicleQuery exist; nothing else is readable this way.
         if (args.firstOrNull() == "query") {
             val query = args.getOrNull(1)?.let { VehicleQuery.byId(it) } ?: return invalid("unknown query '${args.getOrNull(1)}'")

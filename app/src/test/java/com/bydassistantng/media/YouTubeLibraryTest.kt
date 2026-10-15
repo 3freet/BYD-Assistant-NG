@@ -107,4 +107,38 @@ class YouTubeLibraryTest {
         assertEquals(false, TextMatch.same("blinding lights", "relaxing piano music"))
         assertEquals(false, TextMatch.same("", "relaxing piano music"))
     }
+
+    // ── a video for a phrase (the cluster has no touch, so the first result is chosen without pressing it) ──
+
+    @Test
+    fun theFirstVideoOfTheDesktopResultsPageIsTakenWithItsTitle() {
+        val page = """{"contents":{"sectionListRenderer":{"contents":[{"adSlotRenderer":{"videoId":"ADADADADAD1"}},""" +
+            """{"videoRenderer":{"videoId":"dQw4w9WgXcQ","thumbnail":{"thumbnails":[]},"title":{"runs":[{"text":"Rick Astley - Never Gonna Give You Up \u0026 more"}],"accessibility":{}}}},""" +
+            """{"videoRenderer":{"videoId":"3BFTio5296w","title":{"runs":[{"text":"Another"}]}}}]}}}"""
+        val hit = YouTubeLibrary.firstVideo(page)!!
+        assertEquals("dQw4w9WgXcQ", hit.id)
+        assertEquals("Rick Astley - Never Gonna Give You Up & more", hit.title)
+        assertEquals("https://www.youtube.com/watch?v=dQw4w9WgXcQ", YouTubeLibrary.watchUrl(hit.id))
+    }
+
+    @Test
+    fun theMobilePageWithHexEscapesIsReadToo() {
+        val page = """var ytInitialData = '\x7b\x22watchEndpoint\x22:\x7b\x22videoId\x22:\x22yPYZpwSpKmA\x22,\x22playlistId\x22:1\x7d\x7d';"""
+        assertEquals("yPYZpwSpKmA", YouTubeLibrary.firstVideo(page)!!.id)
+    }
+
+    @Test
+    fun aPageWithNoVideoGivesNothing() {
+        assertNull(YouTubeLibrary.firstVideo("<html>consent</html>"))
+        assertNull(YouTubeLibrary.firstVideo(""))
+    }
+
+    @Test
+    fun aPastedWatchLinkNamesItsVideo() {
+        assertEquals("dQw4w9WgXcQ", YouTubeLibrary.videoIdOf("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertEquals("dQw4w9WgXcQ", YouTubeLibrary.videoIdOf("https://youtu.be/dQw4w9WgXcQ?t=5"))
+        assertEquals("dQw4w9WgXcQ", YouTubeLibrary.videoIdOf("https://m.youtube.com/watch?feature=share&v=dQw4w9WgXcQ"))
+        assertNull(YouTubeLibrary.videoIdOf("never gonna give you up"))
+        assertNull(YouTubeLibrary.videoIdOf("https://example.com/watch?v=dQw4w9WgXcQ"))
+    }
 }

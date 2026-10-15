@@ -29,6 +29,8 @@ private const val CONNECT_TIMEOUT_MS = 8_000L
 private const val START_TIMEOUT_MS = 10_000L
 // One command in a running helper: the HAL call, plus up to ~1.5s of A/C read-back polling.
 private const val COMMAND_TIMEOUT_MS = 8_000L
+// The cluster screen: turn BYD Maps on, wait for it, put the app on the cluster and keep it in front until settled.
+private const val CLUSTER_COMMAND_TIMEOUT_MS = 45_000L
 // A helper nobody has used for this long is shut down; the next press starts a fresh one.
 private const val IDLE_CLOSE_MS = 5 * 60_000L
 
@@ -122,6 +124,26 @@ class ShellHelperVehicleController @Inject constructor(
     }
 
     /**
+     * One instrument-cluster command. Opening takes the helper several seconds (it turns BYD Maps on, waits for it,
+     * and keeps the app in front until the map app has settled), so it is given a long answer time of its own.
+     */
+    override suspend fun clusterScreen(command: String): VehicleDispatchResult = mutex.withLock {
+        val line = "cluster $command"
+        try {
+            sendLine(line, CLUSTER_COMMAND_TIMEOUT_MS) ?: run {
+                AppLogger.log(TAG, "Helper connection was lost — restarting it")
+                closeSession()
+                sendLine(line, CLUSTER_COMMAND_TIMEOUT_MS)
+            } ?: VehicleDispatchResult.Failure(
+                VehicleDispatchError.HELPER_UNAVAILABLE,
+                "Could not reach the head unit's ADB connection — ADB debugging must be on and authorized.",
+            )
+        } finally {
+            armIdleClose()
+        }
+    }
+
+    /**
      * Asks the helper that is already running for a drive mode ([DriveModeCommand]); null when the helper could
      * not be reached. Not a vehicle command: it has nothing to do with the registry or its denylist.
      */
@@ -143,12 +165,12 @@ class ShellHelperVehicleController @Inject constructor(
     /** @return null if the helper couldn't be started or its stream was dead; a result otherwise. */
     private suspend fun send(command: VehicleCommand, value: Int): VehicleDispatchResult? = sendLine("${command.id} $value")
 
-    private suspend fun sendLine(line: String): VehicleDispatchResult? {
+    private suspend fun sendLine(line: String, timeoutMs: Long = COMMAND_TIMEOUT_MS): VehicleDispatchResult? {
         val helper = ensureSession() ?: return null
         AppLogger.log(TAG, "Helper: $line")
         val reply = try {
             helper.write(line)
-            helper.readLineStartingWith(HelperProtocol.RESULT_PREFIX.trim(), COMMAND_TIMEOUT_MS)
+            helper.readLineStartingWith(HelperProtocol.RESULT_PREFIX.trim(), timeoutMs)
         } catch (e: IOException) {
             null
         }

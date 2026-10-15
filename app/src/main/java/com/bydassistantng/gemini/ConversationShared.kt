@@ -25,6 +25,8 @@ import com.bydassistantng.vehicle.InAppVehicleController
 import com.bydassistantng.vehicle.ReadCarTool
 import com.bydassistantng.vehicle.needsCarLink
 import com.bydassistantng.vehicle.SetDriveModeTool
+import com.bydassistantng.cluster.ClusterOptions
+import com.bydassistantng.cluster.ClusterScreenTool
 import com.bydassistantng.vehicle.CommandAnswers
 import com.bydassistantng.vehicle.CommandLookup
 import com.bydassistantng.vehicle.VehicleCommandRegistry
@@ -59,7 +61,8 @@ private fun mediaActionText(context: Context, action: String): String = when (ac
  * [exteriorSpeaker] offers speaking through the car's exterior speaker, in a conversation with vehicle
  * control armed and only in a build that has one; [soundEffects] are the ready-made sounds it can play.
  * [memoryTools] offers remembering and forgetting facts, in a conversation with long-term memory on.
- * [driveModes] offers changing the car's drive mode, like the exterior speaker only in a build that can. */
+ * [driveModes] offers changing the car's drive mode, like the exterior speaker only in a build that can.
+ * [clusterScreen] offers putting an app on the instrument cluster (a development build, with its switch on). */
 fun assistantTools(
     vehicleControlEnabled: Boolean,
     conversation: Boolean = false,
@@ -68,6 +71,7 @@ fun assistantTools(
     soundEffects: List<SoundEffect> = emptyList(),
     memoryTools: Boolean = false,
     driveModes: Boolean = false,
+    clusterScreen: Boolean = false,
 ): List<GeminiTool> {
     val declarations = buildList {
         add(NavigationTool.declaration)
@@ -94,6 +98,8 @@ fun assistantTools(
             }
             // Needs a build that can ask the car for a drive mode, and counts as controlling the car.
             if (conversation && driveModes) add(SetDriveModeTool.declaration)
+            // A development build with its Advanced settings switch on; it turns BYD Maps on and off by itself.
+            if (conversation && clusterScreen) add(ClusterScreenTool.declaration)
         }
     }
     return buildList {
@@ -119,6 +125,7 @@ object VehicleFunctionDispatcher {
         vehicleControlEnabled: Boolean,
         reflectionController: VehicleController,
         context: Context,
+        cluster: ClusterOptions = ClusterOptions.OFF,
         onDispatching: suspend (displayName: String) -> Unit,
     ): JsonObject {
         if (functionCall.name == NavigationTool.FUNCTION_NAME) {
@@ -126,7 +133,11 @@ object VehicleFunctionDispatcher {
         }
 
         if (functionCall.name == AppLauncherTool.FUNCTION_NAME) {
-            return AppLauncherTool.handle(context, functionCall, onDispatching)
+            // An app that is on the instrument cluster has its gauges put back before it is taken off.
+            return AppLauncherTool.handle(
+                context, functionCall, onDispatching,
+                beforeLaunch = { pkg -> ClusterScreenTool.leaving(reflectionController, pkg) },
+            )
         }
         if (functionCall.name == PlayMediaTool.FUNCTION_NAME) {
             return PlayMediaTool.handle(context, functionCall, onDispatching)
@@ -142,7 +153,13 @@ object VehicleFunctionDispatcher {
         }
 
         if (functionCall.name == PassengerScreenTool.FUNCTION_NAME) {
-            return PassengerScreenTool.handle(context, functionCall, reflectionController, vehicleControlEnabled, onDispatching)
+            return PassengerScreenTool.handle(
+                context, functionCall, reflectionController, vehicleControlEnabled, onDispatching,
+                beforeLaunch = { pkg -> ClusterScreenTool.leaving(reflectionController, pkg) },
+            )
+        }
+        if (functionCall.name == ClusterScreenTool.FUNCTION_NAME) {
+            return ClusterScreenTool.handle(context, functionCall, reflectionController, vehicleControlEnabled, cluster, onDispatching)
         }
         if (functionCall.name == VolumeTool.FUNCTION_NAME) {
             onDispatching(AppLanguage.string(context, R.string.banner_volume))

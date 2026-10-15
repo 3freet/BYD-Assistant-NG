@@ -46,7 +46,16 @@ object AppLauncherTool {
         ),
     )
 
-    suspend fun handle(context: Context, call: GeminiFunctionCall, onOpening: suspend (String) -> Unit): JsonObject {
+    /**
+     * [beforeLaunch] is told the package that is about to be opened, so that a screen it is leaving can be made
+     * ready (the instrument cluster puts its gauges back before an app is taken off it).
+     */
+    suspend fun handle(
+        context: Context,
+        call: GeminiFunctionCall,
+        onOpening: suspend (String) -> Unit,
+        beforeLaunch: suspend (String) -> Unit = {},
+    ): JsonObject {
         val name = (call.args["name"] as? JsonPrimitive)?.content?.trim().orEmpty().take(MAX_NAME_LENGTH)
         if (name.isEmpty()) return error("No app name was given")
 
@@ -54,6 +63,7 @@ object AppLauncherTool {
         return when (val match = AppMatcher.find(name, installed)) {
             is AppMatch.One -> {
                 onOpening(AppLanguage.string(context, R.string.banner_opening_app, match.app.label))
+                beforeLaunch(match.app.packageName)
                 open(context, match.app)
             }
             is AppMatch.Several -> buildJsonObject {

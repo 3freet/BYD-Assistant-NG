@@ -68,9 +68,19 @@ parameter 1 for the first switch and 2 for the second, logged by `BydResMgr-Clus
 is accepted and nothing changes. The car's own `com.byd.clusterdebug` app sends numbered commands to the cluster
 through the `auto_container` service (`AutoContainerManager.sendInfo(1000, command, "")`; the shell identity is
 refused by its caller check, an installed app is not); its racing-mode style commands 278 and 279 changed nothing
-visible either. Classic / tech mode (8, 9), day / night (6, 7) and the theme setters were not tried. The same list
-holds commands that blank the cluster (1, "disconnect the cluster video") or run a stress test (41), so do not
-send numbers from it at random.
+visible either, with the cluster in normal view and again in sport gauges. Classic / tech mode (8, 9), day / night
+(6, 7) and the theme setters were not tried. The same list holds commands that blank the cluster (1, "disconnect the
+cluster video") or run a stress test (41), so do not send numbers from it at random.
+
+How the cluster is fed on this car (observed): `com.xdja.containerservice` publishes three virtual displays,
+`fission_bg_XDJAScreenProjection` (id 3), `shared_fission_bg_XDJAScreenProjection_0` (id 4) and `_1` (id 5), each
+1920x720 with the layer stack equal to its id, all empty by default. An activity started with `am start --display 4`
+is accepted and runs there, and nothing appears on the cluster. `com.byd.sr` and `com.byd.launchermap` are not
+installed on this car; the map meter activities live in BYD's navigation app `com.byd.naviauto`, which is disabled on
+this car. The container service decides who may send to the cluster from `/system/etc/container_comm_cfg.json`: only
+the packages listed there (the theme store may send message type 8, which carries cluster skin requests) and apps
+signed like the service. The shell identity is not among them. What does put an app on the cluster is described in
+[cluster-screen.md](cluster-screen.md).
 
 **The volume control that "worked" did nothing.** `AUDIO_VOLUME_SET` (the typed `setVolume`) returns 0 for any value
 and changes nothing on this car, and with no state to read back the app reported success. The car's volume is

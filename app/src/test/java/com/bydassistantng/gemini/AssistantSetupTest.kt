@@ -88,6 +88,18 @@ class AssistantSetupTest {
     }
 
     @Test
+    fun theClusterScreenNeedsItsSwitchAndArmedVehicleControlInAConversation() {
+        val tool = "cluster_screen"
+        // Never without its switch, armed or not.
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = true, conversation = true)))
+        // Not without vehicle control armed.
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = false, conversation = true, clusterScreen = true)))
+        // Not in a one-shot request.
+        assertFalse(tool in names(assistantTools(vehicleControlEnabled = true, conversation = false, clusterScreen = true)))
+        assertTrue(tool in names(assistantTools(vehicleControlEnabled = true, conversation = true, clusterScreen = true)))
+    }
+
+    @Test
     fun webSearchIsAnExtraToolOnlyWhenOn() {
         assertTrue(assistantTools(false, webSearch = false).none { it.googleSearch != null })
         val withSearch = assistantTools(false, webSearch = true)
