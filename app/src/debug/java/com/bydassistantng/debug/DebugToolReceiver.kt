@@ -11,6 +11,7 @@ import com.bydassistantng.media.PlaybackFollowUp
 import com.bydassistantng.passenger.PassengerScreenTool
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.AirQualityTool
+import com.bydassistantng.vehicle.VolumeTool
 import com.bydassistantng.vehicle.ShellHelperVehicleController
 import com.bydassistantng.vehicle.VehicleCommandRegistry
 import com.bydassistantng.vehicle.OutsideTemperatureTool
@@ -74,6 +75,7 @@ class DebugToolReceiver : BroadcastReceiver() {
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
                         runBlocking { PassengerScreenTool.handle(app, call, controller, true) { } }
                     }
+                    VolumeTool.FUNCTION_NAME -> VolumeTool.read(app)
                     AirQualityTool.FUNCTION_NAME -> {
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
                         when (val answer = runBlocking { controller.query(VehicleQuery.AIR_QUALITY) }) {

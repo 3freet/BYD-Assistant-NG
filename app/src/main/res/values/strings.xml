@@ -41,6 +41,7 @@
     <string name="banner_playing_playlists">Playing your playlists</string>
     <string name="banner_outside_temperature">Reading outside temperature</string>
     <string name="banner_air_quality">Reading air quality</string>
+    <string name="banner_volume">Reading the volume</string>
     <string name="banner_passenger_open">Opening %1$s on the passenger screen</string>
     <string name="banner_passenger_close">Closing apps on the passenger screen</string>
     <string name="banner_passenger_home">Passenger screen: home</string>

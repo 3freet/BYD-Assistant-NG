@@ -20,6 +20,7 @@ import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.LoggingVehicleController
 import com.bydassistantng.vehicle.AirQualityTool
+import com.bydassistantng.vehicle.VolumeTool
 import com.bydassistantng.passenger.PassengerScreenTool
 import com.bydassistantng.vehicle.OutsideTemperatureTool
 import com.bydassistantng.vehicle.SetDriveModeTool
@@ -69,6 +70,7 @@ fun assistantTools(
         add(AppLauncherTool.declaration)
         add(MediaControlTool.declaration)
         add(PlayMediaTool.declaration)
+        add(VolumeTool.declaration)
         if (conversation) add(endConversationDeclaration)
         // Only when the user has long-term memory switched on, in a conversation.
         if (conversation && memoryTools) {
@@ -136,6 +138,10 @@ object VehicleFunctionDispatcher {
 
         if (functionCall.name == PassengerScreenTool.FUNCTION_NAME) {
             return PassengerScreenTool.handle(context, functionCall, reflectionController, vehicleControlEnabled, onDispatching)
+        }
+        if (functionCall.name == VolumeTool.FUNCTION_NAME) {
+            onDispatching(AppLanguage.string(context, R.string.banner_volume))
+            return VolumeTool.read(context)
         }
         if (functionCall.name == AirQualityTool.FUNCTION_NAME) {
             onDispatching(AppLanguage.string(context, R.string.banner_air_quality))

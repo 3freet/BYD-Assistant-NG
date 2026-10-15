@@ -102,6 +102,9 @@ Notes:
   `AUDIO_NEW_NAVIGATION_VOLUME_SET_STATUS`). Only the first follows the typed setter; whether the navigation
   app's spoken voice follows it was not heard.
 - Devialet is a feature of this car's sound system; another model will not have these.
+- **Reading the volume** (`get_volume`): `AudioManager.getStreamVolume(3)` and `getStreamMaxVolume(3)` (39 here), read
+  in the app itself; no helper or ADB is involved. The media mute (`AUDIO_MEDIA_SOUND_MUTE_STATE`, 1 on, 2 muted)
+  and the navigation voice (`getNaviVolume()`, 0..10) can be read from the audio device but are not exposed.
 - **Headrest sound**: the screen (Sound & Display → Audio → Devialet Headrest Sound) offers surround, interactive
   and exclusive; the car also accepts 1 (off) and reads it back. `getDynaHeadrestSpeakerConfig()` is 2 here, the
   left-front headrest only, so it is the driver's headrest speaker that changes. Per-seat headrest volumes

@@ -41,6 +41,8 @@ exterior speaker or change the drive mode.
 - **Passenger screen** ("open YouTube on the passenger screen", "close it", "turn the passenger screen off"): opens
   and closes apps on the front-passenger screen, sends it home or back, and switches its backlight. Same switch as
   vehicle control. See [passenger-screen.md](docs/byd-internals/passenger-screen.md).
+- **Volume** ("what's the volume?", "turn it up a bit"): reads the media volume so relative changes start from the
+  real value. It reads inside the app, so it needs neither ADB nor the vehicle-control switch.
 - **Air quality** ("how's the air in the car?"): the car's PM2.5 sensors, inside and outside, with the car's own
   rating. Read-only; same switch as vehicle control.
 - **Outside temperature** ("how hot is it outside?"), read from the instrument cluster; same switch as vehicle control.
