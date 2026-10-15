@@ -20,6 +20,7 @@ import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.LoggingVehicleController
 import com.bydassistantng.vehicle.AirQualityTool
+import com.bydassistantng.passenger.PassengerScreenTool
 import com.bydassistantng.vehicle.OutsideTemperatureTool
 import com.bydassistantng.vehicle.SetDriveModeTool
 import com.bydassistantng.vehicle.TyreStatusTool
@@ -79,6 +80,7 @@ fun assistantTools(
             add(TyreStatusTool.declaration)
             add(OutsideTemperatureTool.declaration)
             add(AirQualityTool.declaration)
+            add(PassengerScreenTool.declaration)
             // Needs a build that can switch the exterior speaker, and counts as controlling the car.
             if (conversation && exteriorSpeaker) {
                 add(SpeakOutsideTool.declaration)
@@ -132,6 +134,9 @@ object VehicleFunctionDispatcher {
             return readOutsideTemperature(vehicleControlEnabled, reflectionController)
         }
 
+        if (functionCall.name == PassengerScreenTool.FUNCTION_NAME) {
+            return PassengerScreenTool.handle(context, functionCall, reflectionController, vehicleControlEnabled, onDispatching)
+        }
         if (functionCall.name == AirQualityTool.FUNCTION_NAME) {
             onDispatching(AppLanguage.string(context, R.string.banner_air_quality))
             return readAirQuality(vehicleControlEnabled, reflectionController)

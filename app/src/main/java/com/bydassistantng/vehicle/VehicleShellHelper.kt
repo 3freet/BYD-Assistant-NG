@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Looper
 import androidx.annotation.Keep
 import com.bydassistantng.BuildConfig
+import com.bydassistantng.passenger.PassengerScreenCommand
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -83,6 +84,8 @@ object VehicleShellHelper {
         if (args.firstOrNull() == DriveModeCommand.NAME) {
             return if (BuildConfig.EXPERIMENTAL_CAR_FEATURES) DriveModeCommand.run(args.drop(1)) else invalid("unknown command '${args[0]}'")
         }
+        // The passenger screen: "fse <action> ...". Its own command set (see PassengerScreenCommand), not the registry.
+        if (args.firstOrNull() == PassengerScreenCommand.NAME) return PassengerScreenCommand.run(args.drop(1))
         // Read-only questions: "query <id>". Only the queries in VehicleQuery exist; nothing else is readable this way.
         if (args.firstOrNull() == "query") {
             val query = args.getOrNull(1)?.let { VehicleQuery.byId(it) } ?: return invalid("unknown query '${args.getOrNull(1)}'")

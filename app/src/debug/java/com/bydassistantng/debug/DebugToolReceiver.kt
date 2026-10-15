@@ -8,6 +8,7 @@ import com.bydassistantng.gemini.GeminiFunctionCall
 import com.bydassistantng.media.MediaControlTool
 import com.bydassistantng.media.PlayMediaTool
 import com.bydassistantng.media.PlaybackFollowUp
+import com.bydassistantng.passenger.PassengerScreenTool
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.AirQualityTool
 import com.bydassistantng.vehicle.ShellHelperVehicleController
@@ -68,6 +69,10 @@ class DebugToolReceiver : BroadcastReceiver() {
                             is VehicleDispatchResult.Success -> answer.note?.let { TyreStatusTool.parse(it) }?.let { TyreStatusTool.report(it) } ?: answer
                             else -> answer
                         }
+                    }
+                    PassengerScreenTool.FUNCTION_NAME -> {
+                        val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
+                        runBlocking { PassengerScreenTool.handle(app, call, controller, true) { } }
                     }
                     AirQualityTool.FUNCTION_NAME -> {
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()

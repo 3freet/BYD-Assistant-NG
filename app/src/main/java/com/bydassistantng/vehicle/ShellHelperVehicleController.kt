@@ -105,6 +105,22 @@ class ShellHelperVehicleController @Inject constructor(
         }
     }
 
+    override suspend fun passengerScreen(command: String): VehicleDispatchResult = mutex.withLock {
+        val line = "fse $command"
+        try {
+            sendLine(line) ?: run {
+                AppLogger.log(TAG, "Helper connection was lost — restarting it")
+                closeSession()
+                sendLine(line)
+            } ?: VehicleDispatchResult.Failure(
+                VehicleDispatchError.HELPER_UNAVAILABLE,
+                "Could not reach the head unit's ADB connection — ADB debugging must be on and authorized.",
+            )
+        } finally {
+            armIdleClose()
+        }
+    }
+
     /**
      * Asks the helper that is already running for a drive mode ([DriveModeCommand]); null when the helper could
      * not be reached. Not a vehicle command: it has nothing to do with the registry or its denylist.

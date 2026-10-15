@@ -10,6 +10,14 @@ interface VehicleController {
      */
     suspend fun query(query: VehicleQuery): VehicleDispatchResult =
         VehicleDispatchResult.Failure(VehicleDispatchError.HELPER_UNAVAILABLE, "This controller cannot read the car.")
+
+    /**
+     * Runs one passenger-screen command (`screen off`, `open 0 <package>`, ... see
+     * [com.bydassistantng.passenger.PassengerScreenCommand]) in the vehicle helper and returns its answer.
+     * Controllers that have no helper say so.
+     */
+    suspend fun passengerScreen(command: String): VehicleDispatchResult =
+        VehicleDispatchResult.Failure(VehicleDispatchError.HELPER_UNAVAILABLE, "This controller cannot reach the passenger screen.")
 }
 
 sealed interface VehicleDispatchResult {

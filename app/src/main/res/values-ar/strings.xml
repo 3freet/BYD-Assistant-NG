@@ -40,6 +40,13 @@
     <string name="banner_playing_playlists">تشغيل قوائم التشغيل</string>
     <string name="banner_outside_temperature">جارٍ قراءة حرارة الخارج</string>
     <string name="banner_air_quality">جارٍ قراءة جودة الهواء</string>
+    <string name="banner_passenger_open">جارٍ فتح %1$s على شاشة الراكب</string>
+    <string name="banner_passenger_close">جارٍ إغلاق التطبيقات على شاشة الراكب</string>
+    <string name="banner_passenger_home">شاشة الراكب: الرئيسية</string>
+    <string name="banner_passenger_back">شاشة الراكب: رجوع</string>
+    <string name="banner_passenger_screen_off">جارٍ إطفاء شاشة الراكب</string>
+    <string name="banner_passenger_screen_on">جارٍ تشغيل شاشة الراكب</string>
+    <string name="banner_passenger_status">جارٍ فحص شاشة الراكب</string>
     <string name="banner_speak_outside">جارٍ التحدث خارج السيارة</string>
     <string name="banner_play_sound_outside">جارٍ تشغيل صوت خارج السيارة</string>
     <string name="banner_drive_mode">وضع القيادة: %1$s</string>

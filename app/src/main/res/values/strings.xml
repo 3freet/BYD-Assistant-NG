@@ -41,6 +41,13 @@
     <string name="banner_playing_playlists">Playing your playlists</string>
     <string name="banner_outside_temperature">Reading outside temperature</string>
     <string name="banner_air_quality">Reading air quality</string>
+    <string name="banner_passenger_open">Opening %1$s on the passenger screen</string>
+    <string name="banner_passenger_close">Closing apps on the passenger screen</string>
+    <string name="banner_passenger_home">Passenger screen: home</string>
+    <string name="banner_passenger_back">Passenger screen: back</string>
+    <string name="banner_passenger_screen_off">Turning the passenger screen off</string>
+    <string name="banner_passenger_screen_on">Turning the passenger screen on</string>
+    <string name="banner_passenger_status">Checking the passenger screen</string>
     <string name="banner_speak_outside">Speaking outside the car</string>
     <string name="banner_play_sound_outside">Playing a sound outside the car</string>
     <string name="banner_drive_mode">Drive mode: %1$s</string>
