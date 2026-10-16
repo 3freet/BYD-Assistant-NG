@@ -15,6 +15,15 @@ object OptInFeatures {
 
     /** BYD Maps is left enabled once the app has left the cluster, unless the user chooses to keep it disabled. */
     const val CLUSTER_KEEP_MAPS_DISABLED_DEFAULT = false
+
+    /**
+     * Replies on the car's voice channel, with the music lowered while the assistant is active. It exists in dev
+     * builds only, where it is on, as it is on the car it was developed on; no other build offers it.
+     */
+    const val VOICE_CHANNEL_DEFAULT = true
+
+    /** The voice channel's volume follows the cabin noise (on, as on the car it was developed on). */
+    const val VOICE_CHANNEL_ADAPTIVE_DEFAULT = true
 }
 
 /**

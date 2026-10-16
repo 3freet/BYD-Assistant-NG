@@ -1,13 +1,19 @@
 package com.bydassistantng.audio
 
+import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.media.audiofx.LoudnessEnhancer
+import android.os.Build
 import android.os.SystemClock
+import androidx.annotation.RequiresApi
 import com.bydassistantng.util.AppLogger
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +31,8 @@ import java.util.Optional
 import javax.inject.Inject
 
 private const val TAG = "LiveAudioIo"
+private const val KEY_LOWERED_FROM = "lowered_from"
+private const val KEY_LOWERED_TO = "lowered_to"
 
 // Fixed by the Live API protocol itself — see GeminiLiveClient's INPUT_AUDIO_MIME and the
 // documented output format ("raw 16-bit PCM audio, 24kHz, little-endian"), not a tunable choice.
@@ -50,6 +58,18 @@ private const val OUTSIDE_SWITCH_WAIT_MS = 3_000L
 // A track retired when the reply moves between the cabin and the exterior speaker is released this long
 // after the last of its audio was due, so it can finish.
 private const val RETIRED_TRACK_GRACE_MS = 800L
+
+// On the voice channel, the music is held down this long after the last word, so a short gap between two parts of a
+// reply does not let it back up and down again; sound that starts after a longer silence than NEW_REPLY_GAP_MS is a
+// new reply, which sets the volume and the music afresh.
+private const val VOICE_FOCUS_TAIL_MS = 700L
+private const val NEW_REPLY_GAP_MS = 600L
+
+// When the user cuts a reply off, the music stays down this long for what is about to follow (their words, then the
+// answer), so it does not come back up for a moment and go down again.
+private const val MUSIC_CUT_OFF_HOLD_MS = 4_000L
+
+// The music is turned down and brought back in index steps over about this long (see [MusicDip.rampStepMs]).
 
 private val SOURCES = listOf(
     MediaRecorder.AudioSource.VOICE_COMMUNICATION to "VOICE_COMMUNICATION",
@@ -163,8 +183,47 @@ class LivePcmRecorder @Inject constructor() {
 
 /** Streaming raw-PCM playback for the Live API's audio output — see [LivePcmRecorder]'s doc comment
  * for why this isn't `@Singleton` despite ending up with one long-lived instance in practice. */
-class LivePcmPlayer @Inject constructor(exteriorSpeaker: Optional<ExteriorSpeaker>) {
+class LivePcmPlayer @Inject constructor(
+    exteriorSpeaker: Optional<ExteriorSpeaker>,
+    @ApplicationContext context: Context,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private val audioManager: AudioManager = context.getSystemService(AudioManager::class.java)
+
+    /** How replies use the car's voice channel (dev builds); set when a conversation starts. */
+    @Volatile var voiceChannel = VoiceChannelOptions.OFF
+
+    // The audio focus held for a reply on the voice channel, and the job that gives it up once the reply has been
+    // heard. Guarded by [focusLock].
+    private val focusLock = Any()
+    private var voiceFocus: AudioFocusRequest? = null
+    private var focusJob: Job? = null
+
+    // The media volume while it is turned down by a share (see [MusicDuck.LEVEL]): what it was and what it was set to.
+    // Guarded by [focusLock].
+    private var loweredFrom: Int? = null
+    private var loweredTo: Int? = null
+    private var restoreJob: Job? = null
+    private var restoringTo: Int? = null
+    private var rampDownJob: Job? = null
+    private var rampDownActive = false
+
+    // Bumped whenever a reply starts. The job that gives the music back remembers the number it was started under and
+    // gives up if it has changed, so a reply that starts just as the last one's hold runs out keeps the music down.
+    private var holdGeneration = 0
+
+    private val voicePrefs = context.getSharedPreferences("voice_channel", Context.MODE_PRIVATE)
+
+    /** The cabin noise now in dBFS, or null; set by the conversation, which is the one listening to the cabin. */
+    @Volatile var cabinNoise: (() -> Double?)? = null
+
+    /**
+     * How much quieter than the voice stream's volume the replies are made, 0..1 (1 is not at all): for a calm cabin,
+     * where the stream is already at its lowest index and the volume has to be taken off the track itself.
+     */
+    @Volatile var voiceBaseVolume = 1f
+        private set
 
     // Present only in debug builds (see [ExteriorSpeaker]).
     private val exterior: ExteriorSpeaker? = exteriorSpeaker.orElse(null)
@@ -252,9 +311,16 @@ class LivePcmPlayer @Inject constructor(exteriorSpeaker: Optional<ExteriorSpeake
      * the speakers' share falls away with this, the user's does not. */
     fun setVolume(level: Float) {
         volume = level
+        applyTrackVolume()
+    }
+
+    /** What the cabin track plays at: the dip asked for by the conversation, less what a calm cabin takes off. */
+    private fun cabinTrackVolume(): Float = if (voiceChannel.enabled) volume * voiceBaseVolume else volume
+
+    private fun applyTrackVolume() {
         val track = synchronized(trackLock) { audioTrack } ?: return
         try {
-            track.setVolume(level)
+            track.setVolume(if (speakingOutside) volume else cabinTrackVolume())
         } catch (_: IllegalStateException) {
             // Released under us by stopAndFlush: the next track takes [volume] when it is created.
         }
@@ -268,6 +334,11 @@ class LivePcmPlayer @Inject constructor(exteriorSpeaker: Optional<ExteriorSpeake
      * main thread. */
     fun playChunk(pcm: ByteArray, receivedInEpoch: Int = epoch.get()) {
         awaitOutsideSwitch()
+        // The first sound of each reply on the voice channel: the music is dealt with and the volume set before it
+        // starts, every time, so a cabin that changed between two replies is heard.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && voiceChannel.enabled && !speakingOutside && startsNewReply()) {
+            prepareVoiceReply(receivedInEpoch)
+        }
         val track = synchronized(trackLock) {
             if (receivedInEpoch != epoch.get()) return // cut off while this chunk was in flight
             audioTrack ?: createTrack().also { audioTrack = it }
@@ -294,12 +365,273 @@ class LivePcmPlayer @Inject constructor(exteriorSpeaker: Optional<ExteriorSpeake
                 }
             }
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) holdVoiceFocusUntilHeard()
+    }
+
+    /** Whether the chunk about to be written starts a reply: there is no track yet, or what was written has been heard. */
+    private fun startsNewReply(): Boolean = synchronized(trackLock) {
+        audioTrack == null || SystemClock.elapsedRealtime() - playbackEndsAtMs > NEW_REPLY_GAP_MS
+    }
+
+    /** Whether the whole of this conversation is being handled (see [beginConversationMusic]), not only the replies. */
+    @Volatile private var musicHeldForConversation = false
+
+    /**
+     * A conversation has opened: the music is dealt with from now until the conversation ends, so it is already down
+     * while the assistant listens (the user hears themselves and the microphone hears less of it) and does not go up
+     * and down between turns.
+     */
+    fun beginConversationMusic() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || !voiceChannel.enabled) return
+        musicHeldForConversation = true
+        synchronized(focusLock) { holdGeneration++ }
+        quietenMusic(voiceChannel)
+    }
+
+    /** The conversation is over: the music comes back. */
+    fun endConversationMusic() {
+        musicHeldForConversation = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            synchronized(focusLock) {
+                focusJob?.cancel()
+                holdGeneration++
+            }
+            releaseMusic()
+        }
+    }
+
+    /**
+     * Before the first sound of a reply on the voice channel: makes sure the music is dealt with (it already is, from
+     * the start of the conversation, unless it was not playing then) and, when the volume follows the cabin, sets the
+     * voice stream's volume from the cabin noise heard so far (see [CabinNoiseMonitor]), so nothing waits.
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun prepareVoiceReply(receivedInEpoch: Int) {
+        val options = voiceChannel
+        if (receivedInEpoch != epoch.get()) return
+        synchronized(focusLock) { holdGeneration++ }
+        quietenMusic(options)
+        if (!options.adaptive) {
+            voiceBaseVolume = 1f
+            return
+        }
+        val noise = cabinNoise?.invoke()
+        if (noise == null) {
+            AppLogger.log(TAG, "No cabin noise reading yet — the voice volume stays where it is")
+            return
+        }
+        val min = VoiceChannel.minIndex(audioManager)
+        val max = audioManager.getStreamMaxVolume(VoiceChannel.STREAM)
+        val level = VoiceVolume.levelFor(noise, options.gainSteps, min, max)
+        val before = audioManager.getStreamVolume(VoiceChannel.STREAM)
+        runCatching { audioManager.setStreamVolume(VoiceChannel.STREAM, level.index, 0) }
+            .onFailure { AppLogger.log(TAG, "Could not set the voice volume: $it") }
+        voiceBaseVolume = level.trackVolume
+        applyTrackVolume()
+        val taken = if (level.attenuationDb > 0) ", ${"%.1f".format(level.attenuationDb)} dB off the track" else ""
+        AppLogger.log(TAG, "Voice volume $before -> ${level.index}$taken for a cabin at ${"%.1f".format(noise)} dBFS (gain ${options.gainSteps}, range $min..$max)")
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun quietenMusic(options: VoiceChannelOptions) {
+        when (options.music) {
+            MusicDuck.KEEP -> Unit
+            MusicDuck.LOWER -> requestVoiceFocus(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK, options.music)
+            MusicDuck.PAUSE -> requestVoiceFocus(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT, options.music)
+            MusicDuck.LEVEL -> lowerMusicVolume(options.dipPercent)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun requestVoiceFocus(gain: Int, music: MusicDuck) {
+        synchronized(focusLock) {
+            if (voiceFocus != null) return
+            val request = AudioFocusRequest.Builder(gain)
+                .setAudioAttributes(VoiceChannel.attributes())
+                .setOnAudioFocusChangeListener { change -> AppLogger.log(TAG, "Voice focus changed: $change") }
+                .build()
+            val result = audioManager.requestAudioFocus(request)
+            AppLogger.log(TAG, "Voice focus requested (${music.key}): $result")
+            if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) voiceFocus = request
+        }
+    }
+
+    /**
+     * Turns the media volume down by [percent], in a few quick steps, to be put back when the conversation ends. Only
+     * while music is playing: with nothing to turn down the volume is left alone.
+     */
+    private fun lowerMusicVolume(percent: Int) {
+        synchronized(focusLock) {
+            // A reply that follows closely on another: what the last one was still bringing back is back at once, so
+            // the volume to return to is the user's, not a step on the way up.
+            restoreJob?.cancel()
+            restoringTo?.let { runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, it, 0) } }
+            restoringTo = null
+            if (loweredFrom != null) return
+            if (!MusicPlayback.isPlaying(audioManager)) {
+                AppLogger.log(TAG, "No music is playing — nothing to turn down")
+                return
+            }
+            val now = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+            val target = MusicDip.target(now, percent)
+            if (target >= now) {
+                AppLogger.log(TAG, "The music is at $now: too low to turn down")
+                return
+            }
+            runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, now - 1, 0) }
+                .onFailure {
+                    AppLogger.log(TAG, "Could not turn the music down: $it")
+                    return
+                }
+            loweredFrom = now
+            loweredTo = target
+            // Kept on disk too: if the app dies before the conversation is over, the next one puts it back.
+            voicePrefs.edit().putInt(KEY_LOWERED_FROM, now).putInt(KEY_LOWERED_TO, target).apply()
+            AppLogger.log(TAG, "Music volume $now -> $target ($percent% down)")
+            // The rest of the way in quick steps, so it is a short fade and not a drop.
+            rampDownActive = true
+            rampDownJob = scope.launch {
+                val stepMs = MusicDip.rampStepMs(now - target)
+                var level = now - 1
+                while (isActive && level > target) {
+                    delay(stepMs)
+                    level--
+                    runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, level, 0) }
+                }
+                synchronized(focusLock) { rampDownActive = false }
+            }
+        }
+    }
+
+    /** Puts the media volume back one step at a time, unless the user has changed it meanwhile. */
+    private fun restoreMusicVolume() {
+        val (from, to, rampingDown) = synchronized(focusLock) {
+            val from = loweredFrom ?: return
+            val to = loweredTo ?: return
+            loweredFrom = null
+            loweredTo = null
+            voicePrefs.edit().remove(KEY_LOWERED_FROM).remove(KEY_LOWERED_TO).apply()
+            // Cut short, a fade down is somewhere between the two.
+            rampDownJob?.cancel()
+            Triple(from, to, rampDownActive.also { rampDownActive = false })
+        }
+        val current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        if (if (rampingDown) current !in to..from else current != to) {
+            AppLogger.log(TAG, "The music volume is $current, not $to: it was changed meanwhile, so it stays")
+            return
+        }
+        synchronized(focusLock) {
+            restoreJob?.cancel()
+            restoringTo = from
+            val stepMs = MusicDip.rampStepMs(from - current)
+            restoreJob = scope.launch {
+                var level = current
+                while (isActive && level < from) {
+                    level++
+                    runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, level, 0) }
+                    delay(stepMs)
+                }
+                if (isActive) {
+                    synchronized(focusLock) { if (restoringTo == from) restoringTo = null }
+                    AppLogger.log(TAG, "Music volume back to $from")
+                }
+            }
+        }
+    }
+
+    /**
+     * After a conversation was cut short while the music was turned down (the app was stopped mid-conversation): puts
+     * it back, if it is still where the app left it.
+     */
+    fun recoverMusicVolume() {
+        val from = voicePrefs.getInt(KEY_LOWERED_FROM, -1)
+        val to = voicePrefs.getInt(KEY_LOWERED_TO, -1)
+        if (from < 0 || to < 0) return
+        voicePrefs.edit().remove(KEY_LOWERED_FROM).remove(KEY_LOWERED_TO).apply()
+        if (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == to) {
+            runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, from, 0) }
+            AppLogger.log(TAG, "The music was still turned down from an earlier conversation — put back to $from")
+        }
+    }
+
+    /** Waits until what has been written has been heard, and a moment more; each chunk pushes that back. */
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun holdVoiceFocusUntilHeard() {
+        synchronized(focusLock) {
+            if (!voiceChannel.enabled) return
+            focusJob?.cancel()
+            val generation = holdGeneration
+            focusJob = scope.launch {
+                while (isActive) {
+                    delay(remainingPlaybackMs() + VOICE_FOCUS_TAIL_MS)
+                    if (remainingPlaybackMs() == 0L) break
+                }
+                finishReply(generation)
+            }
+        }
+    }
+
+    /**
+     * A reply has been heard. Its track is let go, and, unless the music is being held for the whole conversation, the
+     * music comes back. Does nothing if another reply has started since [generation].
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun finishReply(generation: Int) {
+        synchronized(focusLock) {
+            if (generation != holdGeneration) return
+            focusJob = null
+        }
+        if (!musicHeldForConversation) releaseMusic()
+        retireIdleVoiceTrack()
+    }
+
+    /** Gives the music back: the focus, and the volume it was turned down from. */
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun releaseMusic() {
+        val request = synchronized(focusLock) { voiceFocus.also { voiceFocus = null } }
+        if (request != null) {
+            val result = audioManager.abandonAudioFocusRequest(request)
+            AppLogger.log(TAG, "Voice focus given back: $result")
+        }
+        restoreMusicVolume()
+    }
+
+    /**
+     * Once a reply has been heard its track is let go, so that the voice stream is only in use while the assistant
+     * speaks: a track that stays open between replies keeps the stream active (the car shows it as playing, and the
+     * volume keys follow it) for the whole conversation.
+     */
+    private fun retireIdleVoiceTrack() {
+        synchronized(trackLock) {
+            if (!voiceChannel.enabled || speakingOutside || remainingPlaybackMs() > 0 || audioTrack == null) return
+            retireTrackLocked()
+        }
+    }
+
+    /** The reply was cut off outside a held conversation: the music stays down a few seconds for what follows. */
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun holdMusicAfterCutOff() {
+        synchronized(focusLock) {
+            if (!voiceChannel.enabled || (voiceFocus == null && loweredFrom == null)) return
+            focusJob?.cancel()
+            val generation = holdGeneration
+            focusJob = scope.launch {
+                delay(MUSIC_CUT_OFF_HOLD_MS)
+                synchronized(focusLock) {
+                    if (generation != holdGeneration) return@launch
+                    focusJob = null
+                }
+                releaseMusic()
+            }
+        }
     }
 
     /** Discards any buffered-but-unplayed audio immediately — used on barge-in interruption, where
      * the model's old reply must stop the instant the user starts talking again. Never waits for a write
-     * in progress: that write simply fails (and is ignored) once the track is gone. */
-    fun stopAndFlush() {
+     * in progress: that write simply fails (and is ignored) once the track is gone. With [keepMusicDown] the
+     * conversation goes on, so the music is not brought back (it is held for the whole conversation, or for a few
+     * seconds if not); without it the conversation is over and the music comes back. */
+    fun stopAndFlush(keepMusicDown: Boolean = false) {
         val track = synchronized(trackLock) {
             epoch.incrementAndGet()
             playbackEndsAtMs = 0
@@ -309,6 +641,13 @@ class LivePcmPlayer @Inject constructor(exteriorSpeaker: Optional<ExteriorSpeake
         track?.let { discard(it) }
         val leftOver = synchronized(trackLock) { retired.toList().also { retired.clear() } }
         leftOver.forEach { discard(it) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!keepMusicDown) {
+                endConversationMusic()
+            } else if (!musicHeldForConversation) {
+                holdMusicAfterCutOff()
+            }
+        }
         // A reply that was cut off must not leave the car sending sound outside.
         finishOutside()
     }
@@ -522,13 +861,18 @@ class LivePcmPlayer @Inject constructor(exteriorSpeaker: Optional<ExteriorSpeake
                 it.play()
             }
         }
-        AppLogger.log(TAG, "Starting PCM playback (${OUTPUT_SAMPLE_RATE}Hz mono 16-bit)")
+        val onVoiceChannel = voiceChannel.enabled
+        AppLogger.log(TAG, "Starting PCM playback${if (onVoiceChannel) " on the voice channel" else ""} (${OUTPUT_SAMPLE_RATE}Hz mono 16-bit)")
         return AudioTrack.Builder()
             .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build(),
+                if (onVoiceChannel) {
+                    VoiceChannel.attributes()
+                } else {
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                },
             )
             .setAudioFormat(
                 AudioFormat.Builder()
@@ -541,7 +885,7 @@ class LivePcmPlayer @Inject constructor(exteriorSpeaker: Optional<ExteriorSpeake
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
             .also {
-                it.setVolume(volume)
+                it.setVolume(cabinTrackVolume())
                 it.play()
             }
     }

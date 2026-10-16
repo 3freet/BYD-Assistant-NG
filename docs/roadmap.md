@@ -51,6 +51,16 @@ outright, and anything that does not resolve to a known group fails closed. That
 checks exist would tell us how bad the exposure is, and would let us say so plainly if it is. Anything beyond that
 would need a bench setup that is not a car in use, and a decision to make here first.
 
+## The assistant's voice on its own audio channel
+
+Built for dev builds (Settings → Voice channel): replies on the car's voice stream
+with their own volume, the music turned down for the conversation, and a volume that follows the cabin noise. What the
+car's own assistant does, what was tried and how it works are in
+[voice-channel.md](byd-internals/voice-channel.md).
+
+Still open: whether the car's own dip also handles the radio and Bluetooth music, the "pause" choice, the top of the
+volume curve in a very loud cabin, other models, and whether it should leave dev builds.
+
 ## Ideas
 
 - Cluster: put a video link's player on the cluster without the one-to-two second stop and rewind a player has

@@ -5,9 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bydassistantng.R
 import com.bydassistantng.audio.EndOfSpeechWait
+import com.bydassistantng.audio.MusicDuck
+import com.bydassistantng.audio.VoiceChannel
+import com.bydassistantng.audio.VoiceChannelOptions
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.data.CoreFeatures
+import com.bydassistantng.data.OptInFeatures
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.data.SecureCredentials
 import com.bydassistantng.memory.AddOutcome
@@ -102,6 +106,40 @@ class SettingsViewModel @Inject constructor(
             memory.clearFacts()
             memory.clearRecent()
         }
+    }
+
+    /** Whether this build and this car offer the voice channel (dev builds). */
+    val voiceChannelSupported: Boolean = VoiceChannel.isAvailable(context)
+
+    val voiceChannelEnabled: StateFlow<Boolean> = preferencesRepository.voiceChannelEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.VOICE_CHANNEL_DEFAULT)
+
+    val voiceChannelMusic: StateFlow<MusicDuck> = preferencesRepository.voiceChannelMusic
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicDuck.DEFAULT)
+
+    val voiceChannelAdaptive: StateFlow<Boolean> = preferencesRepository.voiceChannelAdaptive
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.VOICE_CHANNEL_ADAPTIVE_DEFAULT)
+
+    val voiceChannelGain: StateFlow<Int> = preferencesRepository.voiceChannelGain
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val voiceChannelDip: StateFlow<Int> = preferencesRepository.voiceChannelDip
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VoiceChannelOptions.DEFAULT_DIP_PERCENT)
+
+    fun setVoiceChannelEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setVoiceChannelEnabled(enabled) }
+    }
+    fun setVoiceChannelMusic(music: MusicDuck) {
+        viewModelScope.launch { preferencesRepository.setVoiceChannelMusic(music) }
+    }
+    fun setVoiceChannelAdaptive(adaptive: Boolean) {
+        viewModelScope.launch { preferencesRepository.setVoiceChannelAdaptive(adaptive) }
+    }
+    fun setVoiceChannelDip(percent: Int) {
+        viewModelScope.launch { preferencesRepository.setVoiceChannelDip(percent) }
+    }
+    fun setVoiceChannelGain(steps: Int) {
+        viewModelScope.launch { preferencesRepository.setVoiceChannelGain(steps) }
     }
 
     val arabicDialect: StateFlow<ArabicDialect> = preferencesRepository.arabicDialect

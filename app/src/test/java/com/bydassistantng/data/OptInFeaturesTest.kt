@@ -33,4 +33,11 @@ class OptInFeaturesTest {
     fun vehicleControlIsOnByDefaultAsTheCoreOfTheAssistant() {
         assertTrue(CoreFeatures.VEHICLE_CONTROL_DEFAULT)
     }
+
+    @Test
+    fun theVoiceChannelIsOnByDefaultBecauseOnlyDevBuildsHaveIt() {
+        // It is gated by the build (VoiceChannel.isAvailable), so its defaults are those of the car it was built on.
+        assertTrue(OptInFeatures.VOICE_CHANNEL_DEFAULT)
+        assertTrue(OptInFeatures.VOICE_CHANNEL_ADAPTIVE_DEFAULT)
+    }
 }

@@ -47,6 +47,12 @@ class Earcons @Inject constructor() {
         )
     }
 
+    /** Whether the tones play on the car's voice channel, with the assistant's voice (set when a conversation starts). */
+    @Volatile var voiceChannel = false
+
+    /** How much quieter than the voice stream the tones are made, 0..1, to match the voice (see [LivePcmPlayer.voiceBaseVolume]). */
+    @Volatile var voiceLevel: () -> Float = { 1f }
+
     /** Fire and forget: returns immediately, the tone plays on a background thread. */
     fun play(earcon: Earcon) {
         scope.launch {
@@ -54,11 +60,15 @@ class Earcons @Inject constructor() {
                 val pcm = tones.getValue(earcon)
                 val track = AudioTrack.Builder()
                     .setAudioAttributes(
-                        AudioAttributes.Builder()
-                            // Same usage as the spoken replies, which are known to be audible on this unit.
-                            .setUsage(AudioAttributes.USAGE_ASSISTANT)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build(),
+                        if (voiceChannel) {
+                            VoiceChannel.attributes()
+                        } else {
+                            AudioAttributes.Builder()
+                                // Same usage as the spoken replies, which are known to be audible on this unit.
+                                .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .build()
+                        },
                     )
                     .setAudioFormat(
                         AudioFormat.Builder()
@@ -71,6 +81,7 @@ class Earcons @Inject constructor() {
                     .setTransferMode(AudioTrack.MODE_STATIC)
                     .build()
                 try {
+                    if (voiceChannel) track.setVolume(voiceLevel())
                     track.write(pcm, 0, pcm.size)
                     track.play()
                     delay(pcm.size * 1000L / SAMPLE_RATE + 80)

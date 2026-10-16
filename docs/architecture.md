@@ -11,7 +11,7 @@ A short tour for contributors. For the vehicle side, see [byd-internals](byd-int
 | `gemini/LiveConversationController` | The conversation state machine over the Gemini Live WebSocket |
 | `gemini/GeminiLiveClient` | The wire protocol only: setup, audio frames, tool calls, events |
 | `gemini/ConversationShared` | The system prompt, the tool list, and the dispatcher that routes a function call |
-| `audio/` | Microphone and speaker I/O, end-of-speech detection, talk-over detection, and the exterior speaker (its switch helper, the navi-stream track and the synthesised sound effects) |
+| `audio/` | Microphone and speaker I/O, end-of-speech detection, talk-over detection, and the exterior speaker (its switch helper, the navi-stream track and the synthesised sound effects), plus the experimental voice channel for dev builds (replies on the car's voice stream, the music dip, and the cabin-noise monitor that sets the reply's volume) |
 | `vehicle/` | The command registry, the safety gate, the helper process, the read-only queries such as tyre pressure, and drive-mode switching (see byd-internals) |
 | `memory/` | Short-term and long-term memory: the stores, the prompt text built from them, and the `remember` / `forget_memory` tools |
 | `apps/`, `media/`, `navigation/` | The non-vehicle tools: open an app, close an app you installed, media keys, navigation |

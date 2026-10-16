@@ -31,6 +31,7 @@ data or from leaked documents**, and contributions should keep it that way (see
 | [findings-and-dead-ends.md](findings-and-dead-ends.md) | Quirks that cost time, and the things that could **not** be done (the horn, the security group) |
 | [vehicle-commands.md](vehicle-commands.md) | Every control the app can operate, generated from the registry the app uses |
 | [exterior-speaker.md](exterior-speaker.md) | Sending sound to the speaker outside the car: the switch, the navi stream, how loudness really works, and why a process holds the switch |
+| [voice-channel.md](voice-channel.md) | The car's voice stream (17): what its own assistant does, what an app can do with it, how the music is dipped, and how the reply's volume follows the cabin noise (dev builds) |
 | [drive-modes.md](drive-modes.md) | How the car's own screen selects Snow, Sand, Mud…, the numbers it sends, the read-back, and what the app checks first |
 | [drive-types.md](drive-types.md) | How the head unit tells front, rear and all-wheel drive apart, which signal names the working axle, and what Eco, Normal and Sport did on a drive |
 | [cabin-and-dashcam.md](cabin-and-dashcam.md) | Air quality, the ambient light strip, mirror switches, audio and sound staging, and the dashcam's command service: ids, values, how each was found and what did not work |

@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bydassistantng.R
 import com.bydassistantng.audio.EndOfSpeechWait
+import com.bydassistantng.audio.MusicDuck
+import com.bydassistantng.audio.VoiceChannelOptions
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.data.AssistantVoices
@@ -76,6 +78,11 @@ fun SettingsScreen(
     val apiKeyMessage by viewModel.apiKeyMessage.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val autoStartVisitedAt by viewModel.autoStartVisitedAt.collectAsState()
+    val voiceChannelEnabled by viewModel.voiceChannelEnabled.collectAsState()
+    val voiceChannelMusic by viewModel.voiceChannelMusic.collectAsState()
+    val voiceChannelAdaptive by viewModel.voiceChannelAdaptive.collectAsState()
+    val voiceChannelGain by viewModel.voiceChannelGain.collectAsState()
+    val voiceChannelDip by viewModel.voiceChannelDip.collectAsState()
 
     var showMemories by remember { mutableStateOf(false) }
     var showCarVoiceConfirm by remember { mutableStateOf(false) }
@@ -85,7 +92,20 @@ fun SettingsScreen(
     var showDialectChoice by remember { mutableStateOf(false) }
     var showVoiceChoice by remember { mutableStateOf(false) }
     var showApiKey by remember { mutableStateOf(false) }
+    var showMusicChoice by remember { mutableStateOf(false) }
 
+    if (showMusicChoice) {
+        ChoiceDialog(
+            title = stringResource(R.string.voice_channel_music_title),
+            options = MusicDuck.entries.map { ChoiceOption(it.key, it.label(), it.description()) },
+            selectedKey = voiceChannelMusic.key,
+            onSelect = { key ->
+                viewModel.setVoiceChannelMusic(MusicDuck.from(key))
+                showMusicChoice = false
+            },
+            onDismiss = { showMusicChoice = false },
+        )
+    }
     if (showCarVoiceConfirm) {
         AppAlertDialog(
             onDismissRequest = { showCarVoiceConfirm = false },
@@ -268,6 +288,99 @@ fun SettingsScreen(
                             }
                         },
                     )
+                }
+            }
+
+            // The voice channel (dev builds): replies on the car's own voice stream, with the music dealt with around them.
+            if (viewModel.voiceChannelSupported) {
+                SettingsSection(stringResource(R.string.settings_section_voice_channel)) {
+                    row { SettingNote(stringResource(R.string.voice_channel_note)) }
+                    row {
+                        SwitchSetting(
+                            title = stringResource(R.string.voice_channel_title),
+                            subtitle = stringResource(R.string.voice_channel_desc),
+                            checked = voiceChannelEnabled,
+                            onCheckedChange = { viewModel.setVoiceChannelEnabled(it) },
+                        )
+                    }
+                    // Nothing more about it is shown while it is off.
+                    if (voiceChannelEnabled) {
+                        row {
+                            ChoiceSetting(
+                                title = stringResource(R.string.voice_channel_music_title),
+                                subtitle = stringResource(R.string.voice_channel_music_desc),
+                                value = voiceChannelMusic.label(),
+                                onClick = { showMusicChoice = true },
+                            )
+                        }
+                        // How far the music is turned down, for the choice that turns it down by a share.
+                        if (voiceChannelMusic == MusicDuck.LEVEL) {
+                            row {
+                                var dragging by remember(voiceChannelDip) { mutableFloatStateOf(voiceChannelDip.toFloat()) }
+                                SettingRow(
+                                    title = stringResource(R.string.voice_channel_dip_title),
+                                    subtitle = stringResource(R.string.voice_channel_dip_desc),
+                                    below = {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                            Slider(
+                                                value = dragging,
+                                                onValueChange = { dragging = it },
+                                                onValueChangeFinished = { viewModel.setVoiceChannelDip(VoiceChannelOptions.clampDip(dragging.toInt())) },
+                                                valueRange = VoiceChannelOptions.DIP_RANGE.first.toFloat()..VoiceChannelOptions.DIP_RANGE.last.toFloat(),
+                                                steps = (VoiceChannelOptions.DIP_RANGE.last - VoiceChannelOptions.DIP_RANGE.first) / VoiceChannelOptions.DIP_STEP - 1,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            Text(
+                                                stringResource(R.string.voice_channel_dip_value, VoiceChannelOptions.clampDip(dragging.toInt())),
+                                                fontSize = 16.sp,
+                                                modifier = Modifier.padding(start = 16.dp),
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                        row {
+                            SwitchSetting(
+                                title = stringResource(R.string.voice_channel_adaptive_title),
+                                subtitle = stringResource(R.string.voice_channel_adaptive_desc),
+                                checked = voiceChannelAdaptive,
+                                onCheckedChange = { viewModel.setVoiceChannelAdaptive(it) },
+                            )
+                        }
+                        if (voiceChannelAdaptive) {
+                            row {
+                                // The value follows the finger while dragging and is stored when it is let go.
+                                var dragging by remember(voiceChannelGain) { mutableFloatStateOf(voiceChannelGain.toFloat()) }
+                                SettingRow(
+                                    title = stringResource(R.string.voice_channel_gain_title),
+                                    subtitle = stringResource(R.string.voice_channel_gain_desc),
+                                    below = {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                            Slider(
+                                                value = dragging,
+                                                onValueChange = { dragging = it },
+                                                onValueChangeFinished = { viewModel.setVoiceChannelGain(VoiceChannelOptions.clampGain(dragging.toInt())) },
+                                                valueRange = VoiceChannelOptions.GAIN_RANGE.first.toFloat()..VoiceChannelOptions.GAIN_RANGE.last.toFloat(),
+                                                steps = VoiceChannelOptions.GAIN_RANGE.last - VoiceChannelOptions.GAIN_RANGE.first - 1,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            Text(
+                                                stringResource(R.string.voice_channel_gain_value, VoiceChannelOptions.clampGain(dragging.toInt())),
+                                                fontSize = 16.sp,
+                                                modifier = Modifier.padding(start = 16.dp),
+                                            )
+                                        }
+                                        if (voiceChannelGain != 0) {
+                                            TextButton(onClick = { viewModel.setVoiceChannelGain(0) }) {
+                                                Text(stringResource(R.string.voice_channel_gain_reset))
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -625,3 +738,23 @@ private fun MemoryDialog(
         )
     }
 }
+
+@Composable
+private fun MusicDuck.label(): String = stringResource(
+    when (this) {
+        MusicDuck.KEEP -> R.string.voice_music_keep
+        MusicDuck.LOWER -> R.string.voice_music_lower
+        MusicDuck.LEVEL -> R.string.voice_music_level
+        MusicDuck.PAUSE -> R.string.voice_music_pause
+    },
+)
+
+@Composable
+private fun MusicDuck.description(): String = stringResource(
+    when (this) {
+        MusicDuck.KEEP -> R.string.voice_music_keep_desc
+        MusicDuck.LOWER -> R.string.voice_music_lower_desc
+        MusicDuck.LEVEL -> R.string.voice_music_level_desc
+        MusicDuck.PAUSE -> R.string.voice_music_pause_desc
+    },
+)

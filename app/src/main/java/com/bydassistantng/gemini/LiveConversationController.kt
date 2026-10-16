@@ -12,7 +12,10 @@ import com.bydassistantng.audio.DipConfirmer
 import com.bydassistantng.audio.Earcon
 import com.bydassistantng.audio.Earcons
 import com.bydassistantng.audio.EndOfSpeechWait
+import com.bydassistantng.audio.CabinNoiseMonitor
 import com.bydassistantng.audio.LivePcmPlayer
+import com.bydassistantng.audio.VoiceChannel
+import com.bydassistantng.audio.VoiceChannelOptions
 import com.bydassistantng.audio.LivePcmRecorder
 import com.bydassistantng.audio.ExteriorVolume
 import com.bydassistantng.audio.PlaySoundOutsideTool
@@ -233,6 +236,11 @@ class LiveConversationController @Inject constructor(
     private var unansweredTurns = 0
 
     @Volatile private var gate = Gate.BLOCKED
+
+    // The cabin noise, listened to while the user's turn and the pauses between turns last (not while the assistant
+    // speaks), so each reply on the voice channel starts at a volume that suits the cabin as it is now.
+    private val cabinNoise = CabinNoiseMonitor { gate != Gate.BLOCKED }
+
     // The assistant's memory as this conversation uses it, read when it starts (see [MemoryRepository]).
     private var longTermForSession = false
     private var shortTermForSession = false
@@ -358,6 +366,22 @@ class LiveConversationController @Inject constructor(
             enabled = ClusterScreenAvailability.isOnThisCar(context) && preferencesRepository.clusterScreenEnabled.first(),
             keepMapsDisabled = preferencesRepository.clusterKeepMapsDisabled.first(),
         )
+        // The voice channel (a dev-build feature): where and how replies are spoken, for this conversation.
+        player.recoverMusicVolume()
+        player.voiceChannel = if (VoiceChannel.isAvailable(context) && preferencesRepository.voiceChannelEnabled.first()) {
+            VoiceChannelOptions(
+                enabled = true,
+                music = preferencesRepository.voiceChannelMusic.first(),
+                adaptive = preferencesRepository.voiceChannelAdaptive.first(),
+                gainSteps = preferencesRepository.voiceChannelGain.first(),
+                dipPercent = preferencesRepository.voiceChannelDip.first(),
+            )
+        } else {
+            VoiceChannelOptions.OFF
+        }
+        // The tones go the same way as the voice.
+        earcons.voiceChannel = player.voiceChannel.enabled
+        earcons.voiceLevel = { player.voiceBaseVolume }
         factsForSession = if (longTermForSession) memory.currentFacts() else emptyList()
         recentForSession = if (shortTermForSession) memory.recentExchanges() else emptyList()
         pendingUser.clear()
@@ -405,6 +429,12 @@ class LiveConversationController @Inject constructor(
         }
         openGate()
         conversationActive = true
+        if (player.voiceChannel.enabled && player.voiceChannel.adaptive) {
+            player.cabinNoise = { cabinNoise.estimate() }
+            cabinNoise.start()
+        }
+        // The music is dealt with from here to the end of the conversation, not only while the assistant speaks.
+        player.beginConversationMusic()
         AppLogger.log(
             TAG,
             "Ready to listen ${SystemClock.elapsedRealtime() - startedAt}ms after start " +
@@ -660,7 +690,7 @@ class LiveConversationController @Inject constructor(
         discardReply = !turnCompleted
         pendingUser.clear()
         pendingActions.clear()
-        player.stopAndFlush()
+        player.stopAndFlush(keepMusicDown = true)
         endDip() // the next reply starts at full volume
         transcript.clear()
         awaitingSpokenReply = false
@@ -884,6 +914,8 @@ class LiveConversationController @Inject constructor(
         doneChimeJob?.cancel()
         doneChimeJob = null
         recorder.stop()
+        cabinNoise.stop()
+        player.endConversationMusic()
         gate = Gate.BLOCKED
         endDip()
         // What is being said outside the car is heard to the end before the speaker is switched back.
@@ -1065,7 +1097,7 @@ class LiveConversationController @Inject constructor(
                 pendingUser.clear()
                 pendingActions.clear()
                 interruptedAtMs = SystemClock.elapsedRealtime()
-                player.stopAndFlush()
+                player.stopAndFlush(keepMusicDown = true)
                 transcript.clear()
             }
             LiveEvent.TurnComplete -> {

@@ -11,6 +11,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bydassistantng.audio.EndOfSpeechWait
 import com.bydassistantng.audio.ExteriorVolume
+import com.bydassistantng.audio.MusicDuck
+import com.bydassistantng.audio.VoiceChannelOptions
 import com.bydassistantng.util.WheelKeys
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -68,6 +70,11 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val DRIVE_MODES_ENABLED = booleanPreferencesKey("drive_modes_enabled")
         val CLUSTER_SCREEN_ENABLED = booleanPreferencesKey("cluster_screen_enabled")
         val CLUSTER_KEEP_MAPS_DISABLED = booleanPreferencesKey("cluster_keep_maps_disabled")
+        val VOICE_CHANNEL_ENABLED = booleanPreferencesKey("voice_channel_enabled")
+        val VOICE_CHANNEL_MUSIC = stringPreferencesKey("voice_channel_music")
+        val VOICE_CHANNEL_ADAPTIVE = booleanPreferencesKey("voice_channel_adaptive")
+        val VOICE_CHANNEL_GAIN = intPreferencesKey("voice_channel_gain")
+        val VOICE_CHANNEL_DIP = intPreferencesKey("voice_channel_dip")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -183,6 +190,41 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.data.map { it[Keys.CLUSTER_KEEP_MAPS_DISABLED] ?: OptInFeatures.CLUSTER_KEEP_MAPS_DISABLED_DEFAULT }
     suspend fun setClusterKeepMapsDisabled(disabled: Boolean) {
         dataStore.edit { it[Keys.CLUSTER_KEEP_MAPS_DISABLED] = disabled }
+    }
+
+    /** Whether replies are spoken on the car's voice channel (a dev-build feature). Off by default. */
+    val voiceChannelEnabled: Flow<Boolean> =
+        dataStore.data.map { it[Keys.VOICE_CHANNEL_ENABLED] ?: OptInFeatures.VOICE_CHANNEL_DEFAULT }
+    suspend fun setVoiceChannelEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.VOICE_CHANNEL_ENABLED] = enabled }
+    }
+
+    /** What happens to the music while a reply is spoken on the voice channel. */
+    val voiceChannelMusic: Flow<MusicDuck> =
+        dataStore.data.map { MusicDuck.from(it[Keys.VOICE_CHANNEL_MUSIC]) }
+    suspend fun setVoiceChannelMusic(music: MusicDuck) {
+        dataStore.edit { it[Keys.VOICE_CHANNEL_MUSIC] = music.key }
+    }
+
+    /** Whether the voice channel's volume follows how loud the cabin is. Off by default. */
+    val voiceChannelAdaptive: Flow<Boolean> =
+        dataStore.data.map { it[Keys.VOICE_CHANNEL_ADAPTIVE] ?: OptInFeatures.VOICE_CHANNEL_ADAPTIVE_DEFAULT }
+    suspend fun setVoiceChannelAdaptive(adaptive: Boolean) {
+        dataStore.edit { it[Keys.VOICE_CHANNEL_ADAPTIVE] = adaptive }
+    }
+
+    /** How far above (or below) what the cabin noise asks for the voice channel's volume is set, in steps. */
+    val voiceChannelGain: Flow<Int> =
+        dataStore.data.map { VoiceChannelOptions.clampGain(it[Keys.VOICE_CHANNEL_GAIN] ?: 0) }
+    suspend fun setVoiceChannelGain(steps: Int) {
+        dataStore.edit { it[Keys.VOICE_CHANNEL_GAIN] = VoiceChannelOptions.clampGain(steps) }
+    }
+
+    /** How much the music is turned down while a reply is spoken, in percent, when the music choice is to turn it down by a share. */
+    val voiceChannelDip: Flow<Int> =
+        dataStore.data.map { VoiceChannelOptions.clampDip(it[Keys.VOICE_CHANNEL_DIP] ?: VoiceChannelOptions.DEFAULT_DIP_PERCENT) }
+    suspend fun setVoiceChannelDip(percent: Int) {
+        dataStore.edit { it[Keys.VOICE_CHANNEL_DIP] = VoiceChannelOptions.clampDip(percent) }
     }
 
     /** How loud the assistant is when it speaks or plays a sound on the exterior speaker, unless asked for another level. */
