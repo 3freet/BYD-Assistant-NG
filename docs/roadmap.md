@@ -58,8 +58,29 @@ with their own volume, the music turned down for the conversation, and a volume 
 car's own assistant does, what was tried and how it works are in
 [voice-channel.md](byd-internals/voice-channel.md).
 
+The voice can also come out of the driver's headrest speaker only (Settings → Sound → Speaker, on a car that has
+one): the assistant speaks on the navigation stream, which the headrest sound's Interactive mode plays in the headrest
+alone, and the mode is set for the conversation and given back after. Its volume follows the cabin noise on a first fit
+of its own. To do: tune the fit in a loud cabin, on a drive.
+
 Still open: whether the car's own dip also handles the radio and Bluetooth music, the "pause" choice, the top of the
-volume curve in a very loud cabin, and other models (it is offered only where the stream has the measured range).
+volume curve in a very loud cabin, how the voice behaves in the headrest's Exclusive mode, and other models (it is
+offered only where the stream has the measured range).
+
+## To test on a drive
+
+Testing only; there is nothing to build here unless it shows something is off.
+
+**The cabin-noise reading's speech band.** The volume that follows the cabin reads only the speech range (about 300 to
+3400 Hz) of the cabin microphone, not the whole sound, because a moving car's road and wind rumble made the voice too
+loud. The speech band reads lower than the whole band, so it is raised by 6 dB (`SPEECH_BAND_OFFSET_DB`) to sit where the
+fitted volume curve expects it for a fan and music. That 6 dB is a guess, to be checked with two runs:
+- On a drive at the usual speeds, with the gain slider at 0: is the voice too loud, about right, or now too quiet?
+- Parked with the music at the usual level: does the voice sit where it did before?
+
+The log carries both levels in each "Cabin noise now" line (speech band and whole band) next to the "Voice volume" line,
+which is what the offset is adjusted from. If driving is still too loud the next step is a flatter curve above about
+-45 dBFS. The headrest speaker's own curve is tuned on the same drive.
 
 ## Ideas
 

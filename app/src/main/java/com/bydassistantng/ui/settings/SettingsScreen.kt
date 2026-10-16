@@ -330,6 +330,7 @@ private fun searchIndex(viewModel: SettingsViewModel, hasCarVoice: Boolean): Lis
     add(SettingsCategory.MEMORY, R.string.memory_dialog_title)
     if (viewModel.voiceChannelSupported) {
         add(SettingsCategory.SOUND, R.string.voice_channel_title)
+        if (viewModel.headrestSpeakerPresent.collectAsState().value) add(SettingsCategory.SOUND, R.string.voice_speaker_title)
         add(SettingsCategory.SOUND, R.string.voice_channel_music_title)
         add(SettingsCategory.SOUND, R.string.voice_channel_adaptive_title)
         add(SettingsCategory.SOUND, R.string.voice_channel_gain_title)

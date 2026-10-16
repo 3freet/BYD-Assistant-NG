@@ -103,6 +103,69 @@ tone at the unprocessed microphone, in a calm cabin (-58 dBFS), the tone's own l
 That is about 2 dB a step from 7 upwards, and more (4 or so) at the lowest indexes, where the tone is close to the
 cabin's own noise and the reading is rough. The tones follow the same track attenuation as the voice.
 
+## The headrest speaker
+
+The car's headrest sound (the driver's headrest speaker; see [cabin-and-dashcam.md](cabin-and-dashcam.md#audio)) is
+done by the amplifier, not by Android: the audio policy lists one output, "Speaker", nothing in the framework's audio
+attributes names the headrest, and the sound devices are closed to the shell identity. The car's own screen describes
+the modes as surround (the headrest joins the car speakers), driver or *interactive* ("navigation and intelligent
+broadcasting" in the headrest) and exclusive (music in the headrest). Heard on the car (the driver in the seat, quiet
+tones, one stream at a time, repeated):
+
+| Headrest sound | Voice stream (17) | Navigation stream (15) |
+| --- | --- | --- |
+| Surround | all the speakers | not tried |
+| Interactive | **the car's speakers, not moved** (heard three times) | **the headrest only** (heard twice, "for sure") |
+| Exclusive | not decided | not tried |
+
+An early round was read as "the voice stream is in the headrest in Interactive"; it was a mix-up of which group of
+beeps was which, and the real conversation and two repeats said otherwise. So the voice stream cannot be sent to the
+headrest, and the navigation stream can. That is what *Settings → Sound → Speaker → Driver's headrest* does:
+
+- The assistant's replies and tones are played on the **navigation stream** (legacy stream 15, plain attributes as the
+  voice stream's are; the car labels it with its navigation content type) instead of the voice stream.
+- Its volume (0 to 10, the car's navigation volume) follows the cabin noise on a fit of its own. One step is about 2.4 dB
+  (a steady tone at the unprocessed microphone, the headrest on Interactive, cabin -61 dBFS: index 1 to 10 read -55.0,
+  -53.1, -50.8, -48.1, -46.0, -43.6, -41.1, -38.7, -36.1, -33.6 dBFS). The curve runs from index 3 at -62 dBFS (5, the
+  navigation volume the driver had, was louder than wanted in a calm cabin) to 10 at -32 dBFS, about 0.6 dB for each dB
+  of noise, since the speaker is close to the ear, and the slider moves it. Index 0 silences the stream, so the curve stops at 1 and the track is made
+  quieter below that. A first fit, not yet tuned on a drive.
+- The navigation volume is the one the car's navigation prompts use, so the app writes down what it was when it first
+  changes it in a conversation, and puts it back 1.5 s after the last sound of the conversation, if the driver has not
+  changed it since (and the next conversation puts it back if the app was stopped meanwhile). With the cabin-noise volume
+  off the navigation volume is left alone, and at 0 the reply is silent.
+- The volume is set **before the first tone** of a conversation, for the voice stream as well as the headrest's. Before,
+  the first tone played at whatever the stream had been left at, and the volume followed the cabin only from the first
+  reply. The cabin is listened to for 0.4 s while the connection is being opened (the microphone takes about 0.3 s to open,
+  so the reading is in at about 0.7 s, as the connection is); the start never waits for it more than 0.15 s past the moment
+  everything else is ready, and if it is not there the cabin as it sounded at the end of the last conversation is used when
+  that was less than ten minutes ago. Measured: the conversation is ready to listen after 0.88 to 0.93 s with it, against a
+  median of 0.88 s over 139 starts without. (A first version waited for a 0.7 s reading and made the start 0.5 s later.)
+- The helper that sets the headrest sound is the car-control helper, which is shut down after five minutes unused; with
+  the headrest as the speaker it is kept for thirty, so a conversation within half an hour of the last starts it warm. One
+  that finds it stopped pays for starting it (about 0.5 s more before "ready to listen").
+- The exterior speaker uses the same stream with its own switch: a reply still playing is let finish before the switch
+  goes on, the listening tone and the replies wait for the switch to go off again, and the announcement itself is also
+  heard in the headrest while Interactive is on.
+- The headrest sound has to be on Interactive for that. When a conversation opens the app reads the mode
+  (`AUDIO_HEADREST_SOUND_EFFECT_STATUS_IVI`, the state of the registry's `audio.headrestSound`) and, if it is not
+  already Interactive, writes down the mode to give back and sets Interactive. The switch is made while the connection
+  to the server is opened, and the listening tone waits for it for up to three seconds, so the tone itself is heard in
+  the headrest (about a quarter of a second once the helper runs).
+- Four seconds after the conversation's last sound (so that a press straight after does not switch it back and forth) the
+  mode is given back, but only if the car still reports Interactive: a mode the user picked on the screen meanwhile is
+  left alone.
+- What is to be given back is written to disk before the change, so a conversation the app never finished (it was
+  stopped, or the head unit went to sleep) is undone the next time anything here runs.
+- The choice is offered only on a car that reports a headrest speaker (`AUDIO_HEADREST_SPEAKER_CONFIG` above 0; it reads
+  2, the left front headrest, here), asked once through the same helper as the car controls and kept. It needs the
+  voice channel switched on and, like the car controls, ADB debugging.
+- While it is on, navigation prompts from a map app are also heard in the headrest (that is what Interactive is), and
+  music stays in the car's speakers. The music is still turned down by the chosen share; whether the car adds its own dip
+  for a track on the navigation stream was not looked at.
+- Not covered: the exterior speaker (it speaks on stream 15 too, with its own switch; not tried together with this), and
+  the classic text-to-speech fallback, which does not use either stream.
+
 ## What is not known
 
 - Whether the car's own dip also handles the radio and Bluetooth music, and how the pause option behaves.

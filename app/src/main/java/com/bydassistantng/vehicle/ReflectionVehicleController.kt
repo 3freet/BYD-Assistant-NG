@@ -61,7 +61,23 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
                 onSuccess = { VehicleDispatchResult.Success(AirQualityTool.encode(it)) },
                 onFailure = { queryFailure(it) },
             )
+            VehicleQuery.HEADREST_SOUND -> readHeadrestSound()
         }
+    }
+
+    /** The headrest sound mode and the number of headrest speakers, as the car reports them (see [HeadrestSound]). */
+    private fun readHeadrestSound(): VehicleDispatchResult = try {
+        val className = GENERIC_ROUTE_CLASS_BY_DOMAIN.getValue(VehicleDomain.AUDIO)
+        val instance = getOrCreateInstance(className)
+        if (instance == null) {
+            VehicleDispatchResult.Failure(VehicleDispatchError.CLASS_NOT_FOUND, "No usable instance for $className")
+        } else {
+            val mode = readState(instance, HeadrestSound.DEVICE_TYPE, HeadrestSound.MODE_STATE_ID)
+            val speakers = readState(instance, HeadrestSound.DEVICE_TYPE, HeadrestSound.SPEAKER_CONFIG_STATE_ID)
+            VehicleDispatchResult.Success(HeadrestSound.encode(HeadrestSound.State(mode, speakers)))
+        }
+    } catch (t: Throwable) {
+        queryFailure(t)
     }
 
     private fun queryFailure(t: Throwable): VehicleDispatchResult {

@@ -31,9 +31,31 @@ enum class MusicDuck(val key: String) {
 }
 
 /**
- * How a conversation uses the voice channel, as chosen in Advanced settings when it started.
+ * Which speakers the assistant's voice comes out of. The words are what is stored.
+ */
+enum class VoiceSpeaker(val key: String) {
+    /** The car's speakers, with the headrest sound left as the user has it. */
+    CAR("car"),
+
+    /**
+     * The driver's headrest speaker only: the car's headrest sound is put on Interactive for the conversation, and the
+     * assistant speaks on the navigation stream, which that mode plays in the headrest alone.
+     */
+    HEADREST("headrest"),
+    ;
+
+    companion object {
+        val DEFAULT = CAR
+
+        fun from(key: String?): VoiceSpeaker = entries.find { it.key == key } ?: DEFAULT
+    }
+}
+
+/**
+ * How a conversation uses the voice channel, as chosen in Settings when it started.
  *
  * @property gainSteps the cabin-noise volume's offset, in steps of the voice stream, added to what the noise asks for.
+ * @property speaker where the voice is heard; the headrest needs the voice channel, so it only counts while [enabled].
  */
 data class VoiceChannelOptions(
     val enabled: Boolean,
@@ -41,6 +63,7 @@ data class VoiceChannelOptions(
     val adaptive: Boolean,
     val gainSteps: Int,
     val dipPercent: Int = DEFAULT_DIP_PERCENT,
+    val speaker: VoiceSpeaker = VoiceSpeaker.DEFAULT,
 ) {
     companion object {
         val OFF = VoiceChannelOptions(enabled = false, music = MusicDuck.DEFAULT, adaptive = false, gainSteps = 0)
@@ -122,11 +145,22 @@ object VoiceChannel {
     }.getOrDefault(false)
 
     /** The lowest volume index of the voice stream (the car's is 5; before Android 9 there is no way to ask, and it is 0). */
-    fun minIndex(audio: AudioManager): Int =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) audio.getStreamMinVolume(STREAM) else 0
+    fun minIndex(audio: AudioManager, stream: Int = STREAM): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) audio.getStreamMinVolume(stream) else 0
 
-    /** The attributes that put a track on the voice stream: the car labels it with its own content type from there. */
-    fun attributes(): AudioAttributes = AudioAttributes.Builder().setLegacyStreamType(STREAM).build()
+    /**
+     * The navigation stream. With the headrest sound on interactive it is heard in the driver's headrest only (the voice
+     * stream is not: it stays on the car's speakers), so it is what the assistant speaks on for [VoiceSpeaker.HEADREST].
+     * Its volume (0 to 10) is the car's navigation volume.
+     */
+    const val NAVI_STREAM = 15
+
+    /** The stream a reply is played on for [speaker]. */
+    fun streamFor(speaker: VoiceSpeaker): Int = if (speaker == VoiceSpeaker.HEADREST) NAVI_STREAM else STREAM
+
+    /** The attributes that put a track on the stream for [speaker]: the car labels it with its own content type from there. */
+    fun attributes(speaker: VoiceSpeaker = VoiceSpeaker.CAR): AudioAttributes =
+        AudioAttributes.Builder().setLegacyStreamType(streamFor(speaker)).build()
 }
 
 /**
@@ -161,6 +195,22 @@ object VoiceVolume {
     /** The most the track itself is made quieter than the stream's lowest index. */
     const val MAX_ATTENUATION_DB = 20.0
 
+    /**
+     * The headrest speaker's own fit (the navigation stream, see [VoiceChannel.NAVI_STREAM]): a speaker beside the ear
+     * on a stream of ten steps, each about 2.4 dB (the tone at the microphone, index 1 to 10, measured on the car). The
+     * index a calm cabin gets is 3 (5, the navigation volume the driver had when it was first tried, was louder than
+     * wanted), and it rises over 30 dB of noise to the top of the stream: about 0.6 dB for each dB of noise, since the
+     * speaker is close. A first fit, moved by the slider.
+     */
+    const val HEADREST_QUIET_DBFS = -62.0
+    const val HEADREST_LOUD_DBFS = -32.0
+    const val HEADREST_QUIET_INDEX = 3.0
+    const val HEADREST_LOUD_INDEX = 10.0
+    const val HEADREST_DB_PER_STEP = 2.4
+
+    /** Index 0 of the navigation stream silences it altogether, so the curve does not go that low (the track is made quieter instead). */
+    const val HEADREST_FLOOR_INDEX = 1
+
     /** What a reply is played at: the stream's volume index, and how much quieter than that the track is made. */
     data class Level(val index: Int, val attenuationDb: Double) {
         /** The track's own volume (0..1) that gives [attenuationDb]. */
@@ -168,6 +218,17 @@ object VoiceVolume {
     }
 
     fun indexFor(noiseDbfs: Double, gainSteps: Int, min: Int, max: Int): Int = levelFor(noiseDbfs, gainSteps, min, max).index
+
+    /** The level for the cabin noise when the voice is heard in the headrest, on the navigation stream ([min] to [max]). */
+    fun headrestLevelFor(noiseDbfs: Double, gainSteps: Int, min: Int, max: Int): Level {
+        val floor = maxOf(min, HEADREST_FLOOR_INDEX)
+        if (max <= floor) return Level(max.coerceAtLeast(min), 0.0)
+        val t = ((noiseDbfs - HEADREST_QUIET_DBFS) / (HEADREST_LOUD_DBFS - HEADREST_QUIET_DBFS)).coerceIn(0.0, 1.0)
+        val wanted = HEADREST_QUIET_INDEX + (HEADREST_LOUD_INDEX - HEADREST_QUIET_INDEX) * t + VoiceChannelOptions.clampGain(gainSteps)
+        val index = wanted.roundToInt().coerceIn(floor, max)
+        val below = if (wanted < floor) ((floor - wanted) * HEADREST_DB_PER_STEP).coerceAtMost(MAX_ATTENUATION_DB) else 0.0
+        return Level(index, below)
+    }
 
     /**
      * The level for the cabin noise. Below the stream's lowest index (a calm cabin, or the slider turned down) the

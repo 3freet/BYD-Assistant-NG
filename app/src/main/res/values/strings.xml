@@ -407,4 +407,10 @@
     <string name="setup_back">Back</string>
     <string name="setup_skip">Skip for now</string>
     <string name="setup_next">Next</string>
+    <string name="voice_speaker_title">Speaker</string>
+    <string name="voice_speaker_desc">Where the assistant\'s voice is heard.</string>
+    <string name="voice_speaker_car">Car speakers</string>
+    <string name="voice_speaker_headrest">Driver\'s headrest</string>
+    <string name="voice_speaker_car_note">Heard on the car\'s speakers, and in the headrest too when the car\'s headrest sound is on Surround.</string>
+    <string name="voice_speaker_headrest_note">While you talk to the assistant, the car\'s headrest sound is set to Interactive and the voice plays on the car\'s navigation channel, so it comes from the driver\'s headrest only. The volume follows the cabin noise (the car\'s navigation volume is moved for the conversation and put back). The headrest sound goes back as it was afterwards. Music stays on the car\'s speakers. Needs ADB debugging, like the car controls.</string>
 </resources>

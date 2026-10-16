@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +28,7 @@ import com.bydassistantng.R
 import com.bydassistantng.audio.EndOfSpeechWait
 import com.bydassistantng.audio.MusicDuck
 import com.bydassistantng.audio.VoiceChannelOptions
+import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.data.AssistantVoices
@@ -268,6 +270,9 @@ internal fun SoundPane(viewModel: SettingsViewModel) {
     val adaptive by viewModel.voiceChannelAdaptive.collectAsState()
     val gain by viewModel.voiceChannelGain.collectAsState()
     val dip by viewModel.voiceChannelDip.collectAsState()
+    val speaker by viewModel.voiceChannelSpeaker.collectAsState()
+    val hasHeadrest by viewModel.headrestSpeakerPresent.collectAsState()
+    LaunchedEffect(Unit) { viewModel.findHeadrestSpeaker() }
 
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         SettingsSection(stringResource(R.string.settings_section_voice_channel)) {
@@ -281,6 +286,29 @@ internal fun SoundPane(viewModel: SettingsViewModel) {
             }
             // Nothing more about it is shown while it is off.
             if (enabled) {
+                // Only a car with a headrest speaker has a choice of where the voice is heard.
+                if (hasHeadrest) {
+                    row(nested = true) {
+                        SettingRow(
+                            title = stringResource(R.string.voice_speaker_title),
+                            subtitle = stringResource(R.string.voice_speaker_desc),
+                            below = {
+                                SegmentedControl(
+                                    options = VoiceSpeaker.entries.map { it.label() },
+                                    selected = VoiceSpeaker.entries.indexOf(speaker),
+                                    onSelect = { viewModel.setVoiceChannelSpeaker(VoiceSpeaker.entries[it]) },
+                                )
+                                Text(
+                                    stringResource(if (speaker == VoiceSpeaker.HEADREST) R.string.voice_speaker_headrest_note else R.string.voice_speaker_car_note),
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 10.dp),
+                                )
+                            },
+                        )
+                    }
+                }
                 row(nested = true) {
                     SettingRow(
                         title = stringResource(R.string.voice_channel_music_title),
@@ -362,6 +390,14 @@ internal fun SoundPane(viewModel: SettingsViewModel) {
         }
     }
 }
+
+@Composable
+private fun VoiceSpeaker.label(): String = stringResource(
+    when (this) {
+        VoiceSpeaker.CAR -> R.string.voice_speaker_car
+        VoiceSpeaker.HEADREST -> R.string.voice_speaker_headrest
+    },
+)
 
 @Composable
 private fun MusicDuck.label(): String = stringResource(

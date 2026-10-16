@@ -18,6 +18,10 @@ import kotlin.math.sin
 private const val TAG = "Earcons"
 private const val SAMPLE_RATE = 44_100
 
+// How long a tone waits for the exterior speaker's route to go off, and how often it looks.
+private const val BLOCKED_WAIT_MS = 2_500L
+private const val BLOCKED_POLL_MS = 50L
+
 /** What the assistant is telling the user without words. Each has its own shape so they can be told
  * apart without looking: up = "go ahead", a quiet pair of ticks = "got it, working", down = "all
  * done", low = "that failed". */
@@ -50,18 +54,37 @@ class Earcons @Inject constructor() {
     /** Whether the tones play on the car's voice channel, with the assistant's voice (set when a conversation starts). */
     @Volatile var voiceChannel = false
 
+    /** Which speakers the tones come out of when they are on the voice channel: the same as the voice. */
+    @Volatile var speaker = VoiceSpeaker.DEFAULT
+
     /** How much quieter than the voice stream the tones are made, 0..1, to match the voice (see [LivePcmPlayer.voiceBaseVolume]). */
     @Volatile var voiceLevel: () -> Float = { 1f }
+
+    /**
+     * True while the tones' stream is the one the exterior speaker is using (the headrest speaker's, which is the
+     * navigation stream): a tone would be heard outside the car, so it waits.
+     */
+    @Volatile var blocked: () -> Boolean = { false }
 
     /** Fire and forget: returns immediately, the tone plays on a background thread. */
     fun play(earcon: Earcon) {
         scope.launch {
             runCatching {
+                // Up to a couple of seconds, so that the "listening" tone after an announcement made outside still comes.
+                var waited = 0L
+                while (blocked() && waited < BLOCKED_WAIT_MS) {
+                    delay(BLOCKED_POLL_MS)
+                    waited += BLOCKED_POLL_MS
+                }
+                if (blocked()) {
+                    AppLogger.log(TAG, "$earcon not played: the exterior speaker is still on")
+                    return@launch
+                }
                 val pcm = tones.getValue(earcon)
                 val track = AudioTrack.Builder()
                     .setAudioAttributes(
                         if (voiceChannel) {
-                            VoiceChannel.attributes()
+                            VoiceChannel.attributes(speaker)
                         } else {
                             AudioAttributes.Builder()
                                 // Same usage as the spoken replies, which are known to be audible on this unit.

@@ -132,7 +132,9 @@ internal object VoiceChannelTest {
         val baseline = CabinNoise.measure(600, 100)
         AppLogger.log(TAG, "Levels: cabin without the tone ${baseline?.let { "%.1f".format(it) }} dBFS")
         try {
-            for (index in listOf(5, 6, 7, 8, 10, 12, 14)) {
+            // The voice stream runs 5 to 24; the navigation stream 0 to 10.
+            val indexes = if (attempt.streamType == 15) listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) else listOf(5, 6, 7, 8, 10, 12, 14)
+            for (index in indexes) {
                 runCatching { audio.setStreamVolume(attempt.streamType, index, 0) }
                 val bufferSize = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT) * 2
                 @Suppress("DEPRECATION")

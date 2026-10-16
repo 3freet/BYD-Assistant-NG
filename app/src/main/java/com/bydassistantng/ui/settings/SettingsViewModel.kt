@@ -7,9 +7,11 @@ import com.bydassistantng.R
 import com.bydassistantng.audio.EndOfSpeechWait
 import com.bydassistantng.audio.ExteriorSpeaker
 import com.bydassistantng.audio.ExteriorVolume
+import com.bydassistantng.audio.HeadrestRoute
 import com.bydassistantng.audio.MusicDuck
 import com.bydassistantng.audio.VoiceChannel
 import com.bydassistantng.audio.VoiceChannelOptions
+import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.cluster.ClusterScreenAvailability
@@ -36,6 +38,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Optional
@@ -50,6 +54,7 @@ class SettingsViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
     private val memory: MemoryRepository,
     private val updateManager: UpdateManager,
+    private val headrestRoute: HeadrestRoute,
     exteriorSpeaker: Optional<ExteriorSpeaker>,
     driveModes: Optional<DriveModeSwitch>,
 ) : ViewModel() {
@@ -179,6 +184,31 @@ class SettingsViewModel @Inject constructor(
 
     val voiceChannelDip: StateFlow<Int> = preferencesRepository.voiceChannelDip
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VoiceChannelOptions.DEFAULT_DIP_PERCENT)
+
+    val voiceChannelSpeaker: StateFlow<VoiceSpeaker> = preferencesRepository.voiceChannelSpeaker
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VoiceSpeaker.DEFAULT)
+
+    /** Whether the car has a headrest speaker to choose (known once the car has been asked; see [findHeadrestSpeaker]). */
+    val headrestSpeakerPresent: StateFlow<Boolean> = preferencesRepository.headrestSpeakerPresent
+        .map { it == true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setVoiceChannelSpeaker(speaker: VoiceSpeaker) {
+        viewModelScope.launch { preferencesRepository.setVoiceChannelSpeaker(speaker) }
+    }
+
+    /**
+     * Asks the car, once, whether it has a headrest speaker (it needs the same ADB connection the car controls use, so
+     * nothing is asked until the sound settings are opened). An answer is kept; a car that could not be reached is
+     * asked again next time.
+     */
+    fun findHeadrestSpeaker() {
+        viewModelScope.launch {
+            if (preferencesRepository.headrestSpeakerPresent.first() != null) return@launch
+            val state = headrestRoute.read() ?: return@launch
+            preferencesRepository.setHeadrestSpeakerPresent(state.hasSpeaker)
+        }
+    }
 
     fun setVoiceChannelEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setVoiceChannelEnabled(enabled) }

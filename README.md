@@ -25,7 +25,10 @@ exterior speaker or change the drive mode.
 - **Voice channel** (on by default, on cars that have it; *Settings → Voice channel*): the assistant's replies and
   tones play on the car's own voice stream, with a volume of their own, apart from the music. While a conversation
   lasts the music is turned down (by half by default; or the car's own dip, paused, or left alone), and the voice
-  follows how loud the cabin is, with a slider to move it up or down. How and why:
+  follows how loud the cabin is, with a slider to move it up or down. On a car with a driver's headrest speaker the
+  voice can come from that speaker only (*Settings → Sound → Speaker*): the car's headrest sound is put on
+  Interactive and the assistant speaks on the navigation channel (its volume follows the cabin noise, and the
+  navigation volume is put back) while the conversation lasts; the headrest sound goes back as it was after. How and why:
   [voice-channel.md](docs/byd-internals/voice-channel.md).
 - **Status banner** on screen shows whether the mic is live, the assistant is thinking, or it is speaking.
 - **Tap sound**: every tap in the app ticks with the head unit's own touch sound, like the rest of the car's screens.

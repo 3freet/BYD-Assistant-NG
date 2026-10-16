@@ -33,6 +33,11 @@ import javax.inject.Inject
 private const val TAG = "LiveAudioIo"
 private const val KEY_LOWERED_FROM = "lowered_from"
 private const val KEY_LOWERED_TO = "lowered_to"
+private const val KEY_NAVI_FROM = "navi_from"
+private const val KEY_NAVI_TO = "navi_to"
+
+// After a conversation: how long past the last sound the navigation volume stays where the reply left it before it is put back.
+private const val NAVI_RESTORE_HOLD_MS = 1_500L
 
 // Fixed by the Live API protocol itself — see GeminiLiveClient's INPUT_AUDIO_MIME and the
 // documented output format ("raw 16-bit PCM audio, 24kHz, little-endian"), not a tunable choice.
@@ -50,6 +55,10 @@ private const val OUTSIDE_TAIL_MS = 450L
 // the amplifier's buffers still plays for a moment (the navi output was seen to stop about 0.3 s after the track
 // did), and with the switch already off that tail came out of the cabin's navigation speaker.
 private const val OUTSIDE_RELEASE_GRACE_MS = 500L
+// How long the switch itself takes to go off, once the grace is over (the route counts as in use until it has).
+private const val OUTSIDE_RELEASE_SWITCH_MS = 100L
+// What a reply's tail is given, past the last sample, before the exterior switch may go on (the headrest's stream is shared).
+private const val HEADREST_TAIL_MS = 300L
 
 // Audio that arrives while the car is still switching to the exterior speaker waits for it, up to this long,
 // and is then played in the cabin instead: a navi-stream track written before the switch would be heard inside.
@@ -209,6 +218,12 @@ class LivePcmPlayer @Inject constructor(
     private var rampDownJob: Job? = null
     private var rampDownActive = false
 
+    // The navigation volume while the headrest's reply follows the cabin noise: what it was and what it was set to.
+    // Guarded by [focusLock].
+    private var naviFrom: Int? = null
+    private var naviTo: Int? = null
+    private var naviRestoreJob: Job? = null
+
     // Bumped whenever a reply starts. The job that gives the music back remembers the number it was started under and
     // gives up if it has changed, so a reply that starts just as the last one's hold runs out keeps the music down.
     private var holdGeneration = 0
@@ -240,6 +255,13 @@ class LivePcmPlayer @Inject constructor(
     /** The named sound effect as 24 kHz mono 16-bit PCM, or null when there is none of that name. */
     fun renderEffect(name: String): ShortArray? = exterior?.renderEffect(name)
 
+    /**
+     * Whether the exterior speaker's route is on, or has only just been told to go off. Replies and tones that share its
+     * stream (the headrest speaker's) wait for it to be over.
+     */
+    val exteriorInUse: Boolean
+        get() = speakingOutside || SystemClock.elapsedRealtime() < outsideReleaseUntilMs || SystemClock.elapsedRealtime() < effectEndsAtMs
+
     /** True from [beginOutside] until the reply has been heard (or cut off): new audio goes outside. */
     @Volatile var speakingOutside = false
         private set
@@ -248,6 +270,11 @@ class LivePcmPlayer @Inject constructor(
     // takes the switch over, so the end of an earlier one must not turn it off under it.
     private var pendingSwitch: Deferred<Boolean>? = null
     private var outsideGeneration = 0
+
+    // Until when the exterior route is still in use after an announcement (its switch goes off a moment after the last
+    // sound), elapsedRealtime. With the headrest as the speaker the replies and tones share the exterior speaker's stream,
+    // so they must not start while it is on: they would be heard outside.
+    @Volatile private var outsideReleaseUntilMs = 0L
 
     // The loudness boost on the exterior track (see [ExteriorVolume]).
     @Volatile private var outsideBoostMb = 0
@@ -403,7 +430,7 @@ class LivePcmPlayer @Inject constructor(
     /**
      * Before the first sound of a reply on the voice channel: makes sure the music is dealt with (it already is, from
      * the start of the conversation, unless it was not playing then) and, when the volume follows the cabin, sets the
-     * voice stream's volume from the cabin noise heard so far (see [CabinNoiseMonitor]), so nothing waits.
+     * volume from the cabin noise heard so far (see [CabinNoiseMonitor]), so nothing waits.
      */
     @RequiresApi(Build.VERSION_CODES.O)
     private fun prepareVoiceReply(receivedInEpoch: Int) {
@@ -411,25 +438,101 @@ class LivePcmPlayer @Inject constructor(
         if (receivedInEpoch != epoch.get()) return
         synchronized(focusLock) { holdGeneration++ }
         quietenMusic(options)
+        adaptVolume()
+    }
+
+    /**
+     * Sets the volume of the voice, and of the tones that go with it, for the cabin as it is now: the voice stream's
+     * (see [VoiceVolume.levelFor]) or, with the headrest as the speaker, the navigation stream's (see
+     * [VoiceVolume.headrestLevelFor]). The navigation volume is the one the car's navigation prompts use, so it is
+     * written down when it is first changed in a conversation and put back afterwards ([endConversationVolume]); with the
+     * cabin-noise volume off the volume is left as it is. A [noise] reading can be given (the one taken while the
+     * conversation was opening); otherwise the monitor's is used.
+     *
+     * Returns false when the volume is meant to follow the cabin and there is no noise reading to go by yet.
+     */
+    fun adaptVolume(noise: Double? = null, quiet: Boolean = false): Boolean {
+        val options = voiceChannel
+        if (!options.enabled) return true
+        val headrest = options.speaker == VoiceSpeaker.HEADREST
+        val stream = if (headrest) VoiceChannel.NAVI_STREAM else VoiceChannel.STREAM
         if (!options.adaptive) {
             voiceBaseVolume = 1f
-            return
+            if (headrest && !quiet) {
+                val current = audioManager.getStreamVolume(stream)
+                AppLogger.log(TAG, "Reply on the headrest speaker, at the navigation volume $current" + if (current == 0) " (silent: the navigation volume is 0)" else "")
+            }
+            return true
         }
-        val noise = cabinNoise?.invoke()
-        if (noise == null) {
-            AppLogger.log(TAG, "No cabin noise reading yet — the voice volume stays where it is")
-            return
+        val reading = noise ?: cabinNoise?.invoke()
+        if (reading == null) {
+            if (!quiet) AppLogger.log(TAG, "No cabin noise reading yet — the voice volume stays where it is")
+            return false
         }
-        val min = VoiceChannel.minIndex(audioManager)
-        val max = audioManager.getStreamMaxVolume(VoiceChannel.STREAM)
-        val level = VoiceVolume.levelFor(noise, options.gainSteps, min, max)
-        val before = audioManager.getStreamVolume(VoiceChannel.STREAM)
-        runCatching { audioManager.setStreamVolume(VoiceChannel.STREAM, level.index, 0) }
+        val min = VoiceChannel.minIndex(audioManager, stream)
+        val max = audioManager.getStreamMaxVolume(stream)
+        val level = if (headrest) {
+            VoiceVolume.headrestLevelFor(reading, options.gainSteps, min, max)
+        } else {
+            VoiceVolume.levelFor(reading, options.gainSteps, min, max)
+        }
+        val before = audioManager.getStreamVolume(stream)
+        if (headrest) rememberNaviVolume(before, level.index)
+        runCatching { audioManager.setStreamVolume(stream, level.index, 0) }
             .onFailure { AppLogger.log(TAG, "Could not set the voice volume: $it") }
         voiceBaseVolume = level.trackVolume
         applyTrackVolume()
         val taken = if (level.attenuationDb > 0) ", ${"%.1f".format(level.attenuationDb)} dB off the track" else ""
-        AppLogger.log(TAG, "Voice volume $before -> ${level.index}$taken for a cabin at ${"%.1f".format(noise)} dBFS (gain ${options.gainSteps}, range $min..$max)")
+        val what = if (headrest) "Headrest volume" else "Voice volume"
+        AppLogger.log(TAG, "$what $before -> ${level.index}$taken for a cabin at ${"%.1f".format(reading)} dBFS (gain ${options.gainSteps}, range $min..$max)")
+        return true
+    }
+
+    /** Writes down what the navigation volume was before the app first moves it in a conversation, and what it moves it to. */
+    private fun rememberNaviVolume(current: Int, to: Int) {
+        synchronized(focusLock) {
+            naviRestoreJob?.cancel()
+            naviRestoreJob = null
+            if (naviFrom == null) {
+                // What the driver had is what comes back. Kept on disk too.
+                naviFrom = current
+                voicePrefs.edit().putInt(KEY_NAVI_FROM, current).apply()
+            }
+            naviTo = to
+            voicePrefs.edit().putInt(KEY_NAVI_TO, to).apply()
+        }
+    }
+
+    /** The conversation is over: once its last sound has been heard, the navigation volume goes back to what the driver had. */
+    fun endConversationVolume() {
+        synchronized(focusLock) {
+            if (naviFrom == null) return
+            naviRestoreJob?.cancel()
+            naviRestoreJob = scope.launch {
+                delay(remainingPlaybackMs() + NAVI_RESTORE_HOLD_MS)
+                restoreNaviVolume()
+            }
+        }
+    }
+
+    /** Puts the navigation volume back, unless the driver has changed it since the app set it. */
+    private fun restoreNaviVolume() {
+        val (from, to) = synchronized(focusLock) {
+            val from = naviFrom ?: return
+            val to = naviTo ?: return
+            naviFrom = null
+            naviTo = null
+            naviRestoreJob = null
+            voicePrefs.edit().remove(KEY_NAVI_FROM).remove(KEY_NAVI_TO).apply()
+            from to to
+        }
+        val current = audioManager.getStreamVolume(VoiceChannel.NAVI_STREAM)
+        if (current != to) {
+            AppLogger.log(TAG, "The navigation volume is $current, not $to: it was changed meanwhile, so it stays")
+            return
+        }
+        runCatching { audioManager.setStreamVolume(VoiceChannel.NAVI_STREAM, from, 0) }
+        AppLogger.log(TAG, "Navigation volume back to $from")
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -544,6 +647,7 @@ class LivePcmPlayer @Inject constructor(
      * it back, if it is still where the app left it.
      */
     fun recoverMusicVolume() {
+        recoverNaviVolume()
         val from = voicePrefs.getInt(KEY_LOWERED_FROM, -1)
         val to = voicePrefs.getInt(KEY_LOWERED_TO, -1)
         if (from < 0 || to < 0) return
@@ -551,6 +655,19 @@ class LivePcmPlayer @Inject constructor(
         if (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == to) {
             runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, from, 0) }
             AppLogger.log(TAG, "The music was still turned down from an earlier conversation — put back to $from")
+        }
+    }
+
+    /** Likewise for the navigation volume: a conversation cut short while it was moved for the headrest's reply. */
+    private fun recoverNaviVolume() {
+        synchronized(focusLock) { if (naviFrom != null) return } // this run's own, put back when its conversation ends
+        val from = voicePrefs.getInt(KEY_NAVI_FROM, -1)
+        val to = voicePrefs.getInt(KEY_NAVI_TO, -1)
+        if (from < 0 || to < 0) return
+        voicePrefs.edit().remove(KEY_NAVI_FROM).remove(KEY_NAVI_TO).apply()
+        if (audioManager.getStreamVolume(VoiceChannel.NAVI_STREAM) == to) {
+            runCatching { audioManager.setStreamVolume(VoiceChannel.NAVI_STREAM, from, 0) }
+            AppLogger.log(TAG, "The navigation volume was still where an earlier conversation left it — put back to $from")
         }
     }
 
@@ -710,6 +827,7 @@ class LivePcmPlayer @Inject constructor(
                 retireTrackLocked()
                 speakingOutside = true
                 val opening = scope.async {
+                    letHeadrestReplyFinish()
                     val opened = try {
                         speaker.open()
                     } catch (e: Exception) {
@@ -736,6 +854,16 @@ class LivePcmPlayer @Inject constructor(
         return true
     }
 
+    /**
+     * With the headrest as the speaker, a reply that is still playing is on the stream the exterior switch is about to send
+     * outside: it is let finish first. Nothing is waited for when nothing is playing.
+     */
+    private suspend fun letHeadrestReplyFinish() {
+        if (!voiceChannel.enabled || voiceChannel.speaker != VoiceSpeaker.HEADREST) return
+        val tail = remainingPlaybackMs()
+        if (tail > 0) delay(tail + HEADREST_TAIL_MS)
+    }
+
     /** Blocks the writer of a chunk while the car is still switching to the exterior speaker. */
     private fun awaitOutsideSwitch() {
         val switching = synchronized(trackLock) { if (speakingOutside) pendingSwitch else null } ?: return
@@ -760,11 +888,13 @@ class LivePcmPlayer @Inject constructor(
      * Puts the car back once [OUTSIDE_RELEASE_GRACE_MS] has passed and the switch (if it was still being made)
      * has finished — and only if it did switch: one that never happened has nothing to put back.
      */
-    private fun closeAfterGrace(switching: Deferred<Boolean>?) {
-        scope.launch {
+    private fun closeAfterGrace(switching: Deferred<Boolean>?): Job {
+        outsideReleaseUntilMs = SystemClock.elapsedRealtime() + OUTSIDE_RELEASE_GRACE_MS + OUTSIDE_RELEASE_SWITCH_MS
+        return scope.launch {
             delay(OUTSIDE_RELEASE_GRACE_MS)
             val opened = switching?.let { runCatching { it.await() }.getOrDefault(false) } ?: true
             if (opened) exterior?.close()
+            outsideReleaseUntilMs = 0L
         }
     }
 
@@ -774,12 +904,14 @@ class LivePcmPlayer @Inject constructor(
         delay(remainingPlaybackMs() + OUTSIDE_TAIL_MS)
         // A newer announcement took the switch over while this one finished: it ends it, not this.
         if (synchronized(trackLock) { outsideGeneration != generation }) return
-        finishOutside()
+        val released = finishOutside()
+        // The headrest's tones and replies share the exterior speaker's stream: nothing of theirs starts until it is off.
+        if (voiceChannel.enabled && voiceChannel.speaker == VoiceSpeaker.HEADREST) released?.join()
     }
 
-    private fun finishOutside() {
+    private fun finishOutside(): Job? {
         val switching = synchronized(trackLock) {
-            if (!speakingOutside) return
+            if (!speakingOutside) return null
             speakingOutside = false
             val pending = pendingSwitch
             pendingSwitch = null
@@ -787,7 +919,7 @@ class LivePcmPlayer @Inject constructor(
             pending
         }
         AppLogger.log(TAG, "Replies are back on the cabin speakers")
-        closeAfterGrace(switching)
+        return closeAfterGrace(switching)
     }
 
     /**
@@ -797,6 +929,7 @@ class LivePcmPlayer @Inject constructor(
      */
     suspend fun playEffectOutside(pcm: ShortArray, volume: ExteriorVolume): Boolean {
         val speaker = exterior ?: return false
+        letHeadrestReplyFinish()
         if (!speaker.open()) return false
         var track: AudioTrack? = null
         var boost: LoudnessEnhancer? = null
@@ -866,7 +999,7 @@ class LivePcmPlayer @Inject constructor(
         return AudioTrack.Builder()
             .setAudioAttributes(
                 if (onVoiceChannel) {
-                    VoiceChannel.attributes()
+                    VoiceChannel.attributes(voiceChannel.speaker)
                 } else {
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ASSISTANT)

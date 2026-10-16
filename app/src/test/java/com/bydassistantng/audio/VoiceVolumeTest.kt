@@ -85,4 +85,37 @@ class VoiceVolumeTest {
         assertEquals((5 - (5 + VoiceVolume.BASE_OFFSET_STEPS - 6)) * VoiceVolume.DB_PER_STEP_BELOW_FLOOR, extreme.attenuationDb, 0.01)
         assertTrue(extreme.attenuationDb <= VoiceVolume.MAX_ATTENUATION_DB)
     }
+
+    // The navigation stream, which the headrest speaker is reached on: 0 to 10 (index 0 is silence).
+    private fun headrest(noise: Double, gain: Int = 0) = VoiceVolume.headrestLevelFor(noise, gain, min = 0, max = 10)
+
+    @Test
+    fun aCalmCabinGetsTheLowIndexInTheHeadrest() {
+        assertEquals(3, headrest(-68.0).index)
+        assertEquals(3, headrest(-62.0).index)
+        assertEquals(0.0, headrest(-62.0).attenuationDb, 0.0)
+    }
+
+    @Test
+    fun aLoudCabinGetsTheTopOfTheNavigationStream() {
+        assertEquals(10, headrest(-32.0).index)
+        assertEquals(10, headrest(-20.0, gain = 3).index)
+    }
+
+    @Test
+    fun theHeadrestVolumeRisesWithTheNoiseAndNeverGoesBackDown() {
+        val levels = (-70..-20 step 2).map { headrest(it.toDouble()).index }
+        assertEquals(levels.sorted(), levels)
+    }
+
+    @Test
+    fun theHeadrestSliderMovesItAndNeverReachesSilence() {
+        assertEquals(headrest(-47.0).index - 2, headrest(-47.0, gain = -2).index)
+        // Far down the slider in a calm cabin: the stream stays at its first audible index and the track is made quieter.
+        val lowest = headrest(-68.0, gain = -6)
+        assertEquals(VoiceVolume.HEADREST_FLOOR_INDEX, lowest.index)
+        assertTrue(lowest.attenuationDb > 0.0)
+        assertTrue(lowest.trackVolume < 1f)
+        assertEquals(VoiceVolume.HEADREST_FLOOR_INDEX, headrest(-68.0, gain = -4).index.coerceAtLeast(1))
+    }
 }

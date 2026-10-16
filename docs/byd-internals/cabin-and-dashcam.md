@@ -109,7 +109,9 @@ Notes:
   and exclusive; the car also accepts 1 (off) and reads it back. `getDynaHeadrestSpeakerConfig()` is 2 here, the
   left-front headrest only, so it is the driver's headrest speaker that changes. Per-seat headrest volumes
   (`AUDIO_*_HEADREST_VOLUME_SET`) and speaker switches (`AUDIO_LF_HEADREST_SPEAKER_SWITCH_SET`) exist but their
-  screens were not found, so they were not exercised.
+  screens were not found, so they were not exercised. What each mode does with the assistant's voice, navigation and
+  music (heard on the car) is in [voice-channel.md](voice-channel.md#the-headrest-speaker); `AUDIO_HEADREST_SPEAKER_CONFIG`
+  (1253048344) reads 2 here, and 0 would be no headrest speaker.
 
 ## The dashcam
 

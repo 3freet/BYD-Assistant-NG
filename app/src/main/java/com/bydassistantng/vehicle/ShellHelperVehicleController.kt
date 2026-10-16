@@ -34,6 +34,12 @@ private const val CLUSTER_COMMAND_TIMEOUT_MS = 45_000L
 // A helper nobody has used for this long is shut down; the next press starts a fresh one.
 private const val IDLE_CLOSE_MS = 5 * 60_000L
 
+/** The longer idle time for the headrest speaker's conversations (see [ShellHelperVehicleController.idleCloseMs]). */
+const val HEADREST_IDLE_CLOSE_MS = 30 * 60_000L
+
+/** The ordinary one, for the code that puts it back. */
+const val DEFAULT_IDLE_CLOSE_MS = IDLE_CLOSE_MS
+
 private val SAFE_COMMAND_ID = Regex("[A-Za-z0-9_.]+")
 
 /**
@@ -55,6 +61,13 @@ class ShellHelperVehicleController @Inject constructor(
     private val mutex = Mutex()
     private var session: HelperSession? = null
     private var idleJob: Job? = null
+
+    /**
+     * How long a helper nobody has used is kept before it is shut down. Longer while the assistant speaks from the
+     * headrest, which needs the helper at the start and the end of every conversation: a helper that has to be started
+     * first costs the start of the conversation most of a second.
+     */
+    @Volatile var idleCloseMs: Long = IDLE_CLOSE_MS
 
     /** Starts the helper in the background if it isn't running. Never blocks or throws. */
     fun warmUp() {
@@ -212,7 +225,7 @@ class ShellHelperVehicleController @Inject constructor(
     private fun armIdleClose() {
         idleJob?.cancel()
         idleJob = scope.launch {
-            delay(IDLE_CLOSE_MS)
+            delay(idleCloseMs)
             mutex.withLock {
                 AppLogger.log(TAG, "Helper idle — shutting it down")
                 closeSession()

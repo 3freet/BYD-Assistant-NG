@@ -6,16 +6,19 @@ import android.util.Base64
 import com.bydassistantng.BuildConfig
 import com.bydassistantng.R
 import com.bydassistantng.audio.BargeInDetector
+import com.bydassistantng.audio.CabinNoise
 import com.bydassistantng.cluster.ClusterOptions
 import com.bydassistantng.cluster.ClusterScreenAvailability
 import com.bydassistantng.audio.DipConfirmer
 import com.bydassistantng.audio.Earcon
 import com.bydassistantng.audio.Earcons
 import com.bydassistantng.audio.EndOfSpeechWait
+import com.bydassistantng.audio.HeadrestRoute
 import com.bydassistantng.audio.CabinNoiseMonitor
 import com.bydassistantng.audio.LivePcmPlayer
 import com.bydassistantng.audio.VoiceChannel
 import com.bydassistantng.audio.VoiceChannelOptions
+import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.audio.LivePcmRecorder
 import com.bydassistantng.audio.ExteriorVolume
 import com.bydassistantng.audio.PlaySoundOutsideTool
@@ -44,17 +47,22 @@ import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.DriveModeRepeatGuard
 import com.bydassistantng.vehicle.DriveModeSwitch
 import com.bydassistantng.vehicle.SetDriveModeTool
+import com.bydassistantng.vehicle.DEFAULT_IDLE_CLOSE_MS
+import com.bydassistantng.vehicle.HEADREST_IDLE_CLOSE_MS
 import com.bydassistantng.vehicle.ShellHelperVehicleController
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -95,6 +103,22 @@ private const val REOPEN_DELAY_MS = 500L
 
 // The exterior speaker's helper starts this long after the vehicle helper, not beside it.
 private const val HELPER_STAGGER_MS = 1_500L
+
+// How long the start of a conversation waits for the headrest speaker to be switched on before it carries on regardless
+// (the voice is then heard where it always was), and how long after a conversation the headrest sound is kept as it is,
+// past the last sound, so that a press that follows straight away does not switch it back and forth.
+private const val HEADREST_WAIT_MS = 3_000L
+
+// The cabin is listened to for this long, while the connection is being made, so that the volume is right for the first
+// tone of the conversation (the monitor that follows each reply starts later), and the start waits at most this long for it.
+private const val FIRST_NOISE_MS = 400
+private const val FIRST_NOISE_SKIP_MS = 100
+
+// The start never waits for that reading (the microphone can take longer to open than the connection does): at most this
+// long past the moment everything else is ready, and then the cabin as it was heard last is used if that was recent.
+private const val FIRST_NOISE_WAIT_MS = 150L
+private const val NOISE_FRESH_MS = 10 * 60_000L
+private const val HEADREST_HOLD_MS = 4_000L
 
 // After a conversation the connection to the server is refreshed this often, this many times (about half an hour).
 private const val KEEP_WARM_INTERVAL_MS = 4 * 60_000L
@@ -178,6 +202,7 @@ class LiveConversationController @Inject constructor(
     private val player: LivePcmPlayer,
     private val earcons: Earcons,
     private val vehicleController: ShellHelperVehicleController,
+    private val headrestRoute: HeadrestRoute,
     private val secureCredentials: SecureCredentials,
     private val preferencesRepository: PreferencesRepository,
     private val memory: MemoryRepository,
@@ -236,6 +261,14 @@ class LiveConversationController @Inject constructor(
     private var unansweredTurns = 0
 
     @Volatile private var gate = Gate.BLOCKED
+
+    // How the cabin sounded (dBFS in the speech band) and when, kept for the first tone of the next conversation.
+    @Volatile private var lastNoise: Pair<Double, Long>? = null
+
+    // The switch of the car's headrest sound to the headrest speaker for this conversation (see [HeadrestRoute]), while it
+    // is being made, and the job that gives it back once the conversation is over and heard.
+    private var headrestEngage: Deferred<Boolean>? = null
+    private var headrestReleaseJob: Job? = null
 
     // The cabin noise, listened to while the user's turn and the pauses between turns last (not while the assistant
     // speaks), so each reply on the voice channel starts at a volume that suits the cabin as it is now.
@@ -375,12 +408,22 @@ class LiveConversationController @Inject constructor(
                 adaptive = preferencesRepository.voiceChannelAdaptive.first(),
                 gainSteps = preferencesRepository.voiceChannelGain.first(),
                 dipPercent = preferencesRepository.voiceChannelDip.first(),
+                speaker = preferencesRepository.voiceChannelSpeaker.first(),
             )
         } else {
             VoiceChannelOptions.OFF
         }
+        prepareHeadrest()
+        val firstNoise: Deferred<Double?>? = if (player.voiceChannel.enabled && player.voiceChannel.adaptive) {
+            scope.async(Dispatchers.IO) { CabinNoise.measure(FIRST_NOISE_MS, FIRST_NOISE_SKIP_MS) }
+        } else {
+            null
+        }
         // The tones go the same way as the voice.
         earcons.voiceChannel = player.voiceChannel.enabled
+        earcons.speaker = player.voiceChannel.speaker
+        // With the headrest as the speaker the tones share the exterior speaker's stream: not while it is on.
+        earcons.blocked = { player.voiceChannel.enabled && player.voiceChannel.speaker == VoiceSpeaker.HEADREST && player.exteriorInUse }
         earcons.voiceLevel = { player.voiceBaseVolume }
         factsForSession = if (longTermForSession) memory.currentFacts() else emptyList()
         recentForSession = if (shortTermForSession) memory.recentExchanges() else emptyList()
@@ -419,6 +462,7 @@ class LiveConversationController @Inject constructor(
             AppLogger.log(TAG, "Live session unavailable — caller should fall back to the classic pipeline")
             recordStartFailure()
             liveClient.close()
+            scheduleHeadrestRelease()
             return false
         }
 
@@ -427,6 +471,9 @@ class LiveConversationController @Inject constructor(
             close()
             return false
         }
+        awaitHeadrest()
+        // The volume before the first tone, not after it: the tone is on the same stream as the voice.
+        settleVolume(firstNoise)
         openGate()
         conversationActive = true
         if (player.voiceChannel.enabled && player.voiceChannel.adaptive) {
@@ -446,6 +493,63 @@ class LiveConversationController @Inject constructor(
         // speaker's helper follows the vehicle helper rather than starting beside it.
         if (vehicleControlEnabledForSession) warmUpHelpers()
         return true
+    }
+
+    /**
+     * Starts putting the car's headrest sound on the headrest speaker if that is where the voice is to be heard, while
+     * the connection is being made; otherwise gives back what an earlier conversation left switched (the user may have
+     * chosen the car's speakers since, or it was cut short).
+     */
+    private fun prepareHeadrest() {
+        headrestReleaseJob?.cancel()
+        headrestReleaseJob = null
+        headrestEngage = null
+        vehicleController.idleCloseMs = if (player.voiceChannel.enabled && player.voiceChannel.speaker == VoiceSpeaker.HEADREST) {
+            HEADREST_IDLE_CLOSE_MS
+        } else {
+            DEFAULT_IDLE_CLOSE_MS
+        }
+        if (player.voiceChannel.enabled && player.voiceChannel.speaker == VoiceSpeaker.HEADREST) {
+            headrestEngage = scope.async { headrestRoute.engage() }
+        } else if (headrestRoute.hasPending) {
+            scope.launch { headrestRoute.release() }
+        }
+    }
+
+    /** Before the first sound (the listening tone): waits, for a short while at most, for the headrest speaker to be switched on. */
+    private suspend fun awaitHeadrest() {
+        val engaging = headrestEngage ?: return
+        val engaged = withTimeoutOrNull(HEADREST_WAIT_MS) { engaging.await() }
+        if (engaged != true) AppLogger.log(TAG, "The headrest speaker is not on (${if (engaged == null) "too slow" else "not available"}) — the voice is heard in the car")
+    }
+
+    /**
+     * Sets the volume for the cabin before the first tone, so it is not at a level left over from earlier. The cabin was
+     * listened to while the connection opened (see [FIRST_NOISE_MS]); if that reading is not there by now it is not
+     * waited for, and what the cabin sounded like at the end of the last conversation stands in if that was recent.
+     */
+    private suspend fun settleVolume(firstNoise: Deferred<Double?>?) {
+        if (!player.voiceChannel.enabled) return
+        val measured = firstNoise?.let { withTimeoutOrNull(FIRST_NOISE_WAIT_MS) { it.await() } }
+        if (measured != null) lastNoise = measured to SystemClock.elapsedRealtime()
+        val recent = lastNoise?.takeIf { SystemClock.elapsedRealtime() - it.second <= NOISE_FRESH_MS }?.first
+        val noise = measured ?: recent
+        player.adaptVolume(noise = noise, quiet = noise == null && firstNoise != null)
+        // The reading that was not ready is kept for the next conversation, and the monitor has its own by the first reply.
+        if (measured == null && firstNoise != null) {
+            scope.launch { firstNoise.await()?.let { lastNoise = it to SystemClock.elapsedRealtime() } }
+        }
+    }
+
+    /** The conversation is over: once its last sound has been heard, the headrest sound goes back as it was. */
+    private fun scheduleHeadrestRelease() {
+        if (headrestEngage == null && !headrestRoute.hasPending) return
+        headrestEngage = null
+        headrestReleaseJob?.cancel()
+        headrestReleaseJob = scope.launch {
+            delay(player.remainingPlaybackMs() + HEADREST_HOLD_MS)
+            headrestRoute.release()
+        }
     }
 
     private fun warmUpHelpers() {
@@ -914,8 +1018,11 @@ class LiveConversationController @Inject constructor(
         doneChimeJob?.cancel()
         doneChimeJob = null
         recorder.stop()
+        cabinNoise.estimate()?.let { lastNoise = it to SystemClock.elapsedRealtime() }
         cabinNoise.stop()
         player.endConversationMusic()
+        player.endConversationVolume()
+        scheduleHeadrestRelease()
         gate = Gate.BLOCKED
         endDip()
         // What is being said outside the car is heard to the end before the speaker is switched back.
@@ -938,7 +1045,10 @@ class LiveConversationController @Inject constructor(
         nextStepJob = scope.launch {
             // The server streams audio faster than real time, so turn-complete arrives while most of
             // the reply is still queued to play.
-            delay(player.remainingPlaybackMs() + if (reopenQuickly) 0 else REOPEN_DELAY_MS)
+            // Nothing of the reply is in the cabin after an announcement made outside, so there is no tail to keep the
+            // listening tone off; with the headrest as the speaker that tone waits for the exterior switch anyway.
+            val announcedOutside = player.speakingOutside && player.voiceChannel.enabled && player.voiceChannel.speaker == VoiceSpeaker.HEADREST
+            delay(player.remainingPlaybackMs() + if (reopenQuickly || announcedOutside) 0 else REOPEN_DELAY_MS)
             if (!conversationActive) return@launch
             // An announcement made outside the car is over: wait for its tail, then the cabin has the next reply.
             player.endOutside()

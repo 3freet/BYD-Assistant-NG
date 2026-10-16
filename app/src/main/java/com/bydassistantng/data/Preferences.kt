@@ -13,6 +13,7 @@ import com.bydassistantng.audio.EndOfSpeechWait
 import com.bydassistantng.audio.ExteriorVolume
 import com.bydassistantng.audio.MusicDuck
 import com.bydassistantng.audio.VoiceChannelOptions
+import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.util.WheelKeys
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -75,6 +76,8 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val VOICE_CHANNEL_ADAPTIVE = booleanPreferencesKey("voice_channel_adaptive")
         val VOICE_CHANNEL_GAIN = intPreferencesKey("voice_channel_gain")
         val VOICE_CHANNEL_DIP = intPreferencesKey("voice_channel_dip")
+        val VOICE_CHANNEL_SPEAKER = stringPreferencesKey("voice_channel_speaker")
+        val HEADREST_SPEAKER_PRESENT = booleanPreferencesKey("headrest_speaker_present")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -225,6 +228,19 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.data.map { VoiceChannelOptions.clampDip(it[Keys.VOICE_CHANNEL_DIP] ?: VoiceChannelOptions.DEFAULT_DIP_PERCENT) }
     suspend fun setVoiceChannelDip(percent: Int) {
         dataStore.edit { it[Keys.VOICE_CHANNEL_DIP] = VoiceChannelOptions.clampDip(percent) }
+    }
+
+    /** Which speakers the assistant's voice comes out of (the headrest one only works with the voice channel). */
+    val voiceChannelSpeaker: Flow<VoiceSpeaker> =
+        dataStore.data.map { VoiceSpeaker.from(it[Keys.VOICE_CHANNEL_SPEAKER]) }
+    suspend fun setVoiceChannelSpeaker(speaker: VoiceSpeaker) {
+        dataStore.edit { it[Keys.VOICE_CHANNEL_SPEAKER] = speaker.key }
+    }
+
+    /** Whether the car was found to have a headrest speaker, read once from the car; null while that is not known. */
+    val headrestSpeakerPresent: Flow<Boolean?> = dataStore.data.map { it[Keys.HEADREST_SPEAKER_PRESENT] }
+    suspend fun setHeadrestSpeakerPresent(present: Boolean) {
+        dataStore.edit { it[Keys.HEADREST_SPEAKER_PRESENT] = present }
     }
 
     /** How loud the assistant is when it speaks or plays a sound on the exterior speaker, unless asked for another level. */

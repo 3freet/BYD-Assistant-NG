@@ -30,6 +30,7 @@ object CabinNoise {
      * for the whole time; the conversation's own capture can be running meanwhile.
      */
     fun measure(durationMs: Int, skipMs: Int = 0): Double? {
+        val startedAt = SystemClock.elapsedRealtime()
         val minBuffer = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (minBuffer <= 0) return null
         for ((source, name) in SOURCES) {
@@ -53,10 +54,11 @@ object CabinNoise {
                 if (levels.isEmpty()) continue
                 val speech = levels.map { it.speech }
                 val level = median(speech)
+                val tookMs = SystemClock.elapsedRealtime() - startedAt
                 AppLogger.log(
                     TAG,
                     "Cabin noise $name: ${"%.1f".format(level)} dBFS in the speech band, ${"%.1f".format(median(levels.map { it.whole }))} over the whole band " +
-                        "(${levels.size} windows, range ${"%.1f".format(speech.min())} to ${"%.1f".format(speech.max())})",
+                        "(${levels.size} windows, range ${"%.1f".format(speech.min())} to ${"%.1f".format(speech.max())}; took $tookMs ms)",
                 )
                 return level
             } catch (e: Exception) {

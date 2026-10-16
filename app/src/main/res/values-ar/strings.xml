@@ -406,4 +406,10 @@
     <string name="setup_back">رجوع</string>
     <string name="setup_skip">تخطَّ الآن</string>
     <string name="setup_next">التالي</string>
+    <string name="voice_speaker_title">مكبّر الصوت</string>
+    <string name="voice_speaker_desc">المكان الذي يُسمع فيه صوت المساعد.</string>
+    <string name="voice_speaker_car">مكبرات السيارة</string>
+    <string name="voice_speaker_headrest">مسند رأس السائق</string>
+    <string name="voice_speaker_car_note">يُسمع في مكبرات السيارة، وفي مسند الرأس أيضاً إذا كان صوت مسند الرأس على وضع «محيطي».</string>
+    <string name="voice_speaker_headrest_note">أثناء حديثك مع المساعد يُضبط صوت مسند الرأس في السيارة على «تفاعلي» ويُشغَّل صوت المساعد على قناة الملاحة في السيارة، فيصدر من مسند رأس السائق فقط. ويتبع مستوى الصوت ضجيج المقصورة (يُحرَّك مستوى صوت الملاحة في السيارة أثناء المحادثة ثم يعود). ثم يعود صوت مسند الرأس إلى ما كان عليه. تبقى الموسيقى في مكبرات السيارة. يتطلب تفعيل تصحيح ADB كما في أوامر السيارة.</string>
 </resources>
