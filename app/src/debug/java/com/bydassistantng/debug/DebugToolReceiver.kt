@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.bydassistantng.apps.AppLauncherTool
+import com.bydassistantng.apps.CloseAppTool
 import com.bydassistantng.cluster.ClusterOptions
 import com.bydassistantng.cluster.ClusterScreenTool
 import com.bydassistantng.gemini.GeminiFunctionCall
@@ -54,6 +55,16 @@ class DebugToolReceiver : BroadcastReceiver() {
                         val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
                         runBlocking {
                             AppLauncherTool.handle(app, call, onOpening = { }, beforeLaunch = { pkg -> ClusterScreenTool.leaving(controller, pkg) })
+                        }
+                    }
+                    CloseAppTool.FUNCTION_NAME -> {
+                        val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
+                        val options = ClusterOptions(enabled = true, keepMapsDisabled = intent.getBooleanExtra("keepdisabled", true))
+                        runBlocking {
+                            CloseAppTool.handle(
+                                app, call, onClosing = { },
+                                closedElsewhere = { pkg -> ClusterScreenTool.closeIfOnCluster(controller, pkg, options) },
+                            )
                         }
                     }
                     MediaControlTool.FUNCTION_NAME -> MediaControlTool.handle(app, call)

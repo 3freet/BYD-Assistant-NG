@@ -95,6 +95,17 @@ object ClusterScreenTool {
         send(controller, "leaving $packageName")
     }
 
+    /**
+     * Called by the tool that is about to stop [packageName]: if that is the app on the cluster, the cluster is given
+     * back the way `close` does it (gauges first, the app stopped, BYD Maps as chosen) and true is returned, so the
+     * app does not have to be stopped again. False when the app is not on the cluster.
+     */
+    suspend fun closeIfOnCluster(controller: VehicleController, packageName: String, options: ClusterOptions): Boolean {
+        if (onCluster != packageName) return false
+        onCluster = null
+        return send(controller, closeLine(options.keepMapsDisabled)) is VehicleDispatchResult.Success
+    }
+
     suspend fun handle(
         context: Context,
         call: GeminiFunctionCall,

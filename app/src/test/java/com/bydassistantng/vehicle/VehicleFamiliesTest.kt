@@ -43,7 +43,7 @@ class VehicleFamiliesTest {
     @Test
     fun aFamilyNeverClashesWithAnotherTool() {
         val others = setOf(
-            "navigate_to", "open_app", "media_control", "play_media", "get_volume", "read_car", "passenger_screen",
+            "navigate_to", "open_app", "close_app", "media_control", "play_media", "get_volume", "read_car", "passenger_screen",
             "remember", "forget_memory", "end_conversation", "speak_outside", "play_sound_outside", "set_drive_mode", "cluster_screen",
         )
         assertTrue(VehicleCommandRegistry.functionNames().none { it in others })

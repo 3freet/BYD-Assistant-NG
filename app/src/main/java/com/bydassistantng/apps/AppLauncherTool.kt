@@ -79,7 +79,7 @@ object AppLauncherTool {
         }
     }
 
-    private fun installedApps(context: Context): List<InstalledApp> {
+    internal fun installedApps(context: Context): List<InstalledApp> {
         val pm = context.packageManager
         val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         return pm.queryIntentActivities(launcher, 0)

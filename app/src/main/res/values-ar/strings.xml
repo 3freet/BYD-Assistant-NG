@@ -34,6 +34,7 @@
     <string name="banner_listening_press_to_stop">أستمع… اضغط للإيقاف</string>
     <string name="banner_navigating">جارٍ التنقل إلى %1$s</string>
     <string name="banner_opening_app">فتح %1$s</string>
+    <string name="banner_closing_app">إغلاق %1$s</string>
     <string name="banner_tyres">جارٍ قراءة ضغط الإطارات</string>
     <string name="banner_playing">تشغيل: %1$s</string>
     <string name="banner_playing_favorites">تشغيل المفضّلة</string>

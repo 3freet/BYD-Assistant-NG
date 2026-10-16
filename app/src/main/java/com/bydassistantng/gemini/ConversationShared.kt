@@ -3,6 +3,7 @@ package com.bydassistantng.gemini
 import android.content.Context
 import com.bydassistantng.R
 import com.bydassistantng.apps.AppLauncherTool
+import com.bydassistantng.apps.CloseAppTool
 import com.bydassistantng.audio.PlaySoundOutsideTool
 import com.bydassistantng.audio.SoundEffect
 import com.bydassistantng.audio.SpeakOutsideTool
@@ -76,6 +77,7 @@ fun assistantTools(
     val declarations = buildList {
         add(NavigationTool.declaration)
         add(AppLauncherTool.declaration)
+        add(CloseAppTool.declaration)
         add(MediaControlTool.declaration)
         add(PlayMediaTool.declaration)
         add(VolumeTool.declaration)
@@ -137,6 +139,12 @@ object VehicleFunctionDispatcher {
             return AppLauncherTool.handle(
                 context, functionCall, onDispatching,
                 beforeLaunch = { pkg -> ClusterScreenTool.leaving(reflectionController, pkg) },
+            )
+        }
+        if (functionCall.name == CloseAppTool.FUNCTION_NAME) {
+            return CloseAppTool.handle(
+                context, functionCall, onDispatching,
+                closedElsewhere = { pkg -> ClusterScreenTool.closeIfOnCluster(reflectionController, pkg, cluster) },
             )
         }
         if (functionCall.name == PlayMediaTool.FUNCTION_NAME) {
@@ -335,7 +343,8 @@ fun voiceAssistantSystemPrompt(
     return "You are a concise voice assistant built into a car's head unit. $languageInstruction$dialectInstruction " +
         "Keep replies short — they will be read aloud.$listeningHint When the user asks to be taken somewhere, call " +
         "navigate_to with the place name instead of describing the route. When the user asks to open an app, call " +
-        "open_app; for play, pause, next or previous on the music, call media_control. When the user asks you to " +
+        "open_app, and to close or quit an app, call close_app; for play, pause, next or previous on the music, " +
+        "call media_control. When the user asks you to " +
         "control something in the car and a matching function is available, call that function instead " +
         "of describing the action in words. If no matching function is available, say so plainly rather " +
         "than pretending to have done it.$searchInstruction$memoryInstruction" +
