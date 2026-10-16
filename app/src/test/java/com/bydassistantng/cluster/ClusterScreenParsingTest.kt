@@ -202,38 +202,6 @@ class ClusterScreenParsingTest {
         assertNull(ClusterScreenParsing.displayOf(dump, "ru.yandex.yandexnavi", excludedDisplay = 3))
     }
 
-    private val session = """
-        package=com.google.android.youtube
-          active=true
-          state=PlaybackState {state=3, position=7000, buffered position=0, speed=1.0, updated=100000, actions=8615, custom actions=[], active item id=-1, error=null}
-          metadata: size=7, description=Never Gonna Give You Up, Rick Astley, Rick Astley
-        package=com.byd.mediacenter
-          state=PlaybackState {state=2, position=0, buffered position=0, speed=1.0, updated=5, actions=182, custom actions=[], active item id=-1, error=null}
-          metadata: size=10, description=91.4 MHz,  , null
-    """.trimIndent()
-
-    @Test
-    fun whatIsPlayingIsReadWithItsPositionAdvancedFromTheLastUpdate() {
-        val now = ClusterScreenParsing.mediaNowOf(session, "com.google.android.youtube", elapsedNowMs = 103_000)!!
-        assertEquals(ClusterScreenParsing.PLAYING, now.state)
-        assertEquals("Never Gonna Give You Up", now.title)
-        // 7 s at the update plus the 3 s since.
-        assertEquals(10_000, now.positionMs)
-        // Paused: the position stays where it was written.
-        val other = ClusterScreenParsing.mediaNowOf(session, "com.byd.mediacenter", elapsedNowMs = 900_000)!!
-        assertEquals(2, other.state)
-        assertEquals(0, other.positionMs)
-        assertNull(ClusterScreenParsing.mediaNowOf(session, "ru.yandex.yandexnavi", elapsedNowMs = 1))
-    }
-
-    @Test
-    fun aTitleKeepsItsCommasAndDropsTheRepeatedTail() {
-        assertEquals("A, B and C", ClusterScreenParsing.titleOf("A, B and C, Channel, Channel"))
-        assertEquals("Only a title", ClusterScreenParsing.titleOf("Only a title"))
-        assertNull(ClusterScreenParsing.titleOf("null"))
-        assertNull(ClusterScreenParsing.titleOf(""))
-    }
-
     @Test
     fun aLinkIsOpenedAsATaskOfItsOwnOnTheDisplay() {
         val line = ClusterScreenParsing.viewArguments(3, "com.google.android.youtube", "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10s")

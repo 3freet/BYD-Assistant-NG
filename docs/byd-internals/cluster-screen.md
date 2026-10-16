@@ -109,23 +109,22 @@ first tell the helper (`cluster leaving <package>`), which writes map type `1` b
 gauges are already back when it goes; and the watcher polls every 0.4 s and acts at once when it finds the app's
 task on another display.
 
-A note for testing with YouTube: the build on this head unit crashes within seconds of a cold start (the
-`GoogleApiHandler` / conscrypt exception in `logcat -b crash`). Our close force-stops the app, so the next start is
-a cold one; a test that force-stops it between runs sees the crash every time, and one that leaves it running
-almost never does.
-
 Timings from the car: a started app or a moved app that is not playing is answered in under a second (the helper
 answers as soon as the app is in front); a moved player or a link, about 3 s; close 2 s. Yandex Navi and YouTube
 were tried; the car's own gauges came back after close each time.
 
-## An app that crashes on its own
+## When YouTube crashes on a move
 
-The YouTube on this head unit is a patched build whose Google-services client thread
-(`GoogleApiHandler`) throws `ClassNotFoundException: com.google.android.gms.org.conscrypt.OpenSSLRSAPublicKey`
-from a signature-spoofing hook, typically about thirteen seconds after a cold start, and the process dies with
-the video. It happens with nothing of ours involved (it was seen with the navigation app disabled and no cluster
-command running). When a test of "move a playing video to the cluster" ends with a stopped video, look for
-`FATAL EXCEPTION: GoogleApiHandler` in `logcat -b crash` before blaming the move.
+The YouTube on this head unit is a patched build (the Morphe patches). Moving it between displays makes Android
+relaunch its activity, because the cluster's touchscreen, screen layout and size differ from the main screen's
+(`relaunch … changes = 3336` in the system log), and on some runs the new activity's `onCreate` throws a
+`ClassNotFoundException` for `com.google.android.gms.org.conscrypt.OpenSSLRSAPublicKey` out of the patch's
+package-info hook (`SpoofUtil`). That is the patched app's own bug, and nothing here works around it: if the app is
+gone after a move, the cluster gets its gauges back (the leave rule above) and the app has to be asked for again.
+The same hook crashes the app a few seconds after some cold starts. Our close force-stops the app, so the next
+start is a cold one: a test that force-stops it between runs sees the crash far more often than one that leaves
+it running. Look in `logcat -b crash`, or the crash files the patch writes to `Documents/Morphe`, before blaming
+the move.
 
 ## Side effects to know about
 

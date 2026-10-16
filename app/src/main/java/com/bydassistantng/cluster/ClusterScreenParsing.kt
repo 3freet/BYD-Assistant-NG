@@ -151,41 +151,6 @@ internal object ClusterScreenParsing {
         return null
     }
 
-    /** What an app's media session says it is doing: its state, the title and where in it. */
-    data class MediaNow(val state: Int, val title: String?, val positionMs: Long)
-
-    private val POSITION = Regex("""state=PlaybackState \{state=(\d+), position=(-?\d+), buffered position=-?\d+, speed=(-?[0-9.]+), updated=(\d+)""")
-    private val DESCRIPTION = Regex("""metadata: size=\d+, description=(.*)""")
-
-    /**
-     * The app's session from `dumpsys media_session`: [MediaNow.positionMs] is advanced from the time the state was
-     * written ([elapsedNowMs] is the clock `updated=` uses) when it is playing. Null when the app has no session.
-     */
-    fun mediaNowOf(mediaSessionDump: String, packageName: String, elapsedNowMs: Long): MediaNow? {
-        val at = Regex("""package=${Regex.escape(packageName)}\b""").find(mediaSessionDump) ?: return null
-        val tail = mediaSessionDump.substring(at.range.last, minOf(mediaSessionDump.length, at.range.last + 4000))
-        val m = POSITION.find(tail) ?: return null
-        val state = m.groupValues[1].toInt()
-        val speed = m.groupValues[3].toDoubleOrNull() ?: 1.0
-        val updated = m.groupValues[4].toLong()
-        var position = m.groupValues[2].toLong()
-        if (state == PLAYING && updated > 0 && elapsedNowMs >= updated) position += ((elapsedNowMs - updated) * speed).toLong()
-        val title = DESCRIPTION.find(tail)?.groupValues?.get(1)?.trim()?.let { titleOf(it) }
-        return MediaNow(state, title, position.coerceAtLeast(0))
-    }
-
-    /** The title out of a media description "Title, Subtitle, Description" (the last two are often the same). */
-    internal fun titleOf(description: String): String? {
-        if (description.isBlank() || description == "null") return null
-        val parts = description.split(", ")
-        val title = if (parts.size >= 3 && parts[parts.size - 1] == parts[parts.size - 2]) {
-            parts.dropLast(2).joinToString(", ")
-        } else {
-            parts.first()
-        }
-        return title.trim().takeIf { it.isNotEmpty() && it != "null" }
-    }
-
     /** Starts [packageName] on the link [url] as a task of its own on [display]. */
     fun viewArguments(display: Int, packageName: String, url: String): List<String> = listOf(
         "/system/bin/am", "start-activity", "--user", "0", "--display", display.toString(), "--windowingMode", "1",

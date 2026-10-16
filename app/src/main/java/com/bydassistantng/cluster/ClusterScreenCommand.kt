@@ -3,7 +3,6 @@ package com.bydassistantng.cluster
 import android.content.Context
 import android.hardware.display.DisplayManager
 import android.os.SystemClock
-import com.bydassistantng.media.YouTubeLibrary
 import com.bydassistantng.passenger.PassengerScreenParsing
 import com.bydassistantng.vehicle.CarFeatureIds
 import com.bydassistantng.vehicle.VehicleDispatchError
@@ -73,9 +72,6 @@ internal object ClusterScreenCommand {
     private const val PLAYING_EVERY_POLLS = 4
     private const val RESTORE_TRIES = 8
     private const val RESTORE_POLL_MS = 500L
-    private const val RESTART_WINDOW_MS = 6_000L
-    private const val HTTP_TIMEOUT_MS = 6_000
-    private const val MAIN_DISPLAY = 0
 
     // Giving the cluster back: how long to wait for the apps and then the meter to be gone, and for the cluster to
     // switch to its gauges before the navigation app is stopped.
@@ -92,10 +88,6 @@ internal object ClusterScreenCommand {
 
     // The app the watcher is looking after, while it does.
     @Volatile private var watchedPackage: String? = null
-
-    // When the app was told it is about to leave for the main screen, and what it was playing.
-    @Volatile private var leavingAt = 0L
-    @Volatile private var leavingResume: ClusterScreenParsing.MediaNow? = null
 
     @Volatile private var keeperStop = false
 
@@ -173,15 +165,10 @@ internal object ClusterScreenCommand {
         //     looked after by the keeper: some players stop and shrink to a corner when they change display.
         if (existing != null) {
             if (wasPlaying) waitForRefront(meterAt, map)
-            val playingNow = if (pkg == YOUTUBE_PACKAGE) mediaNow(pkg)?.takeIf { it.state == ClusterScreenParsing.PLAYING } else null
             exec(listOf("/system/bin/am", "display", "move-stack", existing.toString(), display.toString()))
             if (waitUntil(MOVE_WAIT_MS) { topPackage(display) == pkg }) {
                 startKeeper(display, pkg, raise, meterAt, map, wasPlaying)
-                startWatcher(
-                    display, pkg, keepMaps,
-                    restart = component?.let { ClusterScreenParsing.startArguments(display, it) },
-                    resume = playingNow,
-                )
+                startWatcher(display, pkg, keepMaps)
                 return VehicleDispatchResult.Success("moved=$pkg display=$display type=${map.read()}")
             }
             // Not taken (a task record without its app, say): start it instead.
@@ -306,23 +293,13 @@ internal object ClusterScreenCommand {
     /**
      * The rule that the cluster goes back to its gauges whenever the app has left it, by whatever way: moved to the
      * main or the passenger screen, closed, or ended. The app is looked for on the cluster display every
-     * [WATCH_POLL_MS]; once it is no longer there (twice in a row, to ride out a restart) the gauges are given back as
-     * [close] does it, and a player that was playing is started again where it landed.
+     * [WATCH_POLL_MS]; once it is no longer there (sure at once if it went to another screen, twice in a row if it is
+     * nowhere, to ride out a restart) the gauges are given back as [close] does it, and a player that was playing is
+     * started again where it landed.
      */
-    private fun startWatcher(
-        display: Int,
-        pkg: String,
-        keepMaps: Boolean,
-        restart: List<String>? = null,
-        resume: ClusterScreenParsing.MediaNow? = null,
-    ) {
+    private fun startWatcher(display: Int, pkg: String, keepMaps: Boolean) {
         watcherStop = false
         watchedPackage = pkg
-        leavingAt = 0L
-        leavingResume = null
-        val startedAt = SystemClock.uptimeMillis()
-        var restarted = false
-        var lastPlaying = resume
         watcher = Thread {
             runCatching {
                 var absent = 0
@@ -334,37 +311,11 @@ internal object ClusterScreenCommand {
                     val dump = activityDump()
                     if (PassengerScreenParsing.appsOn(dump, display).any { it.packageName == pkg }) {
                         absent = 0
-                        if (polls++ % PLAYING_EVERY_POLLS == 0) {
-                            val now = mediaNow(pkg)
-                            if (now != null && now.state == ClusterScreenParsing.PLAYING) {
-                                wasPlaying = true
-                                lastPlaying = now
-                            }
-                        }
+                        if (polls++ % PLAYING_EVERY_POLLS == 0 && playbackState(pkg) == ClusterScreenParsing.PLAYING) wasPlaying = true
                         continue
                     }
-                    // Gone. Moved to another screen: sure at once. Gone altogether (ended, crashed, restarting):
-                    // twice, to ride out a restart.
                     val landed = ClusterScreenParsing.displayOf(dump, pkg, display)
-                    val nowMs = SystemClock.uptimeMillis()
-                    // It ended right after it was moved (a crash while it re-created itself). Moved to the cluster:
-                    // start it again there; moved to the main screen: start it again there. A video that was
-                    // playing comes back on the same video, at the same place.
-                    val toMain = leavingAt != 0L && nowMs - leavingAt < RESTART_WINDOW_MS
-                    val onCluster = !toMain && restart != null && nowMs - startedAt < RESTART_WINDOW_MS
-                    if (landed == null && !restarted && (toMain || onCluster)) {
-                        restarted = true
-                        val playing = (if (toMain) leavingResume else null) ?: lastPlaying
-                        val target = if (toMain) MAIN_DISPLAY else display
-                        recoverApp(pkg, target, playing, restart)
-                        if (onCluster) {
-                            absent = 0
-                            continue
-                        }
-                        // Back on the main screen: the cluster gets its gauges back below.
-                    } else if (landed == null && ++absent < LEFT_POLLS) {
-                        continue
-                    }
+                    if (landed == null && ++absent < LEFT_POLLS) continue
                     if (landed != null && wasPlaying) {
                         Thread { runCatching { restorePlayback(pkg, landed) } }.apply { isDaemon = true }.start()
                     }
@@ -467,45 +418,6 @@ internal object ClusterScreenCommand {
     private fun playbackState(pkg: String): Int? =
         ClusterScreenParsing.playbackStateOf(exec(listOf("/system/bin/dumpsys", "media_session")), pkg)
 
-    private fun mediaNow(pkg: String): ClusterScreenParsing.MediaNow? =
-        ClusterScreenParsing.mediaNowOf(exec(listOf("/system/bin/dumpsys", "media_session")), pkg, SystemClock.elapsedRealtime())
-
-    /**
-     * Starts the app again after it died on a move. A video that was playing is found again by its title and opened
-     * on its own link at the place it had reached (a start of a new screen, not a re-creation from saved state);
-     * anything else is started from its launcher entry where [restart] says, or not at all.
-     */
-    private fun recoverApp(pkg: String, display: Int, playing: ClusterScreenParsing.MediaNow?, restart: List<String>?) {
-        val title = playing?.title
-        val id = if (pkg == YOUTUBE_PACKAGE && title != null) findVideoId(title) else null
-        if (id != null && playing != null) {
-            val seconds = (playing.positionMs / 1000).coerceAtLeast(0)
-            exec(ClusterScreenParsing.viewArguments(display, pkg, "${YouTubeLibrary.watchUrl(id)}&t=${seconds}s"))
-            // YouTube starts its real screen on the main display from a link whatever was asked: move it over.
-            if (display != MAIN_DISPLAY && !waitUntil(LINK_WAIT_MS) { topPackage(display) == pkg }) {
-                ClusterScreenParsing.taskOutside(activityDump(), pkg, display)?.let { task ->
-                    exec(listOf("/system/bin/am", "display", "move-stack", task.toString(), display.toString()))
-                }
-            }
-        } else if (restart != null) {
-            exec(restart.toMutableList().also { it[it.indexOf("--display") + 1] = display.toString() })
-        }
-    }
-
-    /** The first video YouTube finds for [title]; the helper runs as the shell, which may use the network. */
-    private fun findVideoId(title: String): String? = try {
-        val connection = java.net.URL(YouTubeLibrary.searchUrl(title)).openConnection() as java.net.HttpURLConnection
-        connection.connectTimeout = HTTP_TIMEOUT_MS
-        connection.readTimeout = HTTP_TIMEOUT_MS
-        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        connection.setRequestProperty("Accept-Language", "en-US,en;q=0.8")
-        connection.setRequestProperty("Cookie", "CONSENT=YES+1; SOCS=CAI")
-        val page = connection.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
-        YouTubeLibrary.firstVideo(page)?.id
-    } catch (e: Exception) {
-        null
-    }
-
     /** Ends the keeper and waits for it, so that nothing it does can land after the command that follows. */
     private fun stopKeeper() {
         keeperStop = true
@@ -522,8 +434,6 @@ internal object ClusterScreenCommand {
         if (pkg == null || !ClusterScreenParsing.isSafePackage(pkg)) return invalid("not a package name")
         if (watchedPackage != pkg) return VehicleDispatchResult.Success("leaving=ignored")
         stopKeeper()
-        if (pkg == YOUTUBE_PACKAGE) leavingResume = mediaNow(pkg)?.takeIf { it.state == ClusterScreenParsing.PLAYING }
-        leavingAt = SystemClock.uptimeMillis()
         val restored = MapType.of(systemContext())?.write(ClusterScreenParsing.TYPE_NORMAL) ?: false
         return VehicleDispatchResult.Success("leaving=$pkg type=${if (restored) "restored" else "unchecked"}")
     }
