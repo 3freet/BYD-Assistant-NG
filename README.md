@@ -72,14 +72,14 @@ exterior speaker or change the drive mode.
 ### Experimental features (beta builds, off by default)
 
 These reach further into the car than the comfort controls, so they are **off until you switch them on** under
-*Settings → Advanced settings → Experimental features*, each with its own confirmation. They are only offered on
+*Settings → Car → Experimental features*, each with its own confirmation. They are only offered on
 a car whose framework names the feature the way it was confirmed on the development vehicle, and only in beta
 builds for now. Everything about how they work is in [docs/byd-internals](docs/byd-internals/README.md).
 
 - **Exterior speaker**: "tell the person outside I'm coming" makes the assistant's reply come out of the car's
   exterior speaker (nobody in the cabin hears it), and "play a doorbell outside" plays one of nine short effects
   (doorbell, chime, bell, beeps, alarm, horn, whistle, bird, cat). Three volume levels (low, medium, high), set in
-  Advanced settings or asked for by voice ("say it loudly"). How and why:
+  *Settings → Car* or asked for by voice ("say it loudly"). How and why:
   [exterior-speaker.md](docs/byd-internals/exterior-speaker.md).
 - **Drive modes**: "switch to sand mode" (also snow, mud, mountain, rock, auto, eco, sport, and "exit" to leave an
   off-road mode). The assistant asks the car the way the car's own screen does, then reports the mode the car says
@@ -113,17 +113,18 @@ builds for now. Everything about how they work is in [docs/byd-internals](docs/b
    `adb install`). Allow installs from unknown sources if asked.
 2. Open the app and follow the setup: grant the microphone, enter your Gemini API key, and turn on the
    steering-wheel button.
-3. On BYD firmware, switch the app on in the head unit's **auto-start** screen (Settings → *Open auto-start
-   settings*). Without it the system can close the app when the car sleeps, which turns the button off.
+3. On BYD firmware, open the head unit's **auto-start** screen (Settings → Car → *Open auto-start settings*) and
+   switch this app's toggle **off**: the head unit starts the app by itself only when its toggle is off. Without it the
+   system can close the app when the car sleeps, which turns the button off.
 4. *Vehicle control* is on by default; switch it off in Settings if you only want to talk. The experimental
-   features under *Advanced settings* stay off until you turn them on.
+   features under *Settings → Car* stay off until you turn them on.
 
 ### Updates
 
 The app looks for a newer version on GitHub about every six hours and shows a notice on the home screen (and a quiet
 notification) when there is one. *Settings → Updates* shows what is new and installs it when you confirm: the app
 downloads the file, checks it is this app, signed by the same key and intact, then installs it and starts again. Do it
-while parked, since a conversation in progress ends. *Settings → Advanced settings* switches between the **Stable**
+while parked, since a conversation in progress ends. *Settings → App* switches between the **Stable**
 channel (tested releases) and the **Beta** channel (newest builds first), and turns the automatic check off.
 
 ## Privacy
@@ -132,7 +133,7 @@ channel (tested releases) and the **Beta** channel (newest builds first), and tu
   no analytics or tracking.
 - With **Web search** on, the questions you ask are also sent to Google Search.
 - The update check asks GitHub for the project's list of releases (nothing about you or the car is sent). Turn it
-  off under *Settings → Advanced settings*.
+  off under *Settings → App*.
 - With the voice channel's **cabin-noise volume** on, a second microphone listens to the cabin for as long as a
   conversation lasts. The app keeps only the sound level of the last few seconds, in memory: no audio from it is
   recorded, stored or sent.

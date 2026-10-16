@@ -43,6 +43,11 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch { preferencesRepository.setAssistantLanguage(language) }
     }
 
+    /** The user has been sent to the head unit's auto-start screen (the app cannot see what they did there). */
+    fun markAutoStartVisited() {
+        viewModelScope.launch { preferencesRepository.markAutoStartVisited() }
+    }
+
     fun saveApiKeyAndFinish(apiKey: String, onFinished: () -> Unit) {
         if (apiKey.isBlank()) {
             _errorMessage.value = AppLanguage.string(context, R.string.onb_enter_key)

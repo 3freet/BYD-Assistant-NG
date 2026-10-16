@@ -47,7 +47,7 @@ again and the vendor's cleaner force-stops apps around it. Two separate failures
 Neither runs at all unless the vendor's **auto-start manager** lets the app start in the background — boot
 broadcasts were only delivered to apps on its whitelist. The whitelist cannot be read by an app. Its screen
 opens with the action `android.intent.action.BYD_APPSTARTMANAGEMENT`, and an app update can reset it, so the
-user has to switch the app on there (the app links to it from Settings).
+user has to switch the app's toggle **off** there (the head unit starts the app by itself only when its toggle is off; the app links to the screen from Settings and from the first-time setup).
 
 Debugging tip: `adb logcat -b events` (the events buffer) reaches back much further than the main log, and its
 `am_proc_start` lines say *why* a process started (a broadcast, a service bind, the next top activity), which is

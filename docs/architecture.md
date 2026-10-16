@@ -17,7 +17,7 @@ A short tour for contributors. For the vehicle side, see [byd-internals](byd-int
 | `apps/`, `media/`, `navigation/` | The non-vehicle tools: open an app, close an app you installed, media keys, navigation |
 | `passenger/` | The passenger screen: the tool, the helper command that runs it as the shell user, and the parsing of what the system reports (apps, backlight, brightness) |
 | `cluster/` | Experimental (debug and beta builds): the tool, helper command, parsing and the availability check for putting an app on the instrument cluster |
-| `ui/` | The screens: home, onboarding, settings, about (Jetpack Compose). `ui/theme` is the one palette for the whole app; `ui/settings/SettingsComponents` holds the card/row/switch/dialog pieces the settings pages are built from; `ui/TapSound` gives Compose taps the system tap sound |
+| `ui/` | The screens: home, the first-time setup (`OnboardingScreen`: a list of steps beside the current one, with Back/Skip/Next; the microphone and the Gemini key are required, the rest can be skipped), settings, about (Jetpack Compose). `ui/theme` is the one palette for the whole app; the settings are a list of groups (`SettingsCategory`) with the chosen group's page beside it (`SettingsScreen`, with one pane per group in `SettingsPanes*`) and a search over all of them; `ui/settings/SettingsComponents` holds the card/row/switch/stepper/dialog pieces those pages are built from; `ui/TapSound` gives Compose taps the system tap sound |
 | `util/AppLanguage` | In-app language and layout direction |
 
 ## One conversation
@@ -90,7 +90,7 @@ offered to the model only when **all** of these hold, checked in this order:
 2. the car's own framework names the feature with the id it was confirmed with (`CarFeatureIds`, checked again in
    the helper process before anything is written) — on a phone, or another model, the feature is simply absent (for
    the cluster, `ClusterScreenAvailability` also looks for the cluster's display and BYD's navigation app);
-3. the user switched it on under Settings → Advanced → Experimental features (`OptInFeatures` holds the defaults,
+3. the user switched it on under Settings → Car → Experimental features (`OptInFeatures` holds the defaults,
    which are off), and vehicle control is on, in a conversation (not a one-shot request).
 
 Hilt supplies the first two as `Optional<ExteriorSpeaker>` / `Optional<DriveModeSwitch>` (empty when gated off; the

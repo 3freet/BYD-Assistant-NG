@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.TextUtils
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -26,9 +27,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.bydassistantng.ui.about.AboutScreen
 import com.bydassistantng.ui.home.HomeScreen
 import com.bydassistantng.ui.onboarding.OnboardingScreen
-import com.bydassistantng.ui.settings.AdvancedSettingsScreen
 import com.bydassistantng.ui.settings.AppLogScreen
 import com.bydassistantng.ui.settings.CrashLogScreen
+import com.bydassistantng.ui.settings.SettingsCategory
 import com.bydassistantng.ui.settings.SettingsScreen
 import com.bydassistantng.ui.settings.UpdatesScreen
 import com.bydassistantng.ui.theme.AppTheme
@@ -78,6 +79,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppRoot(openUpdates: Boolean, viewModel: MainViewModel = hiltViewModel()) {
     val screen by viewModel.screen.collectAsState()
+    val settingsCategory by viewModel.settingsCategory.collectAsState()
     // Where the Updates screen's back button leads: the Home banner and the notification open it from Home.
     var updatesFrom by rememberSaveable { mutableStateOf(Screen.SETTINGS) }
     var openedFromNotification by rememberSaveable { mutableStateOf(false) }
@@ -89,6 +91,10 @@ private fun AppRoot(openUpdates: Boolean, viewModel: MainViewModel = hiltViewMod
             viewModel.navigateTo(Screen.UPDATES)
         }
     }
+
+    // The system back button goes one step back, as the arrow on each screen does, instead of leaving the app.
+    val backTarget = screen?.backTarget(updatesFrom)
+    BackHandler(enabled = backTarget != null) { backTarget?.let { viewModel.navigateTo(it) } }
 
     when (screen) {
         null -> Box(modifier = Modifier.fillMaxSize()) {
@@ -103,25 +109,24 @@ private fun AppRoot(openUpdates: Boolean, viewModel: MainViewModel = hiltViewMod
             },
         )
         Screen.SETTINGS -> SettingsScreen(
+            category = settingsCategory,
+            onCategoryChange = viewModel::selectSettingsCategory,
             onBack = { viewModel.navigateTo(Screen.HOME) },
             onOpenUpdates = {
                 updatesFrom = Screen.SETTINGS
                 viewModel.navigateTo(Screen.UPDATES)
             },
-            onOpenAdvanced = { viewModel.navigateTo(Screen.ADVANCED) },
             onOpenAbout = { viewModel.navigateTo(Screen.ABOUT) },
-        )
-        Screen.ADVANCED -> AdvancedSettingsScreen(
-            onBack = { viewModel.navigateTo(Screen.SETTINGS) },
-            onOpenCrashLog = { viewModel.navigateTo(Screen.CRASH_LOG) },
             onOpenAppLog = { viewModel.navigateTo(Screen.APP_LOG) },
+            onOpenCrashLog = { viewModel.navigateTo(Screen.CRASH_LOG) },
         )
         Screen.UPDATES -> UpdatesScreen(
             onBack = { viewModel.navigateTo(updatesFrom) },
-            onOpenAdvanced = { viewModel.navigateTo(Screen.ADVANCED) },
+            // The update channel and the automatic check are among the App settings.
+            onOpenUpdateSettings = { viewModel.openSettings(SettingsCategory.APP) },
         )
         Screen.ABOUT -> AboutScreen(onBack = { viewModel.navigateTo(Screen.SETTINGS) })
-        Screen.CRASH_LOG -> CrashLogScreen(onBack = { viewModel.navigateTo(Screen.ADVANCED) })
-        Screen.APP_LOG -> AppLogScreen(onBack = { viewModel.navigateTo(Screen.ADVANCED) })
+        Screen.CRASH_LOG -> CrashLogScreen(onBack = { viewModel.navigateTo(Screen.SETTINGS) })
+        Screen.APP_LOG -> AppLogScreen(onBack = { viewModel.navigateTo(Screen.SETTINGS) })
     }
 }

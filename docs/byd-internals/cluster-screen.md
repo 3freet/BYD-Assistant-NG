@@ -5,7 +5,7 @@ needs, and what did not work. Observed on one car (a Fangchengbao Leopard 5, DiL
 parked; treat every id as a hypothesis until you have read it back on your own vehicle.
 
 The assistant has a `cluster_screen` tool built on this. It is an **experimental feature, in debug and beta builds
-only, off until the user switches it on** (Settings → Advanced settings → Experimental features, behind a
+only, off until the user switches it on** (Settings → Car → Experimental features, behind a
 confirmation), and only on a car that looks like the one it was found on. It switches BYD's navigation app on and
 off, and an app on the cluster is shown **in the middle of it, where BYD's map is shown; the speed and the warning
 lights stay visible**. Anything shown there is in the driver's view, so it is only for a car that is parked. It has

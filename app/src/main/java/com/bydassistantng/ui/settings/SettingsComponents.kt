@@ -1,32 +1,40 @@
 package com.bydassistantng.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -35,99 +43,81 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bydassistantng.R
-import com.bydassistantng.ui.AppTopBar
 import com.bydassistantng.ui.AppAlertDialog
 
 /*
- * The layout of the settings pages, kept in one place: rounded cards under small section labels, rows made of
- * a title and a muted line with a switch or a pill button on the far side. Two columns where there is room
- * (the head unit), one where there is not. The colours come from the app's theme.
+ * The building blocks of the settings pages, kept in one place: rounded cards under small group labels, rows made of
+ * a title and a muted line with a switch or a pill button on the far side, and the few controls that suit a car
+ * (a segmented choice, a stepper with big buttons). The colours come from the app's theme.
  */
 
-/** Below this width the two columns become one. */
-private val TWO_COLUMNS_FROM = 840.dp
-
-/**
- * A settings page: a back button and title, then [left] and [right] side by side (stacked on a narrow
- * screen), all scrolling together. Each is a sequence of [SettingsSection]s.
- */
-@Composable
-fun SettingsPage(
-    title: String,
-    onBack: () -> Unit,
-    left: @Composable ColumnScope.() -> Unit,
-    right: @Composable ColumnScope.() -> Unit,
-) {
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = { AppTopBar(title, onBack) },
-    ) { padding ->
-        BoxWithConstraints(modifier = Modifier.padding(padding).fillMaxSize()) {
-            val wide = maxWidth >= TWO_COLUMNS_FROM
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
-            ) {
-                if (wide) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Top) {
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(20.dp), content = left)
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(20.dp), content = right)
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                        left()
-                        right()
-                    }
-                }
-            }
-        }
-    }
-}
+/** What needs the user's eye (a setting that is not done yet): amber, the one colour the theme does not have. */
+internal val AttentionColor = Color(0xFFF0B45A)
 
 /** What goes inside a card: rows, which are drawn with a hairline between them. */
 class SettingsCardScope {
-    internal val rows = mutableListOf<@Composable () -> Unit>()
+    internal class Row(val nested: Boolean, val content: @Composable () -> Unit)
 
-    fun row(content: @Composable () -> Unit) {
-        rows += content
+    internal val rows = mutableListOf<Row>()
+
+    /** A row of the card. A [nested] one belongs to the row above it (an option that only exists while that is on). */
+    fun row(nested: Boolean = false, content: @Composable () -> Unit) {
+        rows += Row(nested, content)
     }
 }
 
-/** A small label over a rounded card of rows. A section with no rows is not drawn. */
+/** A small label over a rounded card of rows. A group with no rows is not drawn; a blank label draws no label. */
 @Composable
 fun SettingsSection(title: String, build: SettingsCardScope.() -> Unit) {
     val scope = SettingsCardScope().apply(build)
     if (scope.rows.isEmpty()) return
     Column {
-        Text(
-            title,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
-        )
+        if (title.isNotBlank()) {
+            Text(
+                title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
+            )
+        }
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
             Column {
                 scope.rows.forEachIndexed { index, row ->
-                    if (index > 0) {
+                    if (index > 0 && !row.nested) {
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 20.dp),
                             color = MaterialTheme.colorScheme.outlineVariant,
                         )
                     }
-                    row()
+                    if (row.nested) {
+                        NestedRow(row.content)
+                    } else {
+                        row.content()
+                    }
                 }
             }
         }
+    }
+}
+
+/** An option of the row above it: set in a little, with a line down its left edge. */
+@Composable
+private fun NestedRow(content: @Composable () -> Unit) {
+    val line = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(start = 20.dp, end = 12.dp, bottom = 6.dp)) {
+        Box(modifier = Modifier.width(3.dp).fillMaxHeight().background(line, RoundedCornerShape(2.dp)))
+        Box(modifier = Modifier.weight(1f)) { content() }
     }
 }
 
@@ -276,6 +266,144 @@ fun ChoiceSetting(title: String, subtitle: String?, value: String, onClick: () -
         onClick = onClick,
         trailing = { SettingButton(label = value, onClick = onClick, dropdown = true) },
     )
+}
+
+/** How a [StatusChip] is coloured: done, needs a look, or just a state. */
+enum class ChipKind { OK, ATTENTION, MUTED }
+
+/** A short state in a little pill: "Saved", "Up to date", "Off". */
+@Composable
+fun StatusChip(text: String, kind: ChipKind = ChipKind.MUTED) {
+    val colors = MaterialTheme.colorScheme
+    val (background, content) = when (kind) {
+        ChipKind.OK -> colors.primary.copy(alpha = 0.16f) to colors.primary
+        ChipKind.ATTENTION -> AttentionColor.copy(alpha = 0.16f) to AttentionColor
+        ChipKind.MUTED -> colors.secondaryContainer to colors.onSurfaceVariant
+    }
+    Text(
+        text,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Medium,
+        color = content,
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(background).padding(horizontal = 12.dp, vertical = 6.dp),
+    )
+}
+
+/** One choice out of a few, all in view: the chosen one is raised. For a handful of short options, in place of a dialog. */
+@Composable
+fun SegmentedControl(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(colors.background)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        options.forEachIndexed { index, label ->
+            val on = index == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 52.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (on) colors.surfaceVariant else Color.Transparent)
+                    .selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(index) })
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    fontSize = 15.sp,
+                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (on) colors.onSurface else colors.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A value that goes up and down in steps, with a big button for each way and a bar showing where it is in its
+ * range. Better than dragging a thumb in a moving car. [onLess] or [onMore] null means the end of the range.
+ */
+@Composable
+fun StepperSetting(
+    title: String,
+    subtitle: String?,
+    valueText: String,
+    fraction: Float,
+    onLess: (() -> Unit)?,
+    onMore: (() -> Unit)?,
+    resetLabel: String? = null,
+    onReset: (() -> Unit)? = null,
+) {
+    SettingRow(
+        title = title,
+        subtitle = subtitle,
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StepButton(isMore = false, onClick = onLess)
+                Text(
+                    valueText,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.widthIn(min = 76.dp),
+                )
+                StepButton(isMore = true, onClick = onMore)
+            }
+        },
+        below = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.outline),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.primary),
+                )
+            }
+            if (onReset != null && resetLabel != null) {
+                TextButton(onClick = onReset) { Text(resetLabel) }
+            }
+        },
+    )
+}
+
+@Composable
+private fun StepButton(isMore: Boolean, onClick: (() -> Unit)?) {
+    FilledTonalIconButton(onClick = { onClick?.invoke() }, enabled = onClick != null, modifier = Modifier.size(52.dp)) {
+        Icon(
+            if (isMore) Icons.Filled.Add else Icons.Filled.Remove,
+            contentDescription = stringResource(if (isMore) R.string.step_more else R.string.step_less),
+        )
+    }
+}
+
+/** Something to do first, at the top of a page: an amber banner with the action beside it. */
+@Composable
+fun NoticeBanner(text: String, actionLabel: String? = null, onAction: () -> Unit = {}) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(AttentionColor.copy(alpha = 0.12f))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = AttentionColor)
+        Text(text, fontSize = 15.sp, lineHeight = 21.sp, color = AttentionColor, modifier = Modifier.weight(1f))
+        if (actionLabel != null) SettingButton(label = actionLabel, primary = true, onClick = onAction)
+    }
 }
 
 /** One entry of a [ChoiceDialog]. */

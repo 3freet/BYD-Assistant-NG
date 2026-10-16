@@ -98,7 +98,7 @@ Pass `-Passistant.updateRepo=owner/repo` to enable the in-app update check and t
 The exterior speaker and drive modes are compiled into debug and beta builds only: `EXPERIMENTAL_CAR_FEATURES` in
 `app/build.gradle.kts` is `true` there and `false` for release, so a stable build offers neither. On top of the flag
 they need the car's framework to name the feature with the confirmed id (`CarFeatureIds`) and the user's switch in
-Advanced settings (`OptInFeatures` holds the defaults, which are off). The vehicle helper answers `drivemode set <n>`
+Settings, under Car (`OptInFeatures` holds the defaults, which are off). The vehicle helper answers `drivemode set <n>`
 itself; the model is never offered it as a registry command. Unit tests guard the exact ids and values; keep them
 in step with [exterior-speaker.md](docs/byd-internals/exterior-speaker.md) and
 [drive-modes.md](docs/byd-internals/drive-modes.md) if you change either.

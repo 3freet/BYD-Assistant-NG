@@ -53,6 +53,13 @@
             </intent-filter>
         </receiver>
         <receiver
+            android:name="com.bydassistantng.debug.DebugOnboardingReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.ONBOARDING" />
+            </intent-filter>
+        </receiver>
+        <receiver
             android:name="com.bydassistantng.debug.DebugUpdateReceiver"
             android:exported="true">
             <intent-filter>

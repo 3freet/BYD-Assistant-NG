@@ -26,19 +26,22 @@ import com.bydassistantng.R
  * title, which is the left in RTL, and drawn as a left-pointing arrow in both languages.)
  */
 @Composable
-fun AppTopBar(title: String, onBack: () -> Unit) {
+fun AppTopBar(title: String, onBack: () -> Unit, trailing: (@Composable () -> Unit)? = null) {
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (!rtl) BackButton(onBack, rtl = false)
+        // [trailing] (a search field, say) is at the far end of the title: the right, or the start side in right-to-left.
+        if (rtl) trailing?.invoke()
         Text(
             title,
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
         )
+        if (!rtl) trailing?.invoke()
         if (rtl) BackButton(onBack, rtl = true)
     }
 }

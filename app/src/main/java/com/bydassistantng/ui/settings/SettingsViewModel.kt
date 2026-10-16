@@ -5,23 +5,29 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bydassistantng.R
 import com.bydassistantng.audio.EndOfSpeechWait
+import com.bydassistantng.audio.ExteriorSpeaker
+import com.bydassistantng.audio.ExteriorVolume
 import com.bydassistantng.audio.MusicDuck
 import com.bydassistantng.audio.VoiceChannel
 import com.bydassistantng.audio.VoiceChannelOptions
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
+import com.bydassistantng.cluster.ClusterScreenAvailability
 import com.bydassistantng.data.CoreFeatures
+import com.bydassistantng.data.OptInFeatures
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.data.SecureCredentials
 import com.bydassistantng.memory.AddOutcome
 import com.bydassistantng.memory.MemoryFact
 import com.bydassistantng.memory.MemoryRepository
 import com.bydassistantng.service.WheelKeyService
+import com.bydassistantng.update.UpdateChannel
 import com.bydassistantng.update.UpdateManager
 import com.bydassistantng.update.UpdateState
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLanguageChoice
 import com.bydassistantng.util.WheelKeys
+import com.bydassistantng.vehicle.DriveModeSwitch
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -32,6 +38,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Optional
 import javax.inject.Inject
 
 private const val KEY_CAPTURE_TIMEOUT_MS = 60_000L
@@ -43,6 +50,8 @@ class SettingsViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
     private val memory: MemoryRepository,
     private val updateManager: UpdateManager,
+    exteriorSpeaker: Optional<ExteriorSpeaker>,
+    driveModes: Optional<DriveModeSwitch>,
 ) : ViewModel() {
     private val _appLanguage = MutableStateFlow(AppLanguage.choice(context))
     /** The language of the app's own screens (not the one the assistant speaks). */
@@ -105,6 +114,52 @@ class SettingsViewModel @Inject constructor(
             memory.clearFacts()
             memory.clearRecent()
         }
+    }
+
+    /** Which releases the update check follows, and whether it runs by itself. */
+    val updateChannel: StateFlow<UpdateChannel> = updateManager.channel
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), updateManager.installed.channel)
+    val autoCheckUpdates: StateFlow<Boolean> = updateManager.autoCheck
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun setUpdateChannel(channel: UpdateChannel) = updateManager.setChannel(channel)
+    fun setAutoCheckUpdates(enabled: Boolean) = updateManager.setAutoCheck(enabled)
+
+    /** Whether this build can use the car's exterior speaker, and so has a switch and a volume for it. */
+    val exteriorSpeakerSupported: Boolean = exteriorSpeaker.isPresent
+
+    /** Whether this build can change the car's drive mode, and so has a switch for it. */
+    val driveModesSupported: Boolean = driveModes.isPresent
+
+    /** Whether this build and this car offer the instrument cluster feature (experimental; it turns BYD Maps on and off). */
+    val clusterSupported: Boolean = ClusterScreenAvailability.isOnThisCar(context)
+
+    /** The experimental car features are off until the user switches them on (see [OptInFeatures]). */
+    val exteriorSpeakerEnabled: StateFlow<Boolean> = preferencesRepository.exteriorSpeakerEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.EXTERIOR_SPEAKER_DEFAULT)
+    val driveModesEnabled: StateFlow<Boolean> = preferencesRepository.driveModesEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.DRIVE_MODES_DEFAULT)
+    val clusterScreenEnabled: StateFlow<Boolean> = preferencesRepository.clusterScreenEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.CLUSTER_SCREEN_DEFAULT)
+    val clusterKeepMapsDisabled: StateFlow<Boolean> = preferencesRepository.clusterKeepMapsDisabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.CLUSTER_KEEP_MAPS_DISABLED_DEFAULT)
+    val exteriorVolume: StateFlow<ExteriorVolume> = preferencesRepository.exteriorVolume
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExteriorVolume.DEFAULT)
+
+    fun setExteriorSpeakerEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setExteriorSpeakerEnabled(enabled) }
+    }
+    fun setDriveModesEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setDriveModesEnabled(enabled) }
+    }
+    fun setClusterScreenEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setClusterScreenEnabled(enabled) }
+    }
+    fun setClusterKeepMapsDisabled(disabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setClusterKeepMapsDisabled(disabled) }
+    }
+    fun setExteriorVolume(volume: ExteriorVolume) {
+        viewModelScope.launch { preferencesRepository.setExteriorVolume(volume) }
     }
 
     /** Whether this car has the voice channel, and so has its section in Settings. */

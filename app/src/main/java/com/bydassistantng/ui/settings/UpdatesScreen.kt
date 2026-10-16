@@ -39,7 +39,7 @@ import com.bydassistantng.update.UpdateState
 import com.bydassistantng.ui.AppAlertDialog
 
 @Composable
-fun UpdatesScreen(onBack: () -> Unit, onOpenAdvanced: () -> Unit, viewModel: UpdatesViewModel = hiltViewModel()) {
+fun UpdatesScreen(onBack: () -> Unit, onOpenUpdateSettings: () -> Unit, viewModel: UpdatesViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val channel by viewModel.channel.collectAsState()
     var confirming by remember { mutableStateOf<UpdateRelease?>(null) }
@@ -118,8 +118,8 @@ fun UpdatesScreen(onBack: () -> Unit, onOpenAdvanced: () -> Unit, viewModel: Upd
                 item {
                     Column {
                         Text(stringResource(R.string.updates_open_advanced), style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(onClick = onOpenAdvanced, modifier = Modifier.padding(top = 8.dp)) {
-                            Text(stringResource(R.string.view_advanced))
+                        OutlinedButton(onClick = onOpenUpdateSettings, modifier = Modifier.padding(top = 8.dp)) {
+                            Text(stringResource(R.string.updates_open_settings))
                         }
                     }
                 }
