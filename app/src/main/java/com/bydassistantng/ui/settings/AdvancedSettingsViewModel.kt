@@ -1,16 +1,18 @@
 package com.bydassistantng.ui.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bydassistantng.BuildConfig
 import com.bydassistantng.audio.ExteriorSpeaker
 import com.bydassistantng.audio.ExteriorVolume
+import com.bydassistantng.cluster.ClusterScreenAvailability
 import com.bydassistantng.data.OptInFeatures
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.update.UpdateChannel
 import com.bydassistantng.update.UpdateManager
 import com.bydassistantng.vehicle.DriveModeSwitch
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -24,6 +26,7 @@ class AdvancedSettingsViewModel @Inject constructor(
     private val preferences: PreferencesRepository,
     exteriorSpeaker: Optional<ExteriorSpeaker>,
     driveModes: Optional<DriveModeSwitch>,
+    @ApplicationContext context: Context,
 ) : ViewModel() {
     val channel: StateFlow<UpdateChannel> = manager.channel
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), manager.installed.channel)
@@ -46,8 +49,8 @@ class AdvancedSettingsViewModel @Inject constructor(
     val driveModesEnabled: StateFlow<Boolean> = preferences.driveModesEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.DRIVE_MODES_DEFAULT)
 
-    /** Whether this build has the cluster screen feature: a debug (development) build only; it turns BYD Maps on and off. */
-    val clusterSupported: Boolean = BuildConfig.DEBUG
+    /** Whether this build and this car offer the instrument cluster feature (experimental; it turns BYD Maps on and off). */
+    val clusterSupported: Boolean = ClusterScreenAvailability.isOnThisCar(context)
 
     val clusterScreenEnabled: StateFlow<Boolean> = preferences.clusterScreenEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.CLUSTER_SCREEN_DEFAULT)

@@ -38,6 +38,7 @@ fun AdvancedSettingsScreen(
     var showVolumeChoice by remember { mutableStateOf(false) }
     var confirmExterior by remember { mutableStateOf(false) }
     var confirmDriveModes by remember { mutableStateOf(false) }
+    var confirmCluster by remember { mutableStateOf(false) }
 
     if (showChannelChoice) {
         ChoiceDialog(
@@ -113,6 +114,20 @@ fun AdvancedSettingsScreen(
             dismissButton = { TextButton(onClick = { confirmDriveModes = false }) { Text(stringResource(R.string.action_cancel)) } },
         )
     }
+    if (confirmCluster) {
+        AppAlertDialog(
+            onDismissRequest = { confirmCluster = false },
+            title = { Text(stringResource(R.string.advanced_cluster_confirm_title)) },
+            text = { Text(stringResource(R.string.advanced_cluster_confirm_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setClusterScreenEnabled(true)
+                    confirmCluster = false
+                }) { Text(stringResource(R.string.action_enable)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmCluster = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
 
     SettingsPage(
         title = stringResource(R.string.advanced_title),
@@ -160,7 +175,7 @@ fun AdvancedSettingsScreen(
         right = {
             // Only in a build that has the features at all.
             SettingsSection(stringResource(R.string.advanced_experimental_title)) {
-                if (viewModel.exteriorSpeakerSupported || viewModel.driveModesSupported) {
+                if (viewModel.exteriorSpeakerSupported || viewModel.driveModesSupported || viewModel.clusterSupported) {
                     row { SettingNote(stringResource(R.string.advanced_experimental_note)) }
                 }
                 if (viewModel.exteriorSpeakerSupported) {
@@ -195,25 +210,26 @@ fun AdvancedSettingsScreen(
                         )
                     }
                 }
-            }
-            // The cluster screen: a development build only. It turns BYD Maps on while an app is on the cluster.
-            if (viewModel.clusterSupported) {
-                SettingsSection(stringResource(R.string.advanced_cluster_title)) {
+                // The instrument cluster: it turns BYD Maps on while an app is on the cluster, and the app is shown in its middle.
+                if (viewModel.clusterSupported) {
                     row {
                         SwitchSetting(
                             title = stringResource(R.string.advanced_cluster_enable_title),
                             subtitle = stringResource(R.string.advanced_cluster_enable_desc),
                             checked = clusterEnabled,
-                            onCheckedChange = { viewModel.setClusterScreenEnabled(it) },
+                            onCheckedChange = { on -> if (on) confirmCluster = true else viewModel.setClusterScreenEnabled(false) },
                         )
                     }
-                    row {
-                        SwitchSetting(
-                            title = stringResource(R.string.advanced_cluster_keep_title),
-                            subtitle = stringResource(R.string.advanced_cluster_keep_desc),
-                            checked = clusterKeepMapsDisabled,
-                            onCheckedChange = { viewModel.setClusterKeepMapsDisabled(it) },
-                        )
+                    // Nothing more about it is shown while it is off.
+                    if (clusterEnabled) {
+                        row {
+                            SwitchSetting(
+                                title = stringResource(R.string.advanced_cluster_keep_title),
+                                subtitle = stringResource(R.string.advanced_cluster_keep_desc),
+                                checked = clusterKeepMapsDisabled,
+                                onCheckedChange = { viewModel.setClusterKeepMapsDisabled(it) },
+                            )
+                        }
                     }
                 }
             }

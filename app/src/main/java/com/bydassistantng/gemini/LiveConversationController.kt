@@ -7,6 +7,7 @@ import com.bydassistantng.BuildConfig
 import com.bydassistantng.R
 import com.bydassistantng.audio.BargeInDetector
 import com.bydassistantng.cluster.ClusterOptions
+import com.bydassistantng.cluster.ClusterScreenAvailability
 import com.bydassistantng.audio.DipConfirmer
 import com.bydassistantng.audio.Earcon
 import com.bydassistantng.audio.Earcons
@@ -188,7 +189,7 @@ class LiveConversationController @Inject constructor(
     private var exteriorSpeakerForSession = false
     private var driveModesForSession = false
 
-    // The cluster screen (a development build): its switch, and what happens to BYD Maps afterwards.
+    // The instrument cluster (experimental): its switch, and what happens to BYD Maps afterwards.
     private var clusterForSession = ClusterOptions.OFF
 
     private enum class Gate { OPEN, SILENT, BLOCKED }
@@ -354,7 +355,7 @@ class LiveConversationController @Inject constructor(
         exteriorSpeakerForSession = preferencesRepository.exteriorSpeakerEnabled.first()
         driveModesForSession = preferencesRepository.driveModesEnabled.first()
         clusterForSession = ClusterOptions(
-            enabled = BuildConfig.DEBUG && preferencesRepository.clusterScreenEnabled.first(),
+            enabled = ClusterScreenAvailability.isOnThisCar(context) && preferencesRepository.clusterScreenEnabled.first(),
             keepMapsDisabled = preferencesRepository.clusterKeepMapsDisabled.first(),
         )
         factsForSession = if (longTermForSession) memory.currentFacts() else emptyList()

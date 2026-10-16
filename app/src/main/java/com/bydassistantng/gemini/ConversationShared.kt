@@ -63,7 +63,8 @@ private fun mediaActionText(context: Context, action: String): String = when (ac
  * control armed and only in a build that has one; [soundEffects] are the ready-made sounds it can play.
  * [memoryTools] offers remembering and forgetting facts, in a conversation with long-term memory on.
  * [driveModes] offers changing the car's drive mode, like the exterior speaker only in a build that can.
- * [clusterScreen] offers putting an app on the instrument cluster (a development build, with its switch on). */
+ * [clusterScreen] offers putting an app on the instrument cluster (experimental: a build and a car that have it, with
+ * its switch on). */
 fun assistantTools(
     vehicleControlEnabled: Boolean,
     conversation: Boolean = false,
@@ -100,7 +101,7 @@ fun assistantTools(
             }
             // Needs a build that can ask the car for a drive mode, and counts as controlling the car.
             if (conversation && driveModes) add(SetDriveModeTool.declaration)
-            // A development build with its Advanced settings switch on; it turns BYD Maps on and off by itself.
+            // An experimental feature with its Advanced settings switch on; it turns BYD Maps on and off by itself.
             if (conversation && clusterScreen) add(ClusterScreenTool.declaration)
         }
     }

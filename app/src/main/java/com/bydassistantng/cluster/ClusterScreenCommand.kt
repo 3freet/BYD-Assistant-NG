@@ -12,10 +12,10 @@ import java.lang.reflect.Method
 /**
  * `cluster <action> ...`: puts one app on the instrument cluster and takes it off again, from the vehicle helper
  * (ADB shell identity). Like the passenger screen it is a command of its own, not an entry of the vehicle command
- * registry, and it exists only in a debug (development) build.
+ * registry, and it exists only in a build with the experimental car features (debug and beta builds).
  *
  *     cluster open <package> disable|keep [<link>]
- *                                     show the app on the cluster (the gauges are replaced by it), on a link; the
+ *                                     show the app on the cluster (in its middle, where the map shows), on a link; the
  *                                     second word is what is done with BYD Maps once the app has left the cluster
  *     cluster close [keep|disable]    give the cluster back; BYD Maps is disabled again unless "keep"
  *     cluster leaving <package>       the app is about to be taken off the cluster by something else: the gauges are
@@ -34,15 +34,16 @@ import java.lang.reflect.Method
  * done on its own, whenever the app has left the cluster (moved to another screen, closed, crashed): a watcher
  * thread notices, gives the gauges back and, for a player that was playing, starts it again where it landed.
  *
- * There is no park check and no watchdog: this is for development builds on a car that stands still.
+ * There is no park check and no watchdog: an app on the cluster is shown in its middle (the speed and the warning
+ * lights stay visible) and is in the driver's view, so the feature is documented, and warned about when it is
+ * switched on, as one for a car that stands still.
  */
 internal object ClusterScreenCommand {
     const val NAME = "cluster"
 
-    // Verified on the car this was found on; another firmware may number the same names differently.
-    private const val INSTRUMENT_DEVICE = 1007
-    private const val MAP_TYPE_STATE_ID = 1086337074
-    private const val MAP_TYPE_CONTROL_ID = 1276157976
+    private const val INSTRUMENT_DEVICE = ClusterScreenParsing.INSTRUMENT_DEVICE
+    private const val MAP_TYPE_STATE_ID = ClusterScreenParsing.MAP_TYPE_STATE_ID
+    private const val MAP_TYPE_CONTROL_ID = ClusterScreenParsing.MAP_TYPE_CONTROL_ID
 
     private const val YOUTUBE_PACKAGE = "com.google.android.youtube"
 

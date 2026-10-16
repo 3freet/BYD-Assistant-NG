@@ -165,8 +165,8 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
     }
 
     /**
-     * Whether the assistant may put an app on the car's instrument cluster (the cluster screen feature of a
-     * development build). Off by default; when off the tool is not offered and a request is refused.
+     * Whether the assistant may put an app on the car's instrument cluster (an experimental feature). Off by
+     * default; when off the tool is not offered and a request is refused.
      */
     val clusterScreenEnabled: Flow<Boolean> =
         dataStore.data.map { it[Keys.CLUSTER_SCREEN_ENABLED] ?: OptInFeatures.CLUSTER_SCREEN_DEFAULT }

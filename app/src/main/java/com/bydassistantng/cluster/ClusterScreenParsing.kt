@@ -25,6 +25,12 @@ data class ClusterOptions(val enabled: Boolean = false, val keepMapsDisabled: Bo
  * while BYD's own navigation app (`com.byd.naviauto`) is enabled and has started its meter activity there.
  */
 internal object ClusterScreenParsing {
+    // The instrument device and the two ids of its map type, as verified on the car this was found on; another
+    // firmware may number the same names differently, so the names are checked against them before anything is used.
+    const val INSTRUMENT_DEVICE = 1007
+    const val MAP_TYPE_STATE_ID = 1086337074
+    const val MAP_TYPE_CONTROL_ID = 1276157976
+
     /** BYD's navigation app. The cluster only takes another app's picture while this is enabled and has run. */
     const val MAPS_PACKAGE = "com.byd.naviauto"
 

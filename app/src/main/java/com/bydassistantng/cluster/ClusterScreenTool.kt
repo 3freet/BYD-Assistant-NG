@@ -39,8 +39,9 @@ enum class ClusterAction(val word: String) {
 
 /**
  * "Show Yandex Navi on the instrument cluster", "take it off the cluster": puts an app on the driver's instrument
- * cluster and takes it off again, through the vehicle helper (see [ClusterScreenCommand]). A development feature:
- * it is offered only in a debug (development) build, with its switch on in Advanced settings.
+ * cluster and takes it off again, through the vehicle helper (see [ClusterScreenCommand]). An experimental
+ * feature: it is offered only in a build with the experimental car features, on a car that has the cluster (see
+ * [ClusterScreenAvailability]), and with its switch on in Advanced settings.
  */
 object ClusterScreenTool {
     const val FUNCTION_NAME = "cluster_screen"
@@ -49,8 +50,8 @@ object ClusterScreenTool {
         name = FUNCTION_NAME,
         description = "Put an app on the car's instrument cluster (the driver's gauge display, also called the IPC or " +
             "the cluster) or take it off again. Actions: open_app shows an app there (set \"app\", for example " +
-            "YouTube; an app that is already open on the main screen is moved there and keeps running; the gauges are " +
-            "replaced by that app until it is closed), close STOPS the app on the cluster and gives the gauges " +
+            "YouTube; an app that is already open on the main screen is moved there and keeps running; the app is " +
+            "shown in the middle of the cluster, where the map shows, until it is closed), close STOPS the app on the cluster and gives the gauges " +
             "back (do not use it to move an app to the main screen: for that call open_app for the app, which " +
             "moves it and keeps it playing, and the gauges come back by themselves), status " +
             "says what is on it. For YouTube \"video\" names the video to play on the cluster, for example " +
@@ -191,7 +192,7 @@ object ClusterScreenTool {
             put(
                 "note",
                 "YouTube is now playing " + (hit.title.takeIf { it.isNotEmpty() }?.let { "\"$it\"" } ?: "that video") +
-                    " on the instrument cluster, in place of the gauges.",
+                    " on the instrument cluster.",
             )
         }
     }
@@ -208,7 +209,7 @@ object ClusterScreenTool {
                 when (action) {
                     ClusterAction.OPEN_APP -> put(
                         "note",
-                        "${label ?: "The app"} is now shown on the instrument cluster, in place of the gauges" +
+                        "${label ?: "The app"} is now shown on the instrument cluster" +
                             if (words.containsKey("moved")) " (it was moved there and keeps running)." else ".",
                     )
                     ClusterAction.CLOSE -> put("note", "The instrument cluster shows its gauges again.")
