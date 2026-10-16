@@ -291,10 +291,10 @@ fun SettingsScreen(
                 }
             }
 
-            // The voice channel (dev builds): replies on the car's own voice stream, with the music dealt with around them.
+            // The voice channel: replies on the car's own voice stream, with the music dealt with around them. Only on
+            // a car that has the stream.
             if (viewModel.voiceChannelSupported) {
                 SettingsSection(stringResource(R.string.settings_section_voice_channel)) {
-                    row { SettingNote(stringResource(R.string.voice_channel_note)) }
                     row {
                         SwitchSetting(
                             title = stringResource(R.string.voice_channel_title),

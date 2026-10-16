@@ -95,7 +95,6 @@
     <string name="settings_section_car">السيارة</string>
     <string name="settings_section_gemini">حساب Gemini</string>
     <string name="settings_section_voice_channel">قناة الصوت</string>
-    <string name="voice_channel_note">تجريبية، في إصدارات التطوير فقط، وجُرّبت على سيارة واحدة.</string>
     <string name="settings_section_app">التطبيق</string>
     <string name="settings_advanced_desc">قناة التحديث والميزات التجريبية والسجلات.</string>
     <string name="advanced_section_updates">التحديثات</string>

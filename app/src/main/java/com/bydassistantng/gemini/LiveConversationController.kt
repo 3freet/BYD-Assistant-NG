@@ -366,7 +366,7 @@ class LiveConversationController @Inject constructor(
             enabled = ClusterScreenAvailability.isOnThisCar(context) && preferencesRepository.clusterScreenEnabled.first(),
             keepMapsDisabled = preferencesRepository.clusterKeepMapsDisabled.first(),
         )
-        // The voice channel (a dev-build feature): where and how replies are spoken, for this conversation.
+        // The voice channel: where and how replies are spoken, for this conversation (off on a car without one).
         player.recoverMusicVolume()
         player.voiceChannel = if (VoiceChannel.isAvailable(context) && preferencesRepository.voiceChannelEnabled.first()) {
             VoiceChannelOptions(

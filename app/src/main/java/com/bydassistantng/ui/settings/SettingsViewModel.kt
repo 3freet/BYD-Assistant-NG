@@ -11,7 +11,6 @@ import com.bydassistantng.audio.VoiceChannelOptions
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.data.CoreFeatures
-import com.bydassistantng.data.OptInFeatures
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.data.SecureCredentials
 import com.bydassistantng.memory.AddOutcome
@@ -108,17 +107,17 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Whether this build and this car offer the voice channel (dev builds). */
+    /** Whether this car has the voice channel, and so has its section in Settings. */
     val voiceChannelSupported: Boolean = VoiceChannel.isAvailable(context)
 
     val voiceChannelEnabled: StateFlow<Boolean> = preferencesRepository.voiceChannelEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.VOICE_CHANNEL_DEFAULT)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CoreFeatures.VOICE_CHANNEL_DEFAULT)
 
     val voiceChannelMusic: StateFlow<MusicDuck> = preferencesRepository.voiceChannelMusic
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicDuck.DEFAULT)
 
     val voiceChannelAdaptive: StateFlow<Boolean> = preferencesRepository.voiceChannelAdaptive
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.VOICE_CHANNEL_ADAPTIVE_DEFAULT)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CoreFeatures.VOICE_CHANNEL_ADAPTIVE_DEFAULT)
 
     val voiceChannelGain: StateFlow<Int> = preferencesRepository.voiceChannelGain
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)

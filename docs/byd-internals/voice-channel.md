@@ -2,9 +2,10 @@
 
 The car has an audio stream for a voice assistant, apart from the music: its own volume, and a way to have the music
 lowered while the assistant is active. The car's own assistant speaks on it. The app can speak on it too, so that the
-reply has a volume of its own, follows the cabin noise and is not at the mercy of the music's volume. This is an
-experimental feature of **dev builds only** (Settings → Voice channel), on there by default, with the music turned down
-by half and the volume following the cabin noise.
+reply has a volume of its own, follows the cabin noise and is not at the mercy of the music's volume. It is on by
+default (Settings → Voice channel), with the music turned down by half and the volume following the cabin noise, and
+is offered only on a car whose voice stream is the one measured here (index 5 to 24); on any other car the section is
+absent and nothing changes.
 
 > As everywhere in these notes: observed on one vehicle and one firmware, with YouTube and Spotify as the music. The
 > streams, the dip and the volume curve below were measured on that car and need re-measuring on another.

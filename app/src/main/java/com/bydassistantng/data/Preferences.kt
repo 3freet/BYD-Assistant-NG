@@ -192,9 +192,9 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.edit { it[Keys.CLUSTER_KEEP_MAPS_DISABLED] = disabled }
     }
 
-    /** Whether replies are spoken on the car's voice channel (a dev-build feature). Off by default. */
+    /** Whether replies are spoken on the car's voice channel, where the car has one. On by default. */
     val voiceChannelEnabled: Flow<Boolean> =
-        dataStore.data.map { it[Keys.VOICE_CHANNEL_ENABLED] ?: OptInFeatures.VOICE_CHANNEL_DEFAULT }
+        dataStore.data.map { it[Keys.VOICE_CHANNEL_ENABLED] ?: CoreFeatures.VOICE_CHANNEL_DEFAULT }
     suspend fun setVoiceChannelEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.VOICE_CHANNEL_ENABLED] = enabled }
     }
@@ -206,9 +206,9 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.edit { it[Keys.VOICE_CHANNEL_MUSIC] = music.key }
     }
 
-    /** Whether the voice channel's volume follows how loud the cabin is. Off by default. */
+    /** Whether the voice channel's volume follows how loud the cabin is. On by default. */
     val voiceChannelAdaptive: Flow<Boolean> =
-        dataStore.data.map { it[Keys.VOICE_CHANNEL_ADAPTIVE] ?: OptInFeatures.VOICE_CHANNEL_ADAPTIVE_DEFAULT }
+        dataStore.data.map { it[Keys.VOICE_CHANNEL_ADAPTIVE] ?: CoreFeatures.VOICE_CHANNEL_ADAPTIVE_DEFAULT }
     suspend fun setVoiceChannelAdaptive(adaptive: Boolean) {
         dataStore.edit { it[Keys.VOICE_CHANNEL_ADAPTIVE] = adaptive }
     }

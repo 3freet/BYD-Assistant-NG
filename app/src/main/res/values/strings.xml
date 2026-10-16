@@ -97,7 +97,6 @@
     <string name="settings_section_gemini">Gemini</string>
     <string name="settings_section_app">App</string>
     <string name="settings_section_voice_channel">Voice channel</string>
-    <string name="voice_channel_note">Experimental, in dev builds only, and tried on one car.</string>
     <string name="settings_advanced_desc">Update channel, experimental features and logs.</string>
     <string name="advanced_section_updates">Updates</string>
     <string name="app_language_title">App language</string>

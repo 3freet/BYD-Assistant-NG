@@ -191,7 +191,7 @@ class LivePcmPlayer @Inject constructor(
 
     private val audioManager: AudioManager = context.getSystemService(AudioManager::class.java)
 
-    /** How replies use the car's voice channel (dev builds); set when a conversation starts. */
+    /** How replies use the car's voice channel; set when a conversation starts. */
     @Volatile var voiceChannel = VoiceChannelOptions.OFF
 
     // The audio focus held for a reply on the voice channel, and the job that gives it up once the reply has been

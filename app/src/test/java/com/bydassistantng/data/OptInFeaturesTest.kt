@@ -35,9 +35,9 @@ class OptInFeaturesTest {
     }
 
     @Test
-    fun theVoiceChannelIsOnByDefaultBecauseOnlyDevBuildsHaveIt() {
-        // It is gated by the build (VoiceChannel.isAvailable), so its defaults are those of the car it was built on.
-        assertTrue(OptInFeatures.VOICE_CHANNEL_DEFAULT)
-        assertTrue(OptInFeatures.VOICE_CHANNEL_ADAPTIVE_DEFAULT)
+    fun theVoiceChannelIsACoreFeatureAndOnByDefault() {
+        // Where the car does not have the channel it is absent, so on is safe; see VoiceChannel.isAvailable.
+        assertTrue(CoreFeatures.VOICE_CHANNEL_DEFAULT)
+        assertTrue(CoreFeatures.VOICE_CHANNEL_ADAPTIVE_DEFAULT)
     }
 }

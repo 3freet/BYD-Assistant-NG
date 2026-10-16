@@ -22,6 +22,11 @@ exterior speaker or change the drive mode.
 - **Steering-wheel button** starts and ends a conversation (an accessibility service that watches that one key).
   The car's own voice assistant answers the same button, so one press can start both: *Settings* has a button to turn
   it off (and back on), after a confirmation. Nothing is uninstalled.
+- **Voice channel** (on by default, on cars that have it; *Settings → Voice channel*): the assistant's replies and
+  tones play on the car's own voice stream, with a volume of their own, apart from the music. While a conversation
+  lasts the music is turned down (by half by default; or the car's own dip, paused, or left alone), and the voice
+  follows how loud the cabin is, with a slider to move it up or down. How and why:
+  [voice-channel.md](docs/byd-internals/voice-channel.md).
 - **Status banner** on screen shows whether the mic is live, the assistant is thinking, or it is speaking.
 - **Tap sound**: every tap in the app ticks with the head unit's own touch sound, like the rest of the car's screens.
 - **Navigation** ("take me to …"), **open any installed app** by name, **close an app you installed** ("close
@@ -128,6 +133,9 @@ channel (tested releases) and the **Beta** channel (newest builds first), and tu
 - With **Web search** on, the questions you ask are also sent to Google Search.
 - The update check asks GitHub for the project's list of releases (nothing about you or the car is sent). Turn it
   off under *Settings → Advanced settings*.
+- With the voice channel's **cabin-noise volume** on, a second microphone listens to the cabin for as long as a
+  conversation lasts. The app keeps only the sound level of the last few seconds, in memory: no audio from it is
+  recorded, stored or sent.
 - The API key is stored encrypted on the device. Logs stay on the device until you choose to share them — and
   can contain what you said, so read one before you send it.
 - **Memory** is kept on the device (not in a cloud backup). What it holds — the remembered facts and, for ten
@@ -190,7 +198,7 @@ Optional build settings:
 | Path | What is there |
 | --- | --- |
 | `gemini/` | Live API client, the conversation state machine, tool wiring, failure handling |
-| `audio/` | Mic and speaker I/O, end-of-speech detection, talk-over (barge-in) detection, the exterior speaker |
+| `audio/` | Mic and speaker I/O, end-of-speech detection, talk-over (barge-in) detection, the exterior speaker, the voice channel (the voice stream, the music dip and the cabin-noise volume) |
 | `vehicle/` | Command registry (`resources/vehicle_commands.json`), safety gate, the helper process, drive modes |
 | `memory/` | Short-term and long-term memory and the tools that edit it |
 | `service/` | The steering-wheel accessibility service and the status banner |

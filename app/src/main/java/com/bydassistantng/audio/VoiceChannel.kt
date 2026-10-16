@@ -4,7 +4,6 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.os.Build
-import com.bydassistantng.BuildConfig
 import kotlin.math.roundToInt
 
 /**
@@ -99,19 +98,27 @@ object MusicDip {
 /**
  * The car's voice channel: the audio stream its own assistant speaks on (stream 17, `STREAM_BTTS`). It has a volume of
  * its own, apart from the music, and a track on it can ask for audio focus to have the music lowered or paused.
- * Found by reading the car's assistant and tried with a test tone (see docs/roadmap.md); on a build for dev only.
+ * Found by reading the car's assistant and tried on the car (see docs/byd-internals/voice-channel.md). It is offered
+ * only where the stream looks exactly as it did there.
  */
 object VoiceChannel {
     const val STREAM = 17
 
-    /** Whether this build offers the voice channel, and the car has the stream. */
-    fun isAvailable(context: Context): Boolean =
-        BuildConfig.DEBUG && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hasStream(context)
+    /** The voice stream's volume range on the car it was found on. Another range means another car or firmware. */
+    private const val EXPECTED_MIN_INDEX = 5
+    private const val EXPECTED_MAX_INDEX = 24
 
-    /** A stream that is not the car's throws, or reports no volume range. */
+    /** Whether the voice channel is offered here: the car has the voice stream, and it is the one that was measured. */
+    fun isAvailable(context: Context): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hasStream(context)
+
+    /**
+     * Whether stream 17 is the voice stream of the car this was developed on. A phone has no such stream (asking for
+     * it throws), and another BYD model may number its streams differently, so stream 17 might be something else
+     * there: it is only used when its range is 5 to 24, as measured.
+     */
     fun hasStream(context: Context): Boolean = runCatching {
         val audio = context.getSystemService(AudioManager::class.java)
-        audio.getStreamMaxVolume(STREAM) > minIndex(audio)
+        minIndex(audio) == EXPECTED_MIN_INDEX && audio.getStreamMaxVolume(STREAM) == EXPECTED_MAX_INDEX
     }.getOrDefault(false)
 
     /** The lowest volume index of the voice stream (the car's is 5; before Android 9 there is no way to ask, and it is 0). */

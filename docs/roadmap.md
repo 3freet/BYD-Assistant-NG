@@ -53,13 +53,13 @@ would need a bench setup that is not a car in use, and a decision to make here f
 
 ## The assistant's voice on its own audio channel
 
-Built for dev builds (Settings → Voice channel): replies on the car's voice stream
+Built and on by default, on cars that have the stream (Settings → Voice channel): replies on the car's voice stream
 with their own volume, the music turned down for the conversation, and a volume that follows the cabin noise. What the
 car's own assistant does, what was tried and how it works are in
 [voice-channel.md](byd-internals/voice-channel.md).
 
 Still open: whether the car's own dip also handles the radio and Bluetooth music, the "pause" choice, the top of the
-volume curve in a very loud cabin, other models, and whether it should leave dev builds.
+volume curve in a very loud cabin, and other models (it is offered only where the stream has the measured range).
 
 ## Ideas
 

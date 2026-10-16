@@ -72,6 +72,9 @@ differently, which is what that check is for.
 - **Memory** (what you asked the assistant to remember, and the last few exchanges for ten minutes) is stored in the
   app's private storage on the device, not backed up, and can be read, deleted or cleared in Settings. It is sent
   to Gemini as part of the instructions of a conversation so the assistant can use it. Each part can be switched off.
+- **Cabin noise.** With the voice channel's cabin-noise volume on, the app opens a second, unprocessed microphone for
+  as long as a conversation lasts and keeps the sound *level* (a number) of the last few seconds in memory, to set
+  the volume of the assistant's voice. No audio from it is recorded, stored or sent anywhere.
 - **The API key** is encrypted with an Android Keystore AES key before it is stored; the key never leaves the
   Keystore. Android backup is switched off for the app (`allowBackup="false"`), so neither the encrypted key nor
   the settings are copied to a cloud backup or to a new device. Cleartext network traffic is permitted only to
