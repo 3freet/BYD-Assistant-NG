@@ -73,8 +73,16 @@ taken for noise), and the cabin noise is the **lowest quarter of the last three 
 a bump are loud windows among quiet ones, so a low percentile reads through them. It is read when a reply starts, so
 nothing waits, and it is fresh for every reply. Nothing of this audio is kept or sent anywhere.
 
-Readings on the car: about -66 to -57 dBFS parked with the music low, -48 to -41 with the music up, and -53 to -27
-on a drive.
+The level is read in the **speech band** (about 300 to 3400 Hz, two second-order filters), not over the whole signal. A
+moving car's road and wind noise is mostly low rumble, which is loud on a plain level meter yet hides a voice far less
+than a fan's hiss or music does; the first version read the whole band and, on a drive, the voice came out too loud (14
+at -45 dBFS, where the driver had the slider all the way down for 7 or 8). The speech band reads lower than the whole
+band (7 dB lower in a silent cabin), so it is raised by 6 dB (`SPEECH_BAND_OFFSET_DB`) to sit where the fitted curve
+(below) expects it for a fan and music. That offset is a first estimate: the log carries both levels ("Cabin noise now
+-52.0 dBFS in the speech band, -50.1 over the whole band"), to check against a drive and to adjust.
+
+Readings on the car (whole band): about -66 to -57 dBFS parked with the music low, -48 to -41 with the music up, and -53
+to -27 on a drive.
 
 The volume for the noise is a straight line from index 5 at -62 dBFS to 24 at -22 dBFS, plus 1 step, plus the slider.
 The line was fitted to the volumes the driver chose across those conditions (with the slider at -5: 6 at -60, 7 at -57,

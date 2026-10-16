@@ -19,11 +19,14 @@ private val SOURCES = listOf(
     MediaRecorder.AudioSource.MIC to "MIC",
 )
 
-/** How loud the cabin is: the microphone's level over a short time, in dBFS (0 is full scale, silence is far below). */
+/**
+ * How loud the cabin is for a voice: the level of the microphone's speech band over a short time, in dBFS (0 is full
+ * scale, silence is far below).
+ */
 object CabinNoise {
     /**
-     * Listens for [durationMs] and returns the typical level of the windows after the first [skipMs] (their median,
-     * so a click or a word does not decide it), or null when the microphone could not be opened. Blocks the caller
+     * Listens for [durationMs] and returns the typical speech-band level of the windows after the first [skipMs]
+     * (their median, so a click or a word does not decide it), or null when the microphone could not be opened. Blocks the caller
      * for the whole time; the conversation's own capture can be running meanwhile.
      */
     fun measure(durationMs: Int, skipMs: Int = 0): Double? {
@@ -48,8 +51,13 @@ object CabinNoise {
                 record.startRecording()
                 val levels = listen(record, durationMs, skipMs)
                 if (levels.isEmpty()) continue
-                val level = median(levels)
-                AppLogger.log(TAG, "Cabin noise $name: ${"%.1f".format(level)} dBFS (${levels.size} windows, range ${"%.1f".format(levels.min())} to ${"%.1f".format(levels.max())})")
+                val speech = levels.map { it.speech }
+                val level = median(speech)
+                AppLogger.log(
+                    TAG,
+                    "Cabin noise $name: ${"%.1f".format(level)} dBFS in the speech band, ${"%.1f".format(median(levels.map { it.whole }))} over the whole band " +
+                        "(${levels.size} windows, range ${"%.1f".format(speech.min())} to ${"%.1f".format(speech.max())})",
+                )
                 return level
             } catch (e: Exception) {
                 AppLogger.log(TAG, "Measuring with $name failed: $e")
@@ -61,9 +69,10 @@ object CabinNoise {
         return null
     }
 
-    private fun listen(record: AudioRecord, durationMs: Int, skipMs: Int): List<Double> {
+    private fun listen(record: AudioRecord, durationMs: Int, skipMs: Int): List<WindowLevels> {
         val window = ShortArray(SAMPLE_RATE * WINDOW_MS / 1000)
-        val levels = ArrayList<Double>()
+        val band = SpeechBand(SAMPLE_RATE)
+        val levels = ArrayList<WindowLevels>()
         var heardMs = 0
         while (heardMs < durationMs) {
             var filled = 0
@@ -73,7 +82,9 @@ object CabinNoise {
                 filled += read
             }
             heardMs += WINDOW_MS
-            if (heardMs > skipMs) levels += dbfs(window)
+            // The filters see every window, so they are settled by the time the first one is counted.
+            val windowLevels = levelsOf(window, band)
+            if (heardMs > skipMs) levels += windowLevels
         }
         return levels
     }
@@ -82,9 +93,22 @@ object CabinNoise {
         if (samples.isEmpty()) return SILENCE_DBFS
         var sum = 0.0
         for (s in samples) sum += s.toDouble() * s
-        val rms = sqrt(sum / samples.size) / Short.MAX_VALUE
-        return if (rms <= 0.0) SILENCE_DBFS else maxOf(SILENCE_DBFS, 20 * log10(rms))
+        return toDbfs(sqrt(sum / samples.size) / Short.MAX_VALUE)
     }
+
+    internal fun toDbfs(rms: Double): Double = if (rms <= 0.0) SILENCE_DBFS else maxOf(SILENCE_DBFS, 20 * log10(rms))
+
+    /** Both levels of one window of the microphone; [band] carries its filter state from one window to the next. */
+    internal fun levelsOf(samples: ShortArray, band: SpeechBand): WindowLevels =
+        WindowLevels(whole = dbfs(samples), speech = maxOf(SILENCE_DBFS, band.dbfs(samples) + SPEECH_BAND_OFFSET_DB))
+
+    /**
+     * What the speech band's level is raised by, to read about where the whole band's did for a cabin that is mostly
+     * the hiss of the fan and music, which the volume curve was fitted on (a silent cabin reads 7 dB lower in the speech
+     * band; a cabin of music and fan, which has less bass, should read about 6 lower). Only the low rumble of a moving
+     * car then reads lower than before. A first estimate: both levels are logged, to be checked against a drive.
+     */
+    const val SPEECH_BAND_OFFSET_DB = 6.0
 
     internal fun median(values: List<Double>): Double {
         val sorted = values.sorted()
@@ -138,6 +162,7 @@ internal class NoiseWindows(
  */
 class CabinNoiseMonitor(private val sampling: () -> Boolean) {
     private val windows = NoiseWindows()
+    private val wholeBandWindows = NoiseWindows()
     private var record: AudioRecord? = null
     private var thread: Thread? = null
 
@@ -172,6 +197,7 @@ class CabinNoiseMonitor(private val sampling: () -> Boolean) {
                 continue
             }
             windows.clear()
+            wholeBandWindows.clear()
             record = opened
             running = true
             thread = Thread({ listen(opened) }, "CabinNoise").apply {
@@ -193,11 +219,13 @@ class CabinNoiseMonitor(private val sampling: () -> Boolean) {
         thread = null
         opened.release()
         windows.clear()
+        wholeBandWindows.clear()
         AppLogger.log(TAG, "Stopped listening to the cabin noise")
     }
 
     private fun listen(opened: AudioRecord) {
         val window = ShortArray(SAMPLE_RATE * WINDOW_MS / 1000)
+        val band = SpeechBand(SAMPLE_RATE)
         var lastLogAt = 0L
         while (running) {
             var filled = 0
@@ -206,12 +234,19 @@ class CabinNoiseMonitor(private val sampling: () -> Boolean) {
                 if (read <= 0) return
                 filled += read
             }
-            if (filled < window.size || !sampling()) continue
+            if (filled < window.size) continue
+            // The filters follow the microphone all the time, so they are settled when sampling starts again.
+            val levels = CabinNoise.levelsOf(window, band)
+            if (!sampling()) continue
             val now = SystemClock.elapsedRealtime()
-            windows.add(now, CabinNoise.dbfs(window))
+            windows.add(now, levels.speech)
+            wholeBandWindows.add(now, levels.whole)
             if (now - lastLogAt >= LOG_EVERY_MS) {
                 lastLogAt = now
-                windows.estimate(now)?.let { AppLogger.log(TAG, "Cabin noise now ${"%.1f".format(it)} dBFS") }
+                windows.estimate(now)?.let { speech ->
+                    val whole = wholeBandWindows.estimate(now)?.let { ", ${"%.1f".format(it)} over the whole band" }.orEmpty()
+                    AppLogger.log(TAG, "Cabin noise now ${"%.1f".format(speech)} dBFS in the speech band$whole")
+                }
             }
         }
     }
