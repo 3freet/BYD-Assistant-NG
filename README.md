@@ -20,9 +20,13 @@ exterior speaker or change the drive mode.
 
 - **Natural conversation** with Gemini Live: speak, it answers aloud, and you can talk over it to interrupt.
 - **Steering-wheel button** starts and ends a conversation (an accessibility service that watches that one key).
+  The car's own voice assistant answers the same button, so one press can start both: *Settings* has a button to turn
+  it off (and back on), after a confirmation. Nothing is uninstalled.
 - **Status banner** on screen shows whether the mic is live, the assistant is thinking, or it is speaking.
 - **Tap sound**: every tap in the app ticks with the head unit's own touch sound, like the rest of the car's screens.
-- **Navigation** ("take me to …"), **open any installed app** by name, and **play / pause / next / previous**.
+- **Navigation** ("take me to …"), **open any installed app** by name, **close an app you installed** ("close
+  YouTube": it stops completely; the car's own apps and this one are never closed), and **play / pause / next /
+  previous**.
 - **Play something in an app**: "play <song> on Spotify", "a video about <topic> on YouTube", or "put on something
   moody" and it picks one. It uses Android's standard play-from-search request, so it works with any installed
   app that supports it; it cannot pick from an app's home screen.
@@ -39,8 +43,8 @@ exterior speaker or change the drive mode.
   [vehicle-commands.md](docs/byd-internals/vehicle-commands.md); how the new ones were found is in
   [cabin-and-dashcam.md](docs/byd-internals/cabin-and-dashcam.md).
 - **Passenger screen** ("open YouTube on the passenger screen", "close it", "turn the passenger screen off"): opens
-  and closes apps on the front-passenger screen, sends it home or back, and switches its backlight. Same switch as
-  vehicle control. See [passenger-screen.md](docs/byd-internals/passenger-screen.md).
+  and closes apps on the front-passenger screen, sends it home or back, switches its backlight and sets its
+  brightness ("make the passenger screen brighter", "set it to 40 percent"). Same switch as vehicle control. See [passenger-screen.md](docs/byd-internals/passenger-screen.md).
 - **Volume** ("what's the volume?", "set the volume to 12", "turn it up a bit"): reads and sets the media volume,
   and relative changes start from the real value. Both run inside the app, so they need neither ADB nor the
   vehicle-control switch; the tools that reach the car's own systems are the ones that need it.
@@ -77,6 +81,15 @@ builds for now. Everything about how they work is in [docs/byd-internals](docs/b
   it is really in — the car decides, and it is refused above 80 km/h. Wade, warp, custom and traction modes are not
   offered. It combines with other requests: "sand mode and play some music". How and why:
   [drive-modes.md](docs/byd-internals/drive-modes.md).
+- **Instrument cluster**: "put YouTube on the instrument cluster", "open the <title> video on YouTube on the
+  cluster", "take it off the cluster". The app is shown in the middle of the display behind the steering wheel, where
+  BYD's map is shown (the speed and the warning lights stay), an app that is already open is moved there with its
+  task, and the gauges come back when the app leaves (taken off, moved to another screen, closed or crashed).
+  **Anything shown there is in the driver's view, so use it only while the car is parked.** It turns BYD's
+  navigation app on while it works
+  (*Keep BYD Maps disabled afterwards* turns it off again). Only tried on one car (a Fangchengbao Leopard 5): it may
+  not work on yours, may leave the map showing, or may stop working after a car software update. **Experimental, and
+  entirely at your own risk.** How and why: [cluster-screen.md](docs/byd-internals/cluster-screen.md).
 
 ## Requirements
 
@@ -129,9 +142,9 @@ security and power systems — is deliberately not reachable: those commands are
 never offered to the model, and refused again at dispatch time. Commands confirm their effect by reading the
 car's state back, and report honestly when the car did not apply them.
 
-There are exactly **two deliberate exceptions**, both experimental and off by default: the exterior speaker
-switch and the drive-mode request. Each is a single feature id with fixed values, outside the command list, and
-is used only when the car's framework names it as it was confirmed, and after you switch it on and accept the
+There are exactly **three deliberate exceptions**, all experimental and off by default: the exterior speaker
+switch, the drive-mode request and the instrument cluster's map type. Each is outside the command list, and is
+used only when the car's framework names it as it was confirmed, and after you switch it on and accept the
 warning. See [SECURITY.md](SECURITY.md).
 
 ## Web search
@@ -181,7 +194,9 @@ Optional build settings:
 | `vehicle/` | Command registry (`resources/vehicle_commands.json`), safety gate, the helper process, drive modes |
 | `memory/` | Short-term and long-term memory and the tools that edit it |
 | `service/` | The steering-wheel accessibility service and the status banner |
-| `apps/`, `media/`, `navigation/` | The open-app, media and navigation tools |
+| `apps/`, `media/`, `navigation/` | The open-app, close-app, media and navigation tools |
+| `passenger/` | The passenger screen: its tool, helper command and parsing (apps, backlight, brightness) |
+| `cluster/` | Experimental, beta and debug builds: putting an app on the instrument cluster |
 | `res/values`, `res/values-ar` | English and Arabic strings — a unit test keeps the two in step |
 
 ## License

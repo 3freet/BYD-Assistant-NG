@@ -14,7 +14,9 @@ A short tour for contributors. For the vehicle side, see [byd-internals](byd-int
 | `audio/` | Microphone and speaker I/O, end-of-speech detection, talk-over detection, and the exterior speaker (its switch helper, the navi-stream track and the synthesised sound effects) |
 | `vehicle/` | The command registry, the safety gate, the helper process, the read-only queries such as tyre pressure, and drive-mode switching (see byd-internals) |
 | `memory/` | Short-term and long-term memory: the stores, the prompt text built from them, and the `remember` / `forget_memory` tools |
-| `apps/`, `media/`, `navigation/` | The non-vehicle tools: open an app, media keys, navigation |
+| `apps/`, `media/`, `navigation/` | The non-vehicle tools: open an app, close an app you installed, media keys, navigation |
+| `passenger/` | The passenger screen: the tool, the helper command that runs it as the shell user, and the parsing of what the system reports (apps, backlight, brightness) |
+| `cluster/` | Experimental (debug and beta builds): the tool, helper command, parsing and the availability check for putting an app on the instrument cluster |
 | `ui/` | The screens: home, onboarding, settings, about (Jetpack Compose). `ui/theme` is the one palette for the whole app; `ui/settings/SettingsComponents` holds the card/row/switch/dialog pieces the settings pages are built from; `ui/TapSound` gives Compose taps the system tap sound |
 | `util/AppLanguage` | In-app language and layout direction |
 
@@ -77,22 +79,27 @@ switch, since the helper is the same ADB-shell power either way.
 
 Vehicle control is **on by default** (it is what the assistant is for); the user can switch it off in Settings.
 
-### The two experimental features
+### The three experimental features
 
-The exterior speaker (`speak_outside`, `play_sound_outside`) and drive-mode switching (`set_drive_mode`) are the only
-things that reach past the denylist, and they do it as two narrow exceptions rather than by loosening it. Each is
+The exterior speaker (`speak_outside`, `play_sound_outside`), drive-mode switching (`set_drive_mode`) and the
+instrument cluster (`cluster_screen`) are the only things that reach past the denylist, and they do it as narrow
+exceptions rather than by loosening it. Each is
 offered to the model only when **all** of these hold, checked in this order:
 
 1. the build has `BuildConfig.EXPERIMENTAL_CAR_FEATURES` (debug and beta; not stable yet);
 2. the car's own framework names the feature with the id it was confirmed with (`CarFeatureIds`, checked again in
-   the helper process before anything is written) — on a phone, or another model, the feature is simply absent;
+   the helper process before anything is written) — on a phone, or another model, the feature is simply absent (for
+   the cluster, `ClusterScreenAvailability` also looks for the cluster's display and BYD's navigation app);
 3. the user switched it on under Settings → Advanced → Experimental features (`OptInFeatures` holds the defaults,
    which are off), and vehicle control is on, in a conversation (not a one-shot request).
 
-Hilt supplies them as `Optional<ExteriorSpeaker>` / `Optional<DriveModeSwitch>` (empty when gated off), and the
-controller reads the two switches when a conversation starts. Neither goes through the command registry. The
+Hilt supplies the first two as `Optional<ExteriorSpeaker>` / `Optional<DriveModeSwitch>` (empty when gated off; the
+cluster feature asks `ClusterScreenAvailability` directly), and the controller reads the switches when a
+conversation starts. None of them goes through the command registry. The
 exterior speaker has its own helper process because it *holds* a state (the route, with a heartbeat and a time
-limit); the drive-mode request is a single write and runs inside the vehicle helper as `drivemode set <n>`.
+limit); the drive-mode request is a single write and runs inside the vehicle helper as `drivemode set <n>`; the
+cluster feature runs there as `cluster open|close|status|leaving`, and keeps a watcher thread in the helper that gives
+the gauges back whenever the app has left the cluster.
 
 ### Memory
 

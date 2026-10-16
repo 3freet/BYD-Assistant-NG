@@ -4,8 +4,13 @@ How an app ends up on the driver's instrument cluster (the gauge display behind 
 needs, and what did not work. Observed on one car (a Fangchengbao Leopard 5, DiLink 5.1, Android 13) while it was
 parked; treat every id as a hypothesis until you have read it back on your own vehicle.
 
-The assistant has a `cluster_screen` tool built on this, **in debug (development) builds only**: it switches
-BYD's navigation app on and off, which no release should do behind the user's back.
+The assistant has a `cluster_screen` tool built on this. It is an **experimental feature, in debug and beta builds
+only, off until the user switches it on** (Settings → Advanced settings → Experimental features, behind a
+confirmation), and only on a car that looks like the one it was found on. It switches BYD's navigation app on and
+off, and an app on the cluster is shown **in the middle of it, where BYD's map is shown; the speed and the warning
+lights stay visible**. Anything shown there is in the driver's view, so it is only for a car that is parked. It has
+no park check of its own. It was tried on one car and is used at the
+user's own risk.
 
 ## What the cluster is fed from
 
@@ -35,7 +40,7 @@ All of it runs as the ADB shell identity (the same helper process the vehicle co
 3. **Start the navigation's meter activity on display 3**: `am start-activity --display 3 -f 0x18000000 -n
    com.byd.naviauto/com.byd.automap.meter.MeterActivity`. The cluster now shows the map view's frame.
 4. **Start the wanted app on display 3**: `am start-activity --user 0 --display 3 --windowingMode 1
-   --activity-multiple-task -f 0x10000000 -n <component>`. The cluster shows it in place of the gauges.
+   --activity-multiple-task -f 0x10000000 -n <component>`. The cluster shows it in the middle, where the map view was.
 5. **Settle.** A navigation app that was not already running puts its meter back in front three to five seconds
    after step 3. Poll the top activity of display 3 and start the app again until it holds for several seconds
    (about nine seconds in total on this car). Re-write type `4` on each poll; the car resets it when the

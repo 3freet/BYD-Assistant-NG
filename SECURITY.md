@@ -13,9 +13,12 @@ An app that operates a car deserves a plain account of its reach.
 **It runs a helper process as the ADB shell user.** The vehicle permissions are signature-level, so the app cannot
 hold them. It therefore connects to the head unit's own ADB daemon over the loopback interface (with the `dadb`
 library, using a key pair it creates in its private storage) and starts a small helper from its own APK. Over that
-connection the app runs only two kinds of command: `pm grant <this app> android.permission.WRITE_SECURE_SETTINGS`,
-and the helper (`app_process … VehicleShellHelper --serve`). The helper accepts one `<commandId> <value>` line at a
-time and **re-validates it** against the command registry: unknown or blocked commands and out-of-range values are
+connection the app runs a short, fixed list of commands: `pm grant <this app> android.permission.WRITE_SECURE_SETTINGS`;
+the helper (`app_process … VehicleShellHelper --serve`); when you ask it to close an app, `pidof` and `am force-stop`
+for that one app, and only if you installed it (never the car's own apps or itself); `pm disable-user` and `pm enable`
+for BYD's own voice assistant, and only when you press its button in Settings; and, to start a track in a music or
+video app, reading that app's screen and tapping it. Installing an update is described below. The helper accepts
+one `<commandId> <value>` line at a time and **re-validates it** against the command registry: unknown or blocked commands and out-of-range values are
 refused in the helper itself, whatever the app sent.
 
 What this means for you:
@@ -40,7 +43,7 @@ refuses them again, and the dispatch layer refuses a third time. Be clear about 
 the shell user, which the vehicle services accept for **every** device, so these checks are this app's own
 safeguards. A modified build, or any other program using the same ADB access, is not bound by them.
 
-**There are two deliberate, narrow exceptions**, both experimental and both **off until the user switches them on**
+**There are three deliberate, narrow exceptions**, all experimental and all **off until the user switches them on**
 (Settings → Advanced → Experimental features, each behind a confirmation):
 
 - *The exterior speaker switch*: one feature id in the driver-assistance group, the values `0` and `1`, written by a
@@ -49,12 +52,18 @@ safeguards. A modified build, or any other program using the same ADB access, is
 - *The drive-mode request*: one feature id in the setting device, with the mode numbers the car's own screen sends
   (Normal, Eco, Sport, Snow, Sand, Mud, Mountain, Rock, Auto and exit; never wade, warp, custom or traction), only
   below 80 km/h, followed by a read-back of what the car did. ([details](docs/byd-internals/drive-modes.md))
+- *The instrument cluster*: one feature id in the instrument device (the map type, `1` for the normal gauges and `4`
+  for an app on the cluster), written by a separate helper command, together with switching BYD's navigation app on
+  and off for the main user and starting and stopping apps on the cluster's own display. The app is shown in the
+  middle of the cluster, where BYD's map is shown, and the speed and the warning lights stay visible; the feature has
+  **no park check** and anything shown there is in the driver's view, so it is for a parked car. ([details](docs/byd-internals/cluster-screen.md))
 
-Neither goes through the command registry, so the model is never offered them as vehicle commands. Each is used
+None of them goes through the command registry, so the model is never offered them as vehicle commands. Each is used
 only in a build that contains the experimental car features (beta and debug builds; not stable releases yet) **and**
 only when the car's framework gives the feature name the id it was confirmed with on the development vehicle — on any
-other car, or on a phone, they are absent. Both were confirmed on a single vehicle; another model may number the
-same names differently, which is what that check is for.
+other car, or on a phone, they are absent (the cluster feature also needs the cluster's own display and BYD's
+navigation app to be there). All three were confirmed on a single vehicle; another model may number the same names
+differently, which is what that check is for.
 
 ## Data
 
@@ -81,5 +90,5 @@ same names differently, which is what that check is for.
 ## Responsible use
 
 Vehicle control is used entirely at your own responsibility; see the disclaimer in the app's *About* screen. Use
-it while it is safe to do so. The experimental features (exterior speaker, drive modes) are exactly that —
+it while it is safe to do so. The experimental features (exterior speaker, drive modes, instrument cluster) are exactly that —
 experimental, tried on one car, and switched on only by you.
