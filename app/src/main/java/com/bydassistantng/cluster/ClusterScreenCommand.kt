@@ -259,6 +259,9 @@ internal object ClusterScreenCommand {
     }
 
     private fun giveBack(keepMaps: Boolean): VehicleDispatchResult {
+        // The keeper puts the map type back to "on the cluster" while it runs: it must be gone first, or it can
+        // undo the gauges a moment after they were given back and leave the map on the cluster.
+        stopKeeper()
         val context = systemContext()
         val display = clusterDisplay(context)
         val map = MapType.of(context)
@@ -295,7 +298,8 @@ internal object ClusterScreenCommand {
      * main or the passenger screen, closed, or ended. The app is looked for on the cluster display every
      * [WATCH_POLL_MS]; once it is no longer there (sure at once if it went to another screen, twice in a row if it is
      * nowhere, to ride out a restart) the gauges are given back as [close] does it, and a player that was playing is
-     * started again where it landed.
+     * started again where it landed. An app that crashes is noticed from the crash log at once: Android keeps its
+     * window for a couple of seconds after the crash, and the map would show through all that time.
      */
     private fun startWatcher(display: Int, pkg: String, keepMaps: Boolean) {
         watcherStop = false
@@ -305,9 +309,17 @@ internal object ClusterScreenCommand {
                 var absent = 0
                 var polls = 0
                 var wasPlaying = false
+                val crashesBefore = lastCrashOf(pkg)
                 while (!watcherStop) {
                     Thread.sleep(WATCH_POLL_MS)
                     if (watcherStop) break
+                    if (lastCrashOf(pkg) != crashesBefore) {
+                        stopKeeper()
+                        watcher = null
+                        watchedPackage = null
+                        giveBack(keepMaps)
+                        break
+                    }
                     val dump = activityDump()
                     if (PassengerScreenParsing.appsOn(dump, display).any { it.packageName == pkg }) {
                         absent = 0
@@ -413,6 +425,16 @@ internal object ClusterScreenCommand {
             isDaemon = true
             start()
         }
+    }
+
+    /**
+     * The time of the app's last crash in the system's crash log (`Process: <package>, PID: …`), or null if there is
+     * none in it. A change of it between two looks means the app crashed in between.
+     */
+    private fun lastCrashOf(pkg: String): String? {
+        val log = exec(listOf("/system/bin/logcat", "-b", "crash", "-d", "-v", "time", "-t", "80"))
+        return Regex("""(?m)^(\d\d-\d\d \d\d:\d\d:\d\d\.\d+) E/AndroidRuntime\(\s*\d+\): Process: ${Regex.escape(pkg)},""")
+            .findAll(log).lastOrNull()?.groupValues?.get(1)
     }
 
     private fun playbackState(pkg: String): Int? =
