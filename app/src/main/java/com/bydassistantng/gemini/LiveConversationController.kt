@@ -377,6 +377,7 @@ class LiveConversationController @Inject constructor(
         lastStartMessage = ""
         val startedAt = SystemClock.elapsedRealtime()
         languageForSession = preferencesRepository.assistantLanguage.first()
+        AppLogger.log(TAG, "Reply language: $languageForSession")
         val apiKey = secureCredentials.getApiKey()
         if (apiKey.isNullOrBlank()) {
             lastStartFailure = StartFailure.NO_API_KEY
@@ -1226,6 +1227,9 @@ class LiveConversationController @Inject constructor(
                 AppLogger.log(TAG, "Turn complete (${bargeInDetector.summary()})")
                 // What the assistant said, for working out why it answered as it did. Debug builds only.
                 if (BuildConfig.DEBUG && transcript.isNotBlank()) AppLogger.log(TAG, "said: \"${transcript.toString().trim()}\"")
+                if (ReplyLanguage.matches(languageForSession, transcript.toString()) == false) {
+                    AppLogger.log(TAG, "The reply was not in the language that is set ($languageForSession)")
+                }
                 recordExchange()
                 turnCompleted = true
                 listenCapJob?.cancel()

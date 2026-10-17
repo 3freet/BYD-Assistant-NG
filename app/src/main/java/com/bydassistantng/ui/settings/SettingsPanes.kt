@@ -191,18 +191,11 @@ internal fun ConversationPane(viewModel: SettingsViewModel) {
             StepperSetting(
                 title = stringResource(R.string.end_wait_title),
                 subtitle = stringResource(R.string.end_wait_desc),
-                valueText = stringResource(R.string.end_wait_value, waitMs),
-                fraction = (waitMs - EndOfSpeechWait.MIN_MS).toFloat() / (EndOfSpeechWait.MAX_MS - EndOfSpeechWait.MIN_MS),
-                onLess = if (waitMs > EndOfSpeechWait.MIN_MS) {
-                    { viewModel.setEndOfSpeechWaitMs(EndOfSpeechWait.clamp(waitMs - EndOfSpeechWait.STEP_MS)) }
-                } else {
-                    null
-                },
-                onMore = if (waitMs < EndOfSpeechWait.MAX_MS) {
-                    { viewModel.setEndOfSpeechWaitMs(EndOfSpeechWait.clamp(waitMs + EndOfSpeechWait.STEP_MS)) }
-                } else {
-                    null
-                },
+                value = waitMs,
+                range = EndOfSpeechWait.MIN_MS..EndOfSpeechWait.MAX_MS,
+                step = EndOfSpeechWait.STEP_MS,
+                valueText = { stringResource(R.string.end_wait_value, it) },
+                onValueChange = { viewModel.setEndOfSpeechWaitMs(EndOfSpeechWait.clamp(it)) },
                 resetLabel = stringResource(R.string.end_wait_reset, EndOfSpeechWait.DEFAULT_MS).takeIf { waitMs != EndOfSpeechWait.DEFAULT_MS },
                 onReset = { viewModel.setEndOfSpeechWaitMs(EndOfSpeechWait.DEFAULT_MS) },
             )
@@ -335,19 +328,11 @@ internal fun SoundPane(viewModel: SettingsViewModel) {
                         StepperSetting(
                             title = stringResource(R.string.voice_channel_dip_title),
                             subtitle = stringResource(R.string.voice_channel_dip_desc),
-                            valueText = stringResource(R.string.voice_channel_dip_value, dip),
-                            fraction = (dip - VoiceChannelOptions.DIP_RANGE.first).toFloat() /
-                                (VoiceChannelOptions.DIP_RANGE.last - VoiceChannelOptions.DIP_RANGE.first),
-                            onLess = if (dip > VoiceChannelOptions.DIP_RANGE.first) {
-                                { viewModel.setVoiceChannelDip(dip - VoiceChannelOptions.DIP_STEP) }
-                            } else {
-                                null
-                            },
-                            onMore = if (dip < VoiceChannelOptions.DIP_RANGE.last) {
-                                { viewModel.setVoiceChannelDip(dip + VoiceChannelOptions.DIP_STEP) }
-                            } else {
-                                null
-                            },
+                            value = dip,
+                            range = VoiceChannelOptions.DIP_RANGE,
+                            step = VoiceChannelOptions.DIP_STEP,
+                            valueText = { stringResource(R.string.voice_channel_dip_value, it) },
+                            onValueChange = { viewModel.setVoiceChannelDip(it) },
                         )
                     }
                 }
@@ -358,7 +343,9 @@ internal fun SoundPane(viewModel: SettingsViewModel) {
                 row {
                     SwitchSetting(
                         title = stringResource(R.string.voice_channel_adaptive_title),
-                        subtitle = stringResource(R.string.voice_channel_adaptive_desc),
+                        subtitle = stringResource(
+                            if (hasHeadrest && speaker == VoiceSpeaker.HEADREST) R.string.voice_channel_adaptive_desc_headrest else R.string.voice_channel_adaptive_desc,
+                        ),
                         checked = adaptive,
                         onCheckedChange = { viewModel.setVoiceChannelAdaptive(it) },
                     )
@@ -368,19 +355,11 @@ internal fun SoundPane(viewModel: SettingsViewModel) {
                         StepperSetting(
                             title = stringResource(R.string.voice_channel_gain_title),
                             subtitle = stringResource(R.string.voice_channel_gain_desc),
-                            valueText = stringResource(R.string.voice_channel_gain_value, gain),
-                            fraction = (gain - VoiceChannelOptions.GAIN_RANGE.first).toFloat() /
-                                (VoiceChannelOptions.GAIN_RANGE.last - VoiceChannelOptions.GAIN_RANGE.first),
-                            onLess = if (gain > VoiceChannelOptions.GAIN_RANGE.first) {
-                                { viewModel.setVoiceChannelGain(gain - 1) }
-                            } else {
-                                null
-                            },
-                            onMore = if (gain < VoiceChannelOptions.GAIN_RANGE.last) {
-                                { viewModel.setVoiceChannelGain(gain + 1) }
-                            } else {
-                                null
-                            },
+                            value = gain,
+                            range = VoiceChannelOptions.GAIN_RANGE,
+                            step = 1,
+                            valueText = { stringResource(R.string.voice_channel_gain_value, it) },
+                            onValueChange = { viewModel.setVoiceChannelGain(it) },
                             resetLabel = stringResource(R.string.voice_channel_gain_reset).takeIf { gain != 0 },
                             onReset = { viewModel.setVoiceChannelGain(0) },
                         )

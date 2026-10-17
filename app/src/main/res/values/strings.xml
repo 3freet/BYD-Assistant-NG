@@ -102,8 +102,8 @@
     <string name="app_language_system">System default</string>
     <string name="app_language_english">English</string>
     <string name="app_language_arabic">العربية</string>
-    <string name="assistant_language_title">Assistant language</string>
-    <string name="assistant_language_hint">The language the assistant answers in.</string>
+    <string name="assistant_language_title">Reply language</string>
+    <string name="assistant_language_hint">The language the assistant answers in. Auto follows the language you speak.</string>
     <string name="language_auto">Auto</string>
     <string name="language_english">English</string>
     <string name="language_arabic">Arabic</string>
@@ -263,7 +263,8 @@
     <string name="voice_music_pause">Pause it</string>
     <string name="voice_music_pause_desc">The music stops for the conversation and starts again afterwards, in apps that start again by themselves.</string>
     <string name="voice_channel_adaptive_title">Volume follows the cabin noise</string>
-    <string name="voice_channel_adaptive_desc">Listens to the cabin just before it speaks and sets the voice volume to match: louder when the cabin is loud, quieter when it is not.</string>
+    <string name="voice_channel_adaptive_desc">Listens to the cabin just before it speaks and sets the voice volume to match: louder when the cabin is loud, quieter when it is not. Off: it stays where it is.</string>
+    <string name="voice_channel_adaptive_desc_headrest">Listens to the cabin just before it speaks and sets the headrest volume to match: louder when the cabin is loud, quieter when it is not. The car\'s navigation volume is moved for the conversation and put back. Off: the headrest plays at the navigation volume you set in the car.</string>
     <string name="voice_channel_gain_title">Louder or quieter than the cabin asks</string>
     <string name="voice_channel_gain_desc">Moves the volume it picks up or down, about 2 dB a step. In a calm cabin, where the voice is already at its lowest, it makes the voice itself quieter.</string>
     <string name="voice_channel_gain_value">%1$+d</string>
@@ -412,5 +413,5 @@
     <string name="voice_speaker_car">Car speakers</string>
     <string name="voice_speaker_headrest">Driver\'s headrest</string>
     <string name="voice_speaker_car_note">Heard on the car\'s speakers, and in the headrest too when the car\'s headrest sound is on Surround.</string>
-    <string name="voice_speaker_headrest_note">While you talk to the assistant, the car\'s headrest sound is set to Interactive and the voice plays on the car\'s navigation channel, so it comes from the driver\'s headrest only. The volume follows the cabin noise (the car\'s navigation volume is moved for the conversation and put back). The headrest sound goes back as it was afterwards. Music stays on the car\'s speakers. Needs ADB debugging, like the car controls.</string>
+    <string name="voice_speaker_headrest_note">While you talk to the assistant, the car\'s headrest sound is set to Interactive and the voice plays on the car\'s navigation channel, so it comes from the driver\'s headrest only. The headrest sound goes back as it was afterwards. Music stays on the car\'s speakers. The volume is set under Volume below. Needs ADB debugging, like the car controls.</string>
 </resources>

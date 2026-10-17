@@ -5,6 +5,7 @@ import com.bydassistantng.data.AssistantLanguage
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -148,5 +149,30 @@ class AssistantSetupTest {
         assertTrue(prompt.contains("in any dialect"))
         assertTrue(prompt.contains("massage"))
         assertTrue(prompt.contains("open_app") && prompt.contains("media_control"))
+    }
+
+    @Test
+    fun aFixedReplyLanguageIsSaidAsAFirmRuleAtTheStartAndAgainAtTheEnd() {
+        for ((language, name) in listOf(AssistantLanguage.ARABIC to "Arabic", AssistantLanguage.ENGLISH to "English")) {
+            val prompt = voiceAssistantSystemPrompt(language, conversation = true)
+            assertTrue(prompt.contains("Always reply in $name."))
+            assertTrue(prompt.endsWith("ask the user in $name to say it again."))
+            val shortPrompt = voiceAssistantSystemPrompt(language, conversation = false)
+            assertTrue(shortPrompt.contains("every reply is in $name"))
+        }
+        val auto = voiceAssistantSystemPrompt(AssistantLanguage.AUTO, conversation = true)
+        assertFalse(auto.contains("Always reply in"))
+        assertFalse(auto.contains("Remember: every reply"))
+    }
+
+    @Test
+    fun aReplyInTheWrongLanguageIsRecognisedByItsLetters() {
+        assertEquals(true, ReplyLanguage.matches(AssistantLanguage.ARABIC, "تمام، فتحت النافذة. BYD"))
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.ARABIC, "Son las nueve y nueve minutos de la noche"))
+        assertEquals(true, ReplyLanguage.matches(AssistantLanguage.ENGLISH, "It is nine past one, my friend."))
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.ENGLISH, "الساعة الآن واحدة"))
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.ENGLISH, "Son las nueve, cielo ¿sí?"))
+        assertNull(ReplyLanguage.matches(AssistantLanguage.AUTO, "anything at all"))
+        assertNull(ReplyLanguage.matches(AssistantLanguage.ARABIC, "..."))
     }
 }

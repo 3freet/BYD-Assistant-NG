@@ -69,7 +69,7 @@ exterior speaker or change the drive mode.
 - **Wait after you stop speaking**: a slider (0.4–1.5 s, 0.8 s by default) for how long the assistant waits in
   silence before it decides you have finished — shorter answers sooner, longer lets you pause mid-sentence.
 - **English and Arabic**: the whole app is translated, including full right-to-left layout. *App language*
-  (screens and messages) and *Assistant language* (what it speaks) are separate settings, as are the
+  (screens and messages) and *Reply language* (what the assistant answers in) are separate settings, as are the
   assistant's voice and, for Arabic, its dialect.
 
 ### Experimental features (beta builds, off by default)

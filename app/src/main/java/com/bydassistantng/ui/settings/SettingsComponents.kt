@@ -35,12 +35,17 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bydassistantng.R
 import com.bydassistantng.ui.AppAlertDialog
+import kotlin.math.roundToInt
 
 /*
  * The building blocks of the settings pages, kept in one place: rounded cards under small group labels, rows made of
@@ -326,51 +332,53 @@ fun SegmentedControl(options: List<String>, selected: Int, onSelect: (Int) -> Un
 }
 
 /**
- * A value that goes up and down in steps, with a big button for each way and a bar showing where it is in its
- * range. Better than dragging a thumb in a moving car. [onLess] or [onMore] null means the end of the range.
+ * A whole number in a range, set two ways: a slider to drag to a place, and a big button for each way to nudge it one
+ * [step] at a time, which is surer in a moving car than aiming a thumb. The two always agree; a drag shows its value
+ * as it goes and is saved when it is let go (not at every pixel), a button press is saved at once.
  */
 @Composable
 fun StepperSetting(
     title: String,
     subtitle: String?,
-    valueText: String,
-    fraction: Float,
-    onLess: (() -> Unit)?,
-    onMore: (() -> Unit)?,
+    value: Int,
+    range: IntRange,
+    step: Int,
+    valueText: @Composable (Int) -> String,
+    onValueChange: (Int) -> Unit,
     resetLabel: String? = null,
     onReset: (() -> Unit)? = null,
 ) {
+    // What the thumb is at while it is being dragged; null otherwise (the saved value then).
+    var dragging by remember { mutableStateOf<Int?>(null) }
+    val shown = dragging ?: value
     SettingRow(
         title = title,
         subtitle = subtitle,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StepButton(isMore = false, onClick = onLess)
+                StepButton(isMore = false, onClick = if (shown > range.first) ({ onValueChange((shown - step).coerceAtLeast(range.first)) }) else null)
                 Text(
-                    valueText,
+                    valueText(shown),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.widthIn(min = 76.dp),
                 )
-                StepButton(isMore = true, onClick = onMore)
+                StepButton(isMore = true, onClick = if (shown < range.last) ({ onValueChange((shown + step).coerceAtMost(range.last)) }) else null)
             }
         },
         below = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.outline),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.primary),
-                )
-            }
+            Slider(
+                value = shown.toFloat(),
+                onValueChange = { dragging = it.roundToInt() },
+                onValueChangeFinished = {
+                    dragging?.let { if (it != value) onValueChange(it) }
+                    dragging = null
+                },
+                valueRange = range.first.toFloat()..range.last.toFloat(),
+                steps = ((range.last - range.first) / step - 1).coerceAtLeast(0),
+                modifier = Modifier.fillMaxWidth(),
+            )
             if (onReset != null && resetLabel != null) {
                 TextButton(onClick = onReset) { Text(resetLabel) }
             }

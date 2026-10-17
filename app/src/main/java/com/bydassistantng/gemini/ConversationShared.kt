@@ -307,10 +307,25 @@ fun voiceAssistantSystemPrompt(
     webSearch: Boolean = false,
     memory: MemoryContext = MemoryContext(),
 ): String {
+    // A fixed language is a firm rule and is said twice (here and again at the very end): a model that listens in many
+    // languages, and was told only once, tends to answer in whichever it heard, which an unclear word can make the wrong one.
     val languageInstruction = when (language) {
         AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English or Arabic."
-        AssistantLanguage.ENGLISH -> "Reply in English, even if the user spoke Arabic."
-        AssistantLanguage.ARABIC -> "Reply in Arabic, even if the user spoke English."
+        AssistantLanguage.ENGLISH ->
+            "Always reply in English. This is a firm rule: whatever language the user speaks, or seems to speak " +
+                "(Arabic, Spanish, anything else), your reply is in English."
+        AssistantLanguage.ARABIC ->
+            "Always reply in Arabic. This is a firm rule: whatever language the user speaks, or seems to speak " +
+                "(English, Spanish, anything else), your reply is in Arabic."
+    }
+    val languageReminder = when (language) {
+        AssistantLanguage.AUTO -> ""
+        AssistantLanguage.ENGLISH ->
+            " Remember: every reply is in English, whatever language you think you heard. If you could not make out " +
+                "what was said, ask the user in English to say it again."
+        AssistantLanguage.ARABIC ->
+            " Remember: every reply is in Arabic, whatever language you think you heard. If you could not make out " +
+                "what was said, ask the user in Arabic to say it again."
     }
     // Only said when it can matter: a fixed English assistant never speaks Arabic.
     val dialectInstruction = dialect.promptName
@@ -349,8 +364,32 @@ fun voiceAssistantSystemPrompt(
         "control something in the car and a matching function is available, call that function instead " +
         "of describing the action in words. If no matching function is available, say so plainly rather " +
         "than pretending to have done it.$searchInstruction$memoryInstruction" +
-        if (conversation) {
-            " This is an ongoing conversation: after you answer, the user may keep talking, so answer " +
-                "and wait. When the user says they are finished, call end_conversation and say a very short goodbye."
-        } else ""
+        (
+            if (conversation) {
+                " This is an ongoing conversation: after you answer, the user may keep talking, so answer " +
+                    "and wait. When the user says they are finished, call end_conversation and say a very short goodbye."
+            } else {
+                ""
+            }
+            ) +
+        languageReminder
+}
+
+/**
+ * Whether a spoken reply (as its transcript) is in the language the user fixed, as far as its letters say: a heuristic,
+ * for the log only. Null when there is nothing to say (the language is automatic, or the reply has no letters).
+ */
+object ReplyLanguage {
+    fun matches(language: AssistantLanguage, reply: String): Boolean? {
+        val letters = reply.filter { it.isLetter() }
+        if (letters.isEmpty()) return null
+        val arabic = letters.count { it in '\u0600'..'\u06FF' || it in '\u0750'..'\u077F' || it in '\uFB50'..'\uFDFF' || it in '\uFE70'..'\uFEFF' }
+        return when (language) {
+            AssistantLanguage.AUTO -> null
+            // Names and a few English words inside an Arabic reply are fine; a reply with no Arabic at all is not.
+            AssistantLanguage.ARABIC -> arabic > 0
+            // Any Arabic, other scripts, or accented letters (Spanish, French...) are not English.
+            AssistantLanguage.ENGLISH -> letters.all { it.code < 0x80 }
+        }
+    }
 }
