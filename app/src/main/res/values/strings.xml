@@ -414,4 +414,6 @@
     <string name="voice_speaker_headrest">Driver\'s headrest</string>
     <string name="voice_speaker_car_note">Heard on the car\'s speakers, and in the headrest too when the car\'s headrest sound is on Surround.</string>
     <string name="voice_speaker_headrest_note">While you talk to the assistant, the car\'s headrest sound is set to Interactive and the voice plays on the car\'s navigation channel, so it comes from the driver\'s headrest only. The headrest sound goes back as it was afterwards. Music stays on the car\'s speakers. The volume is set under Volume below. Needs ADB debugging, like the car controls.</string>
+    <string name="log_share_failed">Couldn\'t share the log.</string>
+    <string name="log_showing_newest">Showing the newest %1$d of %2$d characters; the older lines are left out.</string>
 </resources>

@@ -37,7 +37,7 @@ object AppLogger {
 
     fun logError(tag: String, message: String, throwable: Throwable? = null) {
         Log.e(tag, message, throwable)
-        val full = if (throwable != null) "$message\n${throwable.stackTraceToString()}" else message
+        val full = if (throwable != null) "$message\n${throwable.fullStackTrace()}" else message
         appendLine(tag, full)
     }
 

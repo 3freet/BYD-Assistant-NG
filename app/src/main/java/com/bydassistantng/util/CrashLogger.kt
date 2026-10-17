@@ -36,7 +36,7 @@ object CrashLogger {
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
         val entry = buildString {
             append("=== $timestamp — thread \"${thread.name}\" ===\n")
-            append(throwable.stackTraceToString())
+            append(throwable.fullStackTrace())
             append("\n\n")
         }
         file.appendText(entry)
