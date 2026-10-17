@@ -20,6 +20,19 @@ The other lead, `LIGHTS_FLASHING_LIGHT_AND_HORN` (the "find my car" flash and ho
 cloud and over a direct Bluetooth connection, show the command reaching the car without passing through the Android
 side; the head unit only sees the lights come on. See [findings-and-dead-ends.md](byd-internals/findings-and-dead-ends.md).
 
+## Features planned
+
+Ideas for the assistant itself, with a priority. None is built, and for each the first step is to check on the car what
+it needs before promising it.
+
+| Feature | What it would do | Priority |
+| --- | --- | --- |
+| **Greeting when the driver sits down** | A one-line briefing (outside temperature, range, perhaps the last trip) and an offer to start a saved routine. It speaks only when **all three** hold: the car has just woken from sleep, the driver has sat in the seat, and the driver's door has closed. Never on the unlock or the ignition alone, and not for any other reason. Needs, found on the car first: a signal for "the driver is seated" (a seat-occupancy or belt state), the door state (already readable), the car's wake from sleep, and the order and timing of the three. | Medium |
+| **Trip briefing** | Let the assistant brief the driver on recent trips and consumption ("how was my last trip?", "what did I use this week?") from a trip-recording app, linked through an Android intent whose name and reply are still to be defined. Everything stays on the device. | Medium |
+| **Routines** | Saved, named routines ("arriving", "cool it down"): one phrase runs a set of controls together (A/C, seat ventilation, ambient light, windows). The model can already chain controls loosely; a saved routine is faster and predictable. Mostly app-side work, on the existing registry and memory. | Medium |
+| **"How's the car?"** | A read-only tool for "are the doors locked and shut?", "is any window or the sunroof open?", "how much battery and fuel, and what range?", "is the parking brake on?", "what was my consumption?". The framework names the states (door lock and open states, a statistics device with battery, fuel and EV and fuel range, the parking brake); each reading is confirmed with the read-only probe on the car first, as the tyres were. No writes. | Very low |
+| **Seat position profiles** | Save and restore seat positions by name, using the long-term memory the assistant already has. The seat-position ids exist, but this moves things in the cabin, so it is parked-only, with the car's own protection against trapping confirmed and a stop. Needs research on the car first. | Low |
+
 ## Discussion: the factory test controls ("simulate down")
 
 **What it is.** The car's framework has a group of factory test controls. One of them, "simulate down", lets the head
