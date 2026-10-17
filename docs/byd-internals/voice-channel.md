@@ -146,7 +146,11 @@ headrest, and the navigation stream can. That is what *Settings → Sound → Sp
   that finds it stopped pays for starting it (about 0.5 s more before "ready to listen").
 - The exterior speaker uses the same stream with its own switch: a reply still playing is let finish before the switch
   goes on, the listening tone and the replies wait for the switch to go off again, and the announcement itself is also
-  heard in the headrest while Interactive is on.
+  heard in the headrest while Interactive is on. A **sound effect** played outside holds the route from before its switch
+  goes on until it has gone off, and a reply that starts meanwhile waits for it (up to 8 s). Before that, the reply started
+  at once (the model answers as soon as the tool returns), and its first second or so, "the cat sound was played", came
+  out of the exterior speaker: the log showed the reply's first sound 0.8 s after the switch went on and 1.4 s before it
+  went off.
 - The headrest sound has to be on Interactive for that. When a conversation opens the app reads the mode
   (`AUDIO_HEADREST_SOUND_EFFECT_STATUS_IVI`, the state of the registry's `audio.headrestSound`) and, if it is not
   already Interactive, writes down the mode to give back and sets Interactive. The switch is made while the connection

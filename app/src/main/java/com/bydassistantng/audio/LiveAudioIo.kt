@@ -60,6 +60,10 @@ private const val OUTSIDE_RELEASE_SWITCH_MS = 100L
 // What a reply's tail is given, past the last sample, before the exterior switch may go on (the headrest's stream is shared).
 private const val HEADREST_TAIL_MS = 300L
 
+// How long a reply in the headrest waits for the exterior route to be free, and how often it looks.
+private const val HEADREST_EXTERIOR_WAIT_MS = 8_000L
+private const val EXTERIOR_POLL_MS = 40L
+
 // Audio that arrives while the car is still switching to the exterior speaker waits for it, up to this long,
 // and is then played in the cabin instead: a navi-stream track written before the switch would be heard inside.
 private const val OUTSIDE_SWITCH_WAIT_MS = 3_000L
@@ -260,7 +264,8 @@ class LivePcmPlayer @Inject constructor(
      * stream (the headrest speaker's) wait for it to be over.
      */
     val exteriorInUse: Boolean
-        get() = speakingOutside || SystemClock.elapsedRealtime() < outsideReleaseUntilMs || SystemClock.elapsedRealtime() < effectEndsAtMs
+        get() = speakingOutside || effectsOutside.get() > 0 ||
+            SystemClock.elapsedRealtime() < outsideReleaseUntilMs || SystemClock.elapsedRealtime() < effectEndsAtMs
 
     /** True from [beginOutside] until the reply has been heard (or cut off): new audio goes outside. */
     @Volatile var speakingOutside = false
@@ -281,6 +286,13 @@ class LivePcmPlayer @Inject constructor(
 
     // Until when a sound effect is expected to be sounding outside (elapsedRealtime).
     @Volatile private var effectEndsAtMs = 0L
+
+    // How many sound effects are on the exterior route, from before its switch goes on until it has gone off again. A
+    // reply in the headrest shares that route's stream, so it waits for this to be zero.
+    private val effectsOutside = java.util.concurrent.atomic.AtomicInteger(0)
+
+    // The epoch of a reply that stopped waiting for the exterior route (see [awaitExteriorFree]); -1 when none.
+    @Volatile private var exteriorWaitGaveUpEpoch = -1
 
     /**
      * Whether something is being played by the exterior speaker right now: an announcement, or a sound effect and
@@ -361,6 +373,7 @@ class LivePcmPlayer @Inject constructor(
      * main thread. */
     fun playChunk(pcm: ByteArray, receivedInEpoch: Int = epoch.get()) {
         awaitOutsideSwitch()
+        awaitExteriorFree(receivedInEpoch)
         // The first sound of each reply on the voice channel: the music is dealt with and the volume set before it
         // starts, every time, so a cabin that changed between two replies is heard.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && voiceChannel.enabled && !speakingOutside && startsNewReply()) {
@@ -864,6 +877,32 @@ class LivePcmPlayer @Inject constructor(
         if (tail > 0) delay(tail + HEADREST_TAIL_MS)
     }
 
+    /**
+     * With the headrest as the speaker, the reply is on the stream the exterior route sends outside: while a sound effect
+     * (or the end of an announcement) has the route, the reply waits for it, or its first words would be heard outside the
+     * car. Returns early if the reply is cut off meanwhile.
+     */
+    private fun awaitExteriorFree(epochAtStart: Int) {
+        if (!voiceChannel.enabled || voiceChannel.speaker != VoiceSpeaker.HEADREST) return
+        if (speakingOutside) return
+        if (!exteriorInUse) {
+            exteriorWaitGaveUpEpoch = -1
+            return
+        }
+        // A reply that has already given up waiting does not start the wait over with each of its chunks.
+        if (exteriorWaitGaveUpEpoch == epochAtStart) return
+        AppLogger.log(TAG, "The exterior speaker is in use — the reply waits for it (the headrest shares its stream)")
+        val deadline = SystemClock.elapsedRealtime() + HEADREST_EXTERIOR_WAIT_MS
+        while (exteriorInUse && !speakingOutside && epoch.get() == epochAtStart && SystemClock.elapsedRealtime() < deadline) {
+            Thread.sleep(EXTERIOR_POLL_MS)
+        }
+        if (exteriorInUse && !speakingOutside && epoch.get() == epochAtStart) {
+            // Better the first words of a reply heard outside than an assistant that stays silent because the route is stuck.
+            exteriorWaitGaveUpEpoch = epochAtStart
+            AppLogger.log(TAG, "The exterior speaker is still in use after ${HEADREST_EXTERIOR_WAIT_MS / 1000} s — the reply plays anyway")
+        }
+    }
+
     /** Blocks the writer of a chunk while the car is still switching to the exterior speaker. */
     private fun awaitOutsideSwitch() {
         val switching = synchronized(trackLock) { if (speakingOutside) pendingSwitch else null } ?: return
@@ -929,6 +968,15 @@ class LivePcmPlayer @Inject constructor(
      */
     suspend fun playEffectOutside(pcm: ShortArray, volume: ExteriorVolume): Boolean {
         val speaker = exterior ?: return false
+        effectsOutside.incrementAndGet()
+        try {
+            return playEffectOn(speaker, pcm, volume)
+        } finally {
+            effectsOutside.decrementAndGet()
+        }
+    }
+
+    private suspend fun playEffectOn(speaker: ExteriorSpeaker, pcm: ShortArray, volume: ExteriorVolume): Boolean {
         letHeadrestReplyFinish()
         if (!speaker.open()) return false
         var track: AudioTrack? = null
