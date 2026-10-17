@@ -119,7 +119,13 @@ tones, one stream at a time, repeated):
 | Exclusive | not decided | not tried |
 
 An early round was read as "the voice stream is in the headrest in Interactive"; it was a mix-up of which group of
-beeps was which, and the real conversation and two repeats said otherwise. So the voice stream cannot be sent to the
+beeps was which, and the real conversation and two repeats said otherwise. What the car's own Interactive description
+calls the *call* sound is a different stream again: the head unit's volume panel has four sliders, Media, Navi, Voice and
+Call, which are streams 3, 15, 17 and **0** (`STREAM_VOICE_CALL`, range 1 to 39; found by matching each slider's fill to
+its stream's index and by moving the Call slider and reading every stream). A plain track on stream 0 is sent to the same
+speaker device as everything else and was **not** heard in the headrest alone in Interactive; a variant with the audio
+mode set to communication was played too, but its result was not recorded, and the call stream was dropped in favour of
+the navigation stream. So the voice stream cannot be sent to the
 headrest, and the navigation stream can. That is what *Settings → Sound → Speaker → Driver's headrest* does:
 
 - The assistant's replies and tones are played on the **navigation stream** (legacy stream 15, plain attributes as the

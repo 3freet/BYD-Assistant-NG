@@ -38,6 +38,7 @@ data or from leaked documents**, and contributions should keep it that way (see
 | [passenger-screen.md](passenger-screen.md) | The second (FSE) screen: its display, the separate Android user, launching apps on it, and the controls the car names for it |
 | [cluster-screen.md](cluster-screen.md) | The driver's instrument cluster: the three projection displays, why starting an app there shows nothing by itself, the navigation type and meter activity that put an app on it, and what did not work |
 | [bluetooth-controls.md](bluetooth-controls.md) | What the head unit's own Bluetooth does, the car's `0x3E8…` phone-key ids and their readings, and what a recorded Bluetooth "find my car" did and did not show on the head unit |
+| [driver-presence.md](driver-presence.md) | The driver's seat occupied/empty state on the safety-belt device, how a sit and a stand look as events next to the driver's door, and one recorded sleep and wake (when the apps are stopped and started again, relative to the seat and the door) |
 | [virtual-sim.md](virtual-sim.md) | The built-in "eSIM": a software SIM, how its profile is downloaded and attached to the modem, the switch calls and the socket commands |
 
 ## The short version

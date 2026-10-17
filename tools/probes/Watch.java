@@ -16,6 +16,7 @@ public class Watch {
         {"Audio", "android.hardware.bydauto.audio.BYDAutoAudioDevice", "1002"},
         {"Light", "android.hardware.bydauto.light.BYDAutoLightDevice", "1004"},
         {"Setting", "android.hardware.bydauto.setting.BYDAutoSettingDevice", "1023"},
+        {"Safety", "android.hardware.bydauto.safetybelt.BYDAutoSafetyBeltDevice", "1042"},
     };
 
     public static void main(String[] args) throws Exception {
