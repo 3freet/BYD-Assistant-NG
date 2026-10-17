@@ -105,5 +105,7 @@ Two things are worth opening in a decompiler such as jadx:
 - Signals are not always what the screen shows: the fridge's cooling set-point is the screen value **+ 19**.
 - A `get` that returns `-10011` or `65535` means "not fitted / not available" — a useful way to find out what
   your car lacks (rear massage on the unit this was built on).
-- The polling probe can **miss pulses shorter than its sweep**. The wheel pad flexing when the horn is pressed
-  produces a ~10 ms pulse that only the system log shows.
+- The polling probe can **miss pulses shorter than its sweep**; the system log (`postEvent` lines) catches them.
+  Do not read meaning into the steering-wheel-speed signal, though: it flickers between 0.0 and 4.0 for 6 to 20 ms
+  every second or so with nobody pressing anything (measured in two recordings: one pulse every 0.8 s and one every
+  5 s), so a pulse that coincides with a horn press, or with a hand on the wheel, proves nothing.

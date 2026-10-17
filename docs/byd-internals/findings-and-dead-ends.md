@@ -37,10 +37,46 @@ everything. See [steering-wheel-button.md](steering-wheel-button.md).
 ## Things that did not work
 
 **The horn cannot be observed or found.** Pressing the wheel horn changes no state, produces no input event and
-logs nothing that names a horn; the only trace is a ~10 ms pulse in the steering-wheel-speed signal, which is
-the wheel pad flexing. The car's "find my car" (lights and horn) showed only the lights: the turn signals went
+logs nothing that names a horn. (An earlier note took a ~10 ms pulse in the steering-wheel-speed signal for its trace;
+that signal pulses between 0.0 and 4.0 every second or so with no horn at all, so it is not one.) The car's "find my car" (lights and horn) showed only the lights: the turn signals went
 to the fast-flash value (`TURN_LIGHT_FLASH_FAST` = 9) for about eleven seconds and the front wing lights came
 on. The honk left no state.
+
+**`LIGHTS_FLASHING_LIGHT_AND_HORN` is not a way to trigger it.** The Light group has this control (id 1048576008,
+`0x3E800008`, Light device type 1004) and it reads 65535 (no reading). Parked, in P, with the parking brake on, a
+single write of each of `1`, `2` and `3` (one write each, well over the 3 s gap apart) was answered with
+`BYDAUTO_COMMAND_RESULT_FAILED` (`LIGHT_COMMAND_FAILED`, -2147482648), the car's log gave no reason, none of the 392
+readable Light states changed, and the driver saw and heard nothing. The Light device has no typed flash or horn
+method either.
+
+**The remote "find my car" does not go through the Android side at all.** Recorded with the polling probe and the
+system log while it was triggered over the car's cloud connection. The car's native cloud-client daemon
+(`/system/bin/cloudmanager`, running as root, logging as `[BYDCLOUD]`) received an encrypted message from the server and
+logged it as data "to the MCU" (the car's microcontroller). Its own log then shows two lines for frames it handled, labelled
+with CAN ids and carrying the same one-byte command: one 13 ms after the message arrived and one 91 ms after. The second
+was turned into a reply to the server within a few milliseconds, echoing the message's identifier; one more message to
+the server went out as the lights went back to normal.
+Then, about 160 ms after the message arrived, the head unit's Light device reported the *result*: `LIGHT_TURN_SIGNAL_LIGHT`
+1 → 9 and both daytime-light states (`LIGHT_LEFT_DAYTIME_LIGHT_STATE`, `LIGHT_RIGHT_DAYTIME_LIGHT_STATE`) 1 → 2, for 11.3
+seconds, then back to 1. The head unit sees the lights come on; it is not the one that asks for them, and the horn is in
+the same command with nothing to read.
+
+**Triggered over a direct Bluetooth connection instead of the cloud**, the car did the same: the same three light states
+changed to the same values for the same 11.3 seconds (the three changes came in a different order). This time the cloud
+daemon logged no message at all, and the head unit's log shows nothing before the lights: no key, no phone, no
+vehicle-API call, only routine background lines (including a Bluetooth LE client that reconnects every 20 s in
+both recordings, so it is not the trigger). The first trace is the Light device's own event. Checked by comparing the two
+seconds before each trigger with quiet stretches of the same log: for the cloud trigger that finds the cloud daemon's lines
+at once (a control that shows the method works), for the Bluetooth trigger it finds only a periodic modem-temperature poll.
+So on both routes the command leaves no trace in the head unit's log or in its polled states, and the head unit only learns
+the result. That is evidence, not proof: anything that does not write to the Android log (the Bluetooth key module, the
+vehicle network, the microcontroller) was not recorded, and the polling can miss pulses shorter than its sweep.
+
+What this does **not** show: how the daemon talks to the microcontroller. Its log prints the frames it handles, not a write,
+and the bus itself was not captured; "CAN" is the daemon's own label, and the link could as well be SPI or a serial port
+(the unit has `spidev_*` and `tty*` nodes). The daemon's binary is not readable from the shell user, so it could not be
+read for the answer. Nothing in the Android framework that we found sends this command, so the head unit has no known
+way to start it.
 
 **The only candidates for a remote horn are in the Security group** and are `_SET`-only, with no state to read:
 `SECURITY_HIGH_RISK_WHISTLE_WARNING_SET` and `SECURITY_HIGH_RISK_DOUBLE_FLASH_WARNING_SET`. The Security device

@@ -6,17 +6,19 @@ car, then document it from our own observation.
 
 ## Leads to try on the car
 
-Both are one-shot controls in the vehicle HAL, not tried yet. They are `_SET` ids, so there may be no state to read
-back; "worked" has to be judged from what the car does.
+One lead is left. It is a one-shot control in the vehicle HAL, not tried yet. It is a `_SET` id, so there may be no
+state to read back; "worked" has to be judged from what the car does.
 
 | Lead | What it might be | First test | Care |
 | --- | --- | --- | --- |
-| `LIGHTS_FLASHING_LIGHT_AND_HORN` (Light device, type 1004; write `1`, with a 3 s gap between writes) | The horn route that was never found: the "find my car" flash and honk, from the head unit | Parked, nobody near the car: one write, watch the lights and listen. Read the Light group's states before and after, as in [research-method.md](byd-internals/research-method.md) | It makes a loud noise outside the car and flashes the lights. Keep the 3 s gap; keep it out of the model's tools until it is known to be bounded |
 | `SENSOR_WINDOWS_CLOSE_REQUEST_SET` (Sensor device, type 1043; write `1`) | Close every window at once | Parked, windows open a little, nothing in the way: one write, watch all four | A window that closes on a hand or a head. Only while parked and with the car's own anti-pinch confirmed to work; closing is a one-way request, so the model should ask first |
 
-If both work they would join the vehicle commands as ordinary registry entries (with their own safety notes), and
-the horn lead would close the "horn cannot be found" entry in
-[findings-and-dead-ends.md](byd-internals/findings-and-dead-ends.md).
+If it works it would join the vehicle commands as an ordinary registry entry (with its own safety notes).
+
+The other lead, `LIGHTS_FLASHING_LIGHT_AND_HORN` (the "find my car" flash and honk from the head unit), was tried on
+2026-10-17 and is closed: the car refused values 1, 2 and 3, and recordings of the car's own remote "find my car", over the
+cloud and over a direct Bluetooth connection, show the command reaching the car without passing through the Android
+side; the head unit only sees the lights come on. See [findings-and-dead-ends.md](byd-internals/findings-and-dead-ends.md).
 
 ## Discussion: the factory test controls ("simulate down")
 

@@ -37,6 +37,7 @@ data or from leaked documents**, and contributions should keep it that way (see
 | [cabin-and-dashcam.md](cabin-and-dashcam.md) | Air quality, the ambient light strip, mirror switches, audio and sound staging, and the dashcam's command service: ids, values, how each was found and what did not work |
 | [passenger-screen.md](passenger-screen.md) | The second (FSE) screen: its display, the separate Android user, launching apps on it, and the controls the car names for it |
 | [cluster-screen.md](cluster-screen.md) | The driver's instrument cluster: the three projection displays, why starting an app there shows nothing by itself, the navigation type and meter activity that put an app on it, and what did not work |
+| [bluetooth-controls.md](bluetooth-controls.md) | What the head unit's own Bluetooth does, the car's `0x3E8…` phone-key ids and their readings, and what a recorded Bluetooth "find my car" did and did not show on the head unit |
 | [virtual-sim.md](virtual-sim.md) | The built-in "eSIM": a software SIM, how its profile is downloaded and attached to the modem, the switch calls and the socket commands |
 
 ## The short version
