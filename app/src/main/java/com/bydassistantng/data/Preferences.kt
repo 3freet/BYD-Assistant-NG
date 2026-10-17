@@ -78,6 +78,8 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val VOICE_CHANNEL_DIP = intPreferencesKey("voice_channel_dip")
         val VOICE_CHANNEL_SPEAKER = stringPreferencesKey("voice_channel_speaker")
         val HEADREST_SPEAKER_PRESENT = booleanPreferencesKey("headrest_speaker_present")
+        val GREETING_ENABLED = booleanPreferencesKey("greeting_enabled")
+        val GREETING_SPEAKER = stringPreferencesKey("greeting_speaker")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -121,6 +123,26 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
     val triggerKeyCode: Flow<Int> = dataStore.data.map { it[Keys.TRIGGER_KEY_CODE] ?: WheelKeys.MIC_SHORT_PRESS }
     suspend fun setTriggerKeyCode(keyCode: Int) {
         dataStore.edit { it[Keys.TRIGGER_KEY_CODE] = keyCode }
+    }
+
+    /**
+     * Whether the assistant says hello by itself when the car has woken, the driver has sat down and the driver's door has
+     * shut. Off by default: it is the one thing the assistant does without being asked.
+     */
+    val greetingEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.GREETING_ENABLED] ?: false }
+    suspend fun setGreetingEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.GREETING_ENABLED] = enabled }
+    }
+
+    /**
+     * Which speakers the greeting is heard from. Its own setting, apart from the assistant's usual voice: the driver's
+     * headrest by default, so that the greeting is for the driver alone (it falls back to the car's speakers on a car
+     * that has no headrest speaker, or with the voice channel off).
+     */
+    val greetingSpeaker: Flow<VoiceSpeaker> =
+        dataStore.data.map { prefs -> prefs[Keys.GREETING_SPEAKER]?.let { VoiceSpeaker.from(it) } ?: VoiceSpeaker.HEADREST }
+    suspend fun setGreetingSpeaker(speaker: VoiceSpeaker) {
+        dataStore.edit { it[Keys.GREETING_SPEAKER] = speaker.key }
     }
 
     /** Whether the user can talk over the assistant to interrupt it. On by default; off makes the mic

@@ -120,6 +120,9 @@ private const val FIRST_NOISE_WAIT_MS = 150L
 private const val NOISE_FRESH_MS = 10 * 60_000L
 private const val HEADREST_HOLD_MS = 4_000L
 
+// A session opened ahead of a greeting is not used once it is older than this (the server drops idle sessions).
+private const val PREPARED_MAX_MS = 150_000L
+
 // After a conversation the connection to the server is refreshed this often, this many times (about half an hour).
 private const val KEEP_WARM_INTERVAL_MS = 4 * 60_000L
 private const val KEEP_WARM_REFRESHES = 7
@@ -255,6 +258,12 @@ class LiveConversationController @Inject constructor(
     // Set when the model called end_conversation: the conversation ends once its goodbye has played.
     private var endAfterReply = false
 
+    // The assistant opened this conversation itself (the greeting) and its first reply is still to be heard: if that
+    // reply does not ask the driver anything the conversation is over once it has played, without the "done" tone
+    // (nothing was waited for), which is [quietEnd] until the mic is first opened for the driver.
+    private var openingTurn = false
+    private var quietEnd = false
+
     // A turn that involves a function call completes twice: once when the model hands over the call,
     // and again after it has spoken the result. Only the second is the end of the exchange.
     private var awaitingSpokenReply = false
@@ -357,18 +366,28 @@ class LiveConversationController @Inject constructor(
     /** Attempts to open a Live session and start the conversation. Returns false if the session
      * couldn't be established at all (model unavailable, access denied, network error, timeout) —
      * no audio is lost in that case, since capture only starts after setup succeeds, so the caller
-     * can fall back to the classic pipeline for this turn with a clean slate. */
-    suspend fun start(onStatus: suspend (TurnStatus) -> Unit): Boolean {
+     * can fall back to the classic pipeline for this turn with a clean slate.
+     *
+     * With an [opening] the assistant speaks first: the text is sent to the model as a message and the mic stays closed
+     * until the reply is done (the greeting when the driver sits down); without one the user speaks first.
+     *
+     * A [speaker] given here is where this conversation is heard, in place of the one in the sound settings. */
+    suspend fun start(opening: String? = null, speaker: VoiceSpeaker? = null, onStatus: suspend (TurnStatus) -> Unit): Boolean {
         // Before close(), which would otherwise start a press that is waiting for the conversation to end.
         PlaybackFollowUp.cancel()
         keepWarmJob?.cancel()
-        close()
+        // A greeting uses the session that was opened ahead for it, if there is one (waiting for it if it is still being
+        // opened); anything else starts afresh and a session kept for a greeting is let go.
+        val ahead = if (opening != null) awaitPrepared() else null.also { discardPrepared() }
+        close(keepSession = ahead != null)
         // close() deliberately lets queued audio finish, but starting means the user pressed over any
         // previous reply and wants it to stop.
         player.stopAndFlush()
         this.onStatus = onStatus
         transcript.clear()
         endAfterReply = false
+        openingTurn = false
+        quietEnd = false
         awaitingSpokenReply = false
         discardReply = false
         unansweredTurns = 0
@@ -376,8 +395,6 @@ class LiveConversationController @Inject constructor(
         lastStartFailure = StartFailure.NONE
         lastStartMessage = ""
         val startedAt = SystemClock.elapsedRealtime()
-        languageForSession = preferencesRepository.assistantLanguage.first()
-        AppLogger.log(TAG, "Reply language: $languageForSession")
         val apiKey = secureCredentials.getApiKey()
         if (apiKey.isNullOrBlank()) {
             lastStartFailure = StartFailure.NO_API_KEY
@@ -385,21 +402,9 @@ class LiveConversationController @Inject constructor(
             return false
         }
 
-        vehicleControlEnabledForSession = preferencesRepository.vehicleControlEnabled.first()
+        loadSessionSettings(forGreeting = opening != null)
         bargeInEnabled = preferencesRepository.bargeInEnabled.first()
-        dialectForSession = preferencesRepository.arabicDialect.first()
-        // Off while a recent session showed the server refusing it (see [searchBlockedUntilMs]).
-        webSearchForSession = preferencesRepository.webSearchEnabled.first() && SystemClock.elapsedRealtime() >= searchBlockedUntilMs
-        voiceForSession = AssistantVoices.valid(preferencesRepository.assistantVoice.first())
         silenceEndMsForSession = EndOfSpeechWait.clamp(preferencesRepository.endOfSpeechWaitMs.first())
-        longTermForSession = preferencesRepository.longTermMemoryEnabled.first()
-        shortTermForSession = preferencesRepository.shortTermMemoryEnabled.first()
-        exteriorSpeakerForSession = preferencesRepository.exteriorSpeakerEnabled.first()
-        driveModesForSession = preferencesRepository.driveModesEnabled.first()
-        clusterForSession = ClusterOptions(
-            enabled = ClusterScreenAvailability.isOnThisCar(context) && preferencesRepository.clusterScreenEnabled.first(),
-            keepMapsDisabled = preferencesRepository.clusterKeepMapsDisabled.first(),
-        )
         // The voice channel: where and how replies are spoken, for this conversation (off on a car without one).
         player.recoverMusicVolume()
         player.voiceChannel = if (VoiceChannel.isAvailable(context) && preferencesRepository.voiceChannelEnabled.first()) {
@@ -409,7 +414,7 @@ class LiveConversationController @Inject constructor(
                 adaptive = preferencesRepository.voiceChannelAdaptive.first(),
                 gainSteps = preferencesRepository.voiceChannelGain.first(),
                 dipPercent = preferencesRepository.voiceChannelDip.first(),
-                speaker = preferencesRepository.voiceChannelSpeaker.first(),
+                speaker = speaker ?: preferencesRepository.voiceChannelSpeaker.first(),
             )
         } else {
             VoiceChannelOptions.OFF
@@ -426,19 +431,23 @@ class LiveConversationController @Inject constructor(
         // With the headrest as the speaker the tones share the exterior speaker's stream: not while it is on.
         earcons.blocked = { player.voiceChannel.enabled && player.voiceChannel.speaker == VoiceSpeaker.HEADREST && player.exteriorInUse }
         earcons.voiceLevel = { player.voiceBaseVolume }
-        factsForSession = if (longTermForSession) memory.currentFacts() else emptyList()
-        recentForSession = if (shortTermForSession) memory.recentExchanges() else emptyList()
         pendingUser.clear()
         pendingActions.clear()
-        if (factsForSession.isNotEmpty() || recentForSession.isNotEmpty()) {
-            AppLogger.log(TAG, "Memory: ${factsForSession.size} remembered fact(s), ${recentForSession.size} recent exchange(s) carried in")
-        }
 
         sessionApiKey = apiKey
         buildSession()
         val settingsMs = SystemClock.elapsedRealtime() - startedAt
 
-        var opened = openSession()
+        val reuse = ahead != null && liveClient.isOpen && ahead.matches(sessionInstruction, sessionTools, voiceForSession, apiKey) &&
+            SystemClock.elapsedRealtime() - ahead.at <= PREPARED_MAX_MS
+        if (ahead != null) {
+            AppLogger.log(
+                TAG,
+                if (reuse) "Using the session opened ahead (${SystemClock.elapsedRealtime() - ahead.at}ms ago)"
+                else "The session opened ahead cannot be used (${ahead.whyNot(liveClient.isOpen, sessionInstruction, sessionTools, voiceForSession, apiKey)}) — opening a new one",
+            )
+        }
+        var opened = reuse || openSession()
         val connectedMs = SystemClock.elapsedRealtime() - startedAt - settingsMs
         // A server that turns the setup down must not leave the user with no assistant at all. The extras are
         // dropped one at a time, search first, so the log says which one it was: "exceeded your current quota"
@@ -475,7 +484,7 @@ class LiveConversationController @Inject constructor(
         awaitHeadrest()
         // The volume before the first tone, not after it: the tone is on the same stream as the voice.
         settleVolume(firstNoise)
-        openGate()
+        if (opening == null) openGate() else beginOpening(opening)
         conversationActive = true
         if (player.voiceChannel.enabled && player.voiceChannel.adaptive) {
             player.cabinNoise = { cabinNoise.estimate() }
@@ -494,6 +503,115 @@ class LiveConversationController @Inject constructor(
         // speaker's helper follows the vehicle helper rather than starting beside it.
         if (vehicleControlEnabledForSession) warmUpHelpers()
         return true
+    }
+
+    /**
+     * What the server session is built from, read from the settings and the memory: the same for [prepare] and [start].
+     * A session for a greeting carries the remembered notes but not the last exchanges: those age out minute by minute, so
+     * a session opened ahead would no longer match the one built when the greeting starts, and could not be used.
+     */
+    private suspend fun loadSessionSettings(forGreeting: Boolean) {
+        languageForSession = preferencesRepository.assistantLanguage.first()
+        AppLogger.log(TAG, "Reply language: $languageForSession")
+        vehicleControlEnabledForSession = preferencesRepository.vehicleControlEnabled.first()
+        dialectForSession = preferencesRepository.arabicDialect.first()
+        // Off while a recent session showed the server refusing it (see [searchBlockedUntilMs]).
+        webSearchForSession = preferencesRepository.webSearchEnabled.first() && SystemClock.elapsedRealtime() >= searchBlockedUntilMs
+        voiceForSession = AssistantVoices.valid(preferencesRepository.assistantVoice.first())
+        longTermForSession = preferencesRepository.longTermMemoryEnabled.first()
+        shortTermForSession = preferencesRepository.shortTermMemoryEnabled.first()
+        exteriorSpeakerForSession = preferencesRepository.exteriorSpeakerEnabled.first()
+        driveModesForSession = preferencesRepository.driveModesEnabled.first()
+        clusterForSession = ClusterOptions(
+            enabled = ClusterScreenAvailability.isOnThisCar(context) && preferencesRepository.clusterScreenEnabled.first(),
+            keepMapsDisabled = preferencesRepository.clusterKeepMapsDisabled.first(),
+        )
+        factsForSession = if (longTermForSession) memory.currentFacts() else emptyList()
+        recentForSession = if (shortTermForSession && !forGreeting) memory.recentExchanges() else emptyList()
+        if (factsForSession.isNotEmpty() || recentForSession.isNotEmpty()) {
+            AppLogger.log(TAG, "Memory: ${factsForSession.size} remembered fact(s), ${recentForSession.size} recent exchange(s) carried in")
+        }
+    }
+
+    /** A server session opened ahead of a greeting, and what it was built from (it is only used if that still holds). */
+    private class Prepared(
+        val instruction: GeminiContent?,
+        val tools: List<GeminiTool>?,
+        val voice: String?,
+        val apiKey: String,
+        val at: Long,
+    ) {
+        fun matches(instruction: GeminiContent?, tools: List<GeminiTool>?, voice: String?, apiKey: String) =
+            this.instruction == instruction && this.tools == tools && this.voice == voice && this.apiKey == apiKey
+
+        /** For the log: what stops this session being used, or null if nothing does. */
+        fun whyNot(open: Boolean, instruction: GeminiContent?, tools: List<GeminiTool>?, voice: String?, apiKey: String): String? = when {
+            !open -> "the server closed it"
+            SystemClock.elapsedRealtime() - at > PREPARED_MAX_MS -> "it is too old"
+            this.apiKey != apiKey -> "the key changed"
+            this.instruction != instruction -> "the instructions changed"
+            this.tools != tools -> "the tools changed"
+            this.voice != voice -> "the voice changed"
+            else -> null
+        }
+    }
+
+    @Volatile private var prepared: Prepared? = null
+    @Volatile private var prepareJob: Job? = null
+
+    /**
+     * Opens the server session now, for a greeting that is about to open the conversation itself: connecting and setting
+     * up takes most of a second, which is better spent while the driver is still getting in than after they are seated.
+     * Nothing else is touched (no microphone, no speakers, no headrest): [start] with an opening takes the session over,
+     * and [discardPrepared] lets it go if the greeting does not happen. Returns once the session is open or has failed.
+     */
+    suspend fun prepare() {
+        if (conversationActive || prepared != null) return
+        prepareJob?.let { if (it.isActive) return it.join() }
+        val job = scope.launch { prepareNow() }
+        prepareJob = job
+        job.join()
+    }
+
+    private suspend fun prepareNow() {
+        val apiKey = secureCredentials.getApiKey()
+        if (apiKey.isNullOrBlank()) return
+        val startedAt = SystemClock.elapsedRealtime()
+        loadSessionSettings(forGreeting = true)
+        sessionApiKey = apiKey
+        buildSession()
+        // No conversation yet: whatever the session says before one starts is for nobody.
+        onStatus = null
+        if (!openSession()) {
+            AppLogger.log(TAG, "Could not open the session ahead (${liveClient.lastSetupFailure}) — the greeting will open one when it starts")
+            eventJob?.cancel()
+            eventJob = null
+            liveClient.close()
+            return
+        }
+        prepared = Prepared(sessionInstruction, sessionTools, voiceForSession, apiKey, SystemClock.elapsedRealtime())
+        AppLogger.log(TAG, "Opened the session ahead of the greeting in ${SystemClock.elapsedRealtime() - startedAt}ms")
+    }
+
+    /** The session opened ahead, once it is open (waits while it is being opened), or null if there is none. */
+    private suspend fun awaitPrepared(): Prepared? {
+        prepareJob?.join()
+        prepareJob = null
+        return prepared.also { prepared = null }
+    }
+
+    /** Lets go of a session opened ahead that is not going to be used. Does nothing once a conversation has begun. */
+    fun discardPrepared() {
+        val opening = prepareJob?.isActive == true
+        prepareJob?.cancel()
+        prepareJob = null
+        // Nothing to let go of, or a conversation has the session now.
+        if ((prepared == null && !opening) || conversationActive) return
+        AppLogger.log(TAG, "The session opened ahead is not needed — closing it")
+        prepared = null
+        eventJob?.cancel()
+        eventJob = null
+        liveClient.close()
     }
 
     /**
@@ -656,9 +774,36 @@ class LiveConversationController @Inject constructor(
         holdJob?.cancel()
         utteranceHold.discard()
         synchronized(preRoll) { preRoll.clear() }
+        quietEnd = false
         gate = Gate.OPEN
         earcons.play(Earcon.LISTENING)
         armListenTimeouts(afterBargeIn = false)
+    }
+
+    /**
+     * The assistant's turn begins, before the user has said anything: [text] goes to the model as a message, and the mic
+     * stays closed (as it is while any reply is spoken) until the reply is done, when [resumeAfterReply] opens it as
+     * after any other reply. No "go ahead" tone: nothing is being waited for yet.
+     */
+    private fun beginOpening(text: String) {
+        endpointer = newEndpointer()
+        awaitingSpokenReply = false
+        replyAudioStarted = false
+        turnCompleted = false
+        discardReply = false
+        chunksThisTurn = 0
+        endDip()
+        responseTimeoutMs = RESPONSE_TIMEOUT_MS
+        holdJob?.cancel()
+        utteranceHold.discard()
+        synchronized(preRoll) { preRoll.clear() }
+        gate = Gate.BLOCKED
+        openingTurn = true
+        quietEnd = true
+        AppLogger.log(TAG, "Opening the conversation: the assistant speaks first")
+        liveClient.sendText(text)
+        scope.launch { onStatus?.invoke(TurnStatus.Thinking) }
+        armResponseWatchdog(firstWait = true)
     }
 
     /** Whether a sentence (not just cabin noise, which the filter below ignores) has been heard this turn. */
@@ -793,6 +938,9 @@ class LiveConversationController @Inject constructor(
         // Cut the reply off at once, and anything of it still on its way from the server. The flag goes
         // up BEFORE the flush: the other way round, a chunk arriving in between slipped through and played.
         discardReply = !turnCompleted
+        // Talking over the greeting makes it an ordinary conversation: it is not ended after the reply to what was said.
+        openingTurn = false
+        quietEnd = false
         pendingUser.clear()
         pendingActions.clear()
         player.stopAndFlush(keepMusicDown = true)
@@ -865,13 +1013,13 @@ class LiveConversationController @Inject constructor(
 
     /** Ends the whole conversation right now: stops the mic and any reply being spoken, closes the
      * session, and says so with the "done" tone. Safe to call at any time. */
-    fun endConversation() {
+    fun endConversation(quiet: Boolean = false) {
         AppLogger.log(TAG, "Conversation ended")
         player.stopAndFlush()
         close()
         // The next press finds a connection to the server already open (see [GeminiLiveClient.preconnect]).
         keepConnectionWarm()
-        earcons.play(Earcon.DONE)
+        if (!quiet) earcons.play(Earcon.DONE)
         scope.launch { onStatus?.invoke(TurnStatus.Done) }
     }
 
@@ -1007,7 +1155,7 @@ class LiveConversationController @Inject constructor(
     /** Tears down the session (WebSocket + mic). Safe to call even if nothing is active. Does NOT
      * stop audio already queued for playback — [LivePcmPlayer] keeps draining its buffer on its own
      * once queued, so closing here can't cut off the tail end of a reply that already arrived. */
-    fun close() {
+    fun close(keepSession: Boolean = false) {
         conversationActive = false
         endAfterReply = false
         listenCapJob?.cancel()
@@ -1034,9 +1182,11 @@ class LiveConversationController @Inject constructor(
         holdJob = null
         utteranceHold.discard()
         synchronized(preRoll) { preRoll.clear() }
-        eventJob?.cancel()
-        eventJob = null
-        liveClient.close()
+        if (!keepSession) {
+            eventJob?.cancel()
+            eventJob = null
+            liveClient.close()
+        }
     }
 
     /** What comes after a finished reply: wait for it to actually be heard, then listen again — or, if
@@ -1056,7 +1206,7 @@ class LiveConversationController @Inject constructor(
             if (!conversationActive) return@launch
 
             if (endAfterReply) {
-                endConversation()
+                endConversation(quiet = quietEnd)
                 return@launch
             }
             if (!liveClient.isOpen && !reconnect()) {
@@ -1229,6 +1379,12 @@ class LiveConversationController @Inject constructor(
                 if (BuildConfig.DEBUG && transcript.isNotBlank()) AppLogger.log(TAG, "said: \"${transcript.toString().trim()}\"")
                 if (ReplyLanguage.matches(languageForSession, transcript.toString()) == false) {
                     AppLogger.log(TAG, "The reply was not in the language that is set ($languageForSession)")
+                }
+                if (openingTurn) {
+                    openingTurn = false
+                    val asks = OpeningReply.asksSomething(transcript.toString())
+                    AppLogger.log(TAG, if (asks) "The opening asks something — listening for the answer" else "The opening asks nothing — the conversation ends after it")
+                    if (!asks) endAfterReply = true
                 }
                 recordExchange()
                 turnCompleted = true

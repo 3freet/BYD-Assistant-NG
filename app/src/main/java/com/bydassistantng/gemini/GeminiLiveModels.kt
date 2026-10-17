@@ -64,6 +64,8 @@ data class LiveRealtimeInput(
     // Only valid with automatic (server-side) activity detection enabled, which is this app's
     // default — manual activityStart/activityEnd are for when that's explicitly disabled instead.
     val audioStreamEnd: Boolean? = null,
+    // Text in place of speech: what makes the model speak first (see [GeminiLiveClient.sendText]).
+    val text: String? = null,
 )
 
 @Serializable

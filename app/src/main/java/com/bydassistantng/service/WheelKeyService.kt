@@ -11,12 +11,15 @@ import android.view.accessibility.AccessibilityEvent
 import com.bydassistantng.audio.AudioRecorder
 import com.bydassistantng.audio.Earcon
 import com.bydassistantng.audio.Earcons
+import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.audio.TextToSpeechEngine
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.gemini.ConversationController
 import com.bydassistantng.gemini.LiveConversationController
 import com.bydassistantng.gemini.StartFailure
 import com.bydassistantng.gemini.TurnStatus
+import com.bydassistantng.greeting.GreetResult
+import com.bydassistantng.greeting.GreetingHost
 import com.bydassistantng.ui.EXTRA_REQUEST_MIC_PERMISSION
 import com.bydassistantng.ui.MainActivity
 import com.bydassistantng.R
@@ -29,9 +32,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
@@ -54,7 +59,7 @@ private const val OFFLINE_SHOWN_MS = 8_000L
  * accessibility services are all notified — so that mapping has to be removed there.
  */
 @AndroidEntryPoint
-class WheelKeyService : AccessibilityService() {
+class WheelKeyService : AccessibilityService(), GreetingHost {
 
     @Inject lateinit var preferencesRepository: PreferencesRepository
     @Inject lateinit var audioRecorder: AudioRecorder
@@ -120,6 +125,34 @@ class WheelKeyService : AccessibilityService() {
         liveConversationController.close()
         scope.cancel()
         super.onDestroy()
+    }
+
+    // ── Greeting ─────────────────────────────────────────────────────────────────────────────
+
+    override val busy: Boolean
+        get() = liveConversationController.inConversation || audioRecorder.isRecording || startJob?.isActive == true
+
+    /**
+     * Opens a conversation with the assistant speaking first (see [com.bydassistantng.greeting.GreetingCoordinator]).
+     * Nobody asked for it, so a failure is only logged: no error tone, no banner left behind.
+     */
+    override suspend fun greet(opening: String, speaker: VoiceSpeaker): GreetResult = withContext(Dispatchers.Main) {
+        if (busy) return@withContext GreetResult.NO
+        if (!hasMicPermission()) {
+            AppLogger.log(TAG, "Greeting skipped: the microphone permission is off")
+            return@withContext GreetResult.NO
+        }
+        if (!preferencesRepository.onboardingCompleted.first()) return@withContext GreetResult.NO
+        banner.show(BannerMode.CONNECTING)
+        // Registered as the turn being started, so a press while it connects is ignored as for any other start.
+        val start = scope.async { liveConversationController.start(opening, speaker) { status -> handleStatus(status) } }
+        startJob = start
+        if (start.await()) return@withContext GreetResult.STARTED
+        banner.hide()
+        when (liveConversationController.lastStartFailure) {
+            StartFailure.NO_API_KEY, StartFailure.API_KEY_REJECTED -> GreetResult.NO
+            else -> GreetResult.LATER
+        }
     }
 
     // ── Voice turn ───────────────────────────────────────────────────────────────────────────

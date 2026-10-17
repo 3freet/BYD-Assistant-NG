@@ -27,11 +27,40 @@ it needs before promising it.
 
 | Feature | What it would do | Priority |
 | --- | --- | --- |
-| **Greeting when the driver sits down** | A one-line briefing (outside temperature, range, perhaps the last trip) and an offer to start a saved routine. It speaks only when **all three** hold: the car has just woken from sleep, the driver has sat in the seat, and the driver's door has closed. Never on the unlock or the ignition alone, and not for any other reason. Needs, found on the car first: a signal for "the driver is seated" (a seat-occupancy or belt state), the door state (already readable), the car's wake from sleep, and the order and timing of the three. | Medium |
 | **Trip briefing** | Let the assistant brief the driver on recent trips and consumption ("how was my last trip?", "what did I use this week?") from a trip-recording app, linked through an Android intent whose name and reply are still to be defined. Everything stays on the device. | Medium |
 | **Routines** | Saved, named routines ("arriving", "cool it down"): one phrase runs a set of controls together (A/C, seat ventilation, ambient light, windows). The model can already chain controls loosely; a saved routine is faster and predictable. Mostly app-side work, on the existing registry and memory. | Medium |
 | **"How's the car?"** | A read-only tool for "are the doors locked and shut?", "is any window or the sunroof open?", "how much battery and fuel, and what range?", "is the parking brake on?", "what was my consumption?". The framework names the states (door lock and open states, a statistics device with battery, fuel and EV and fuel range, the parking brake); each reading is confirmed with the read-only probe on the car first, as the tyres were. No writes. | Very low |
 | **Seat position profiles** | Save and restore seat positions by name, using the long-term memory the assistant already has. The seat-position ids exist, but this moves things in the cabin, so it is parked-only, with the car's own protection against trapping confirmed and a stop. Needs research on the car first. | Low |
+
+## The greeting when the driver sits down
+
+Built, off by default (Settings → Assistant → When you get in). It speaks unprompted, so it is held to three things that
+must all be true, and to nothing else (not an unlock, not the ignition): the car has just woken from sleep, the driver is
+in the seat, and the driver's door is shut. Then the assistant says a good morning, afternoon or evening by the system
+clock, tells the time and then the outside temperature, warmly and cheerfully, and stops: it asks nothing, and the
+conversation ends without a tone. It has a speaker setting of its own, the driver's headrest by default (the car's speakers
+on a car with no headrest speaker, or with the voice channel off). With long-term
+memory on, the driver can tell the assistant how they want to be greeted and to remember it: different words, something
+more to say, or a question, in which case the conversation goes on and listens. A button in the same settings plays it on
+demand.
+
+How it works, and why: the apps are stopped when the car is switched off and started again by the wake broadcast, which
+comes late (23 s after the screens in the first recording), so the app cannot watch the driver sit down and the door
+shut. It reads the seat and the door when it starts (see [driver-presence.md](byd-internals/driver-presence.md)) and
+greets as soon as both hold, for up to three minutes after the wake. It needs the assistant's wheel-button service (it
+owns the microphone), so it waits for that to bind, and ADB debugging for the reads.
+
+Timing on the car: the first real run took 9.6 s from the wake broadcast to the first word, of which about 3 s was
+waiting to retry once the wheel-button service had bound, 1 s a second confirming read and 2 s fixed waits for the service
+to bind. Those are gone. The assistant's server session is also opened as soon as the car wakes, while the driver is still
+getting in (and let go if the greeting does not happen), so that only the words are left to send; a simulated wake with the
+driver already seated went from broadcast to first word in 3.3 s, with the session setup out of the way. On a real wake, with
+the app running well before the driver sat down, the first word came 2.1 s after the door shut. What is left is
+the helper starting (about 1 s), the service binding, and the model's first word (1 to 1.7 s). Also possible: sending the
+words before the headrest route and the cabin-noise reading are done (about 0.4 s), holding the audio until they are.
+
+To check: the delay from the wake broadcast after a night's sleep, and whether the broadcast always comes before the
+driver is ready.
 
 ## Discussion: the factory test controls ("simulate down")
 

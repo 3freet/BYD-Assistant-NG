@@ -62,7 +62,24 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
                 onFailure = { queryFailure(it) },
             )
             VehicleQuery.HEADREST_SOUND -> readHeadrestSound()
+            VehicleQuery.DRIVER_PRESENCE -> readDriverPresence()
         }
+    }
+
+    /** Whether the driver's seat is occupied and the driver's door is shut, as the car reports them (see [DriverPresence]). */
+    private fun readDriverPresence(): VehicleDispatchResult = try {
+        val bodywork = GENERIC_ROUTE_CLASS_BY_DOMAIN.getValue(VehicleDomain.BODYWORK)
+        val seatDevice = getOrCreateInstance(DriverPresence.SEAT_CLASS)
+        val doorDevice = getOrCreateInstance(bodywork)
+        if (seatDevice == null || doorDevice == null) {
+            VehicleDispatchResult.Failure(VehicleDispatchError.CLASS_NOT_FOUND, "No usable instance for ${if (seatDevice == null) DriverPresence.SEAT_CLASS else bodywork}")
+        } else {
+            val seat = readState(seatDevice, DriverPresence.SEAT_DEVICE_TYPE, DriverPresence.SEAT_STATE_ID)
+            val door = readState(doorDevice, DriverPresence.DOOR_DEVICE_TYPE, DriverPresence.DOOR_STATE_ID)
+            VehicleDispatchResult.Success(DriverPresence.encode(DriverPresence.State(seat, door)))
+        }
+    } catch (t: Throwable) {
+        queryFailure(t)
     }
 
     /** The headrest sound mode and the number of headrest speakers, as the car reports them (see [HeadrestSound]). */

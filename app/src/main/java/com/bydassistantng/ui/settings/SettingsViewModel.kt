@@ -19,6 +19,7 @@ import com.bydassistantng.data.CoreFeatures
 import com.bydassistantng.data.OptInFeatures
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.data.SecureCredentials
+import com.bydassistantng.greeting.GreetingCoordinator
 import com.bydassistantng.memory.AddOutcome
 import com.bydassistantng.memory.MemoryFact
 import com.bydassistantng.memory.MemoryRepository
@@ -55,6 +56,7 @@ class SettingsViewModel @Inject constructor(
     private val memory: MemoryRepository,
     private val updateManager: UpdateManager,
     private val headrestRoute: HeadrestRoute,
+    private val greeting: GreetingCoordinator,
     exteriorSpeaker: Optional<ExteriorSpeaker>,
     driveModes: Optional<DriveModeSwitch>,
 ) : ViewModel() {
@@ -84,6 +86,25 @@ class SettingsViewModel @Inject constructor(
 
     fun setEndOfSpeechWaitMs(ms: Int) {
         viewModelScope.launch { preferencesRepository.setEndOfSpeechWaitMs(ms) }
+    }
+
+    val greetingEnabled: StateFlow<Boolean> = preferencesRepository.greetingEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setGreetingEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setGreetingEnabled(enabled) }
+    }
+
+    val greetingSpeaker: StateFlow<VoiceSpeaker> = preferencesRepository.greetingSpeaker
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VoiceSpeaker.HEADREST)
+
+    fun setGreetingSpeaker(speaker: VoiceSpeaker) {
+        viewModelScope.launch { preferencesRepository.setGreetingSpeaker(speaker) }
+    }
+
+    /** Plays the greeting now, whatever the car is doing (the test button); [onOutcome] gets what happened, to tell the user. */
+    fun playGreeting(onOutcome: (GreetingCoordinator.SimulationOutcome) -> Unit) {
+        viewModelScope.launch { onOutcome(greeting.simulate()) }
     }
 
     val shortTermMemoryEnabled: StateFlow<Boolean> = preferencesRepository.shortTermMemoryEnabled

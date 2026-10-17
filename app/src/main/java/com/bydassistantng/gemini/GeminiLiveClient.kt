@@ -211,6 +211,11 @@ class GeminiLiveClient @Inject constructor() {
         webSocket?.send(json.encodeToString(LiveClientMessage.serializer(), LiveClientMessage(realtimeInput = LiveRealtimeInput(audioStreamEnd = true))))
     }
 
+    /** A message in text, as if said: the model answers it by voice. Used to have the assistant speak first. */
+    fun sendText(text: String) {
+        webSocket?.send(json.encodeToString(LiveClientMessage.serializer(), LiveClientMessage(realtimeInput = LiveRealtimeInput(text = text))))
+    }
+
     fun sendToolResponses(responses: List<LiveFunctionResponse>) {
         webSocket?.send(json.encodeToString(LiveClientMessage.serializer(), LiveClientMessage(toolResponse = LiveToolResponse(responses))))
     }

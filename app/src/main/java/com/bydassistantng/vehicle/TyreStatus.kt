@@ -16,6 +16,7 @@ enum class VehicleQuery(val id: String) {
     OUTSIDE_TEMPERATURE("outside_temperature"),
     AIR_QUALITY("air_quality"),
     HEADREST_SOUND("headrest_sound"),
+    DRIVER_PRESENCE("driver_presence"),
     ;
 
     companion object {

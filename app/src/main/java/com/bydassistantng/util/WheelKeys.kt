@@ -17,8 +17,9 @@ import com.bydassistantng.service.WheelKeyService
  * `getevent` / logcat: a short press is 320, a long press is 328.
  */
 private const val TAG = "WheelKeys"
-private const val SELF_BIND_GRACE_MS = 3_000L
-private const val REBIND_GAP_MS = 1_000L
+private const val SELF_BIND_GRACE_MS = 1_200L
+private const val SELF_BIND_POLL_MS = 100L
+private const val REBIND_GAP_MS = 400L
 private const val MIN_REBIND_INTERVAL_MS = 30_000L
 
 object WheelKeys {
@@ -90,7 +91,8 @@ object WheelKeys {
         if (!ensureServiceEnabled(context)) return false // missing from the list: adding it makes the system bind it
         if (WheelKeyService.instance != null) return true
         // When our process was started *by* the system binding the service, it is about to connect on its own.
-        Thread.sleep(SELF_BIND_GRACE_MS)
+        val deadline = SystemClock.elapsedRealtime() + SELF_BIND_GRACE_MS
+        while (WheelKeyService.instance == null && SystemClock.elapsedRealtime() < deadline) Thread.sleep(SELF_BIND_POLL_MS)
         if (WheelKeyService.instance != null) return true
         return rebindService(context)
     }

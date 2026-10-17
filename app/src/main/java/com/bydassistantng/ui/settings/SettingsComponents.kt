@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -140,6 +141,8 @@ fun SettingRow(
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     below: (@Composable ColumnScope.() -> Unit)? = null,
+    // Something here needs the user to do something: the title and the text under it are in the amber of the banners.
+    attention: Boolean = false,
 ) {
     Column(
         modifier = Modifier
@@ -153,14 +156,14 @@ fun SettingRow(
                     title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if (attention) AttentionColor else MaterialTheme.colorScheme.onSurface,
                 )
                 if (subtitle != null) {
                     Text(
                         subtitle,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (attention) AttentionColor else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp),
                     )
                 }
@@ -396,21 +399,31 @@ private fun StepButton(isMore: Boolean, onClick: (() -> Unit)?) {
     }
 }
 
-/** Something to do first, at the top of a page: an amber banner with the action beside it. */
+/**
+ * Something to do first, at the top of a page: an amber banner with the action beside it. With [done] it is the same
+ * banner once the thing has been done: in the page's normal colours, with a tick, and the action kept for going back.
+ */
 @Composable
-fun NoticeBanner(text: String, actionLabel: String? = null, onAction: () -> Unit = {}) {
+fun NoticeBanner(text: String, actionLabel: String? = null, onAction: () -> Unit = {}, done: Boolean = false) {
+    val colors = MaterialTheme.colorScheme
+    val background = if (done) colors.secondaryContainer else AttentionColor.copy(alpha = 0.12f)
+    val content = if (done) colors.onSurfaceVariant else AttentionColor
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(AttentionColor.copy(alpha = 0.12f))
+            .background(background)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = AttentionColor)
-        Text(text, fontSize = 15.sp, lineHeight = 21.sp, color = AttentionColor, modifier = Modifier.weight(1f))
-        if (actionLabel != null) SettingButton(label = actionLabel, primary = true, onClick = onAction)
+        if (done) {
+            Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = colors.primary)
+        } else {
+            Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = AttentionColor)
+        }
+        Text(text, fontSize = 15.sp, lineHeight = 21.sp, color = content, modifier = Modifier.weight(1f))
+        if (actionLabel != null) SettingButton(label = actionLabel, primary = !done, onClick = onAction)
     }
 }
 

@@ -1,6 +1,8 @@
 package com.bydassistantng.ui.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,12 +35,14 @@ import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.data.AssistantVoices
+import com.bydassistantng.greeting.GreetingCoordinator
 import com.bydassistantng.memory.AddOutcome
 import com.bydassistantng.memory.MemoryFact
 import com.bydassistantng.memory.MemoryLimits
 import com.bydassistantng.ui.AiStudioKeyLink
 import com.bydassistantng.ui.AppAlertDialog
 import com.bydassistantng.ui.label
+import com.bydassistantng.util.DilinkAutoStart
 
 /*
  * The pages of the settings that are about the assistant itself: who it is, how a conversation goes, what it keeps,
@@ -51,6 +56,12 @@ internal fun AssistantPane(viewModel: SettingsViewModel) {
     val arabicDialect by viewModel.arabicDialect.collectAsState()
     val assistantVoice by viewModel.assistantVoice.collectAsState()
     val webSearchEnabled by viewModel.webSearchEnabled.collectAsState()
+    val greetingEnabled by viewModel.greetingEnabled.collectAsState()
+    val autoStartConfirmed = autoStartConfirmed(viewModel)
+    val greetingSpeaker by viewModel.greetingSpeaker.collectAsState()
+    val hasHeadrest by viewModel.headrestSpeakerPresent.collectAsState()
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { viewModel.findHeadrestSpeaker() }
     val hasApiKey by viewModel.hasApiKey.collectAsState()
     val apiKeyMessage by viewModel.apiKeyMessage.collectAsState()
     var showLanguageChoice by remember { mutableStateOf(false) }
@@ -167,6 +178,80 @@ internal fun AssistantPane(viewModel: SettingsViewModel) {
                     checked = webSearchEnabled,
                     onCheckedChange = { viewModel.setWebSearchEnabled(it) },
                 )
+            }
+        }
+        SettingsSection(stringResource(R.string.group_greeting)) {
+            row {
+                SwitchSetting(
+                    title = stringResource(R.string.greeting_title),
+                    subtitle = stringResource(R.string.greeting_desc),
+                    note = stringResource(R.string.greeting_note),
+                    checked = greetingEnabled,
+                    onCheckedChange = { viewModel.setGreetingEnabled(it) },
+                )
+            }
+            // Everything but the toggle is only shown while the feature is on.
+            if (greetingEnabled) {
+                // Without it the head unit does not start the app after the car wakes, and nothing can greet: said in a banner,
+                // with the way to the screen beside it. Amber until the screen has been opened, and again after an update or
+                // a reinstall (which reset what the head unit remembered about the app).
+                if (DilinkAutoStart.isDilink()) {
+                    row {
+                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                            NoticeBanner(
+                                done = autoStartConfirmed,
+                                text = stringResource(if (autoStartConfirmed) R.string.greeting_autostart_done else R.string.greeting_autostart_notice),
+                                actionLabel = stringResource(R.string.autostart_open),
+                                onAction = {
+                                    DilinkAutoStart.openSettings(context)
+                                    viewModel.markAutoStartVisited()
+                                },
+                            )
+                        }
+                    }
+                }
+                // Only a car with a headrest speaker has a choice of where the greeting is heard.
+                if (hasHeadrest) {
+                    row {
+                        SettingRow(
+                            title = stringResource(R.string.greeting_speaker_title),
+                            subtitle = stringResource(R.string.greeting_speaker_desc),
+                            below = {
+                                SegmentedControl(
+                                    options = VoiceSpeaker.entries.map { it.label() },
+                                    selected = VoiceSpeaker.entries.indexOf(greetingSpeaker),
+                                    onSelect = { viewModel.setGreetingSpeaker(VoiceSpeaker.entries[it]) },
+                                )
+                                Text(
+                                    stringResource(R.string.greeting_speaker_note),
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 10.dp),
+                                )
+                            },
+                        )
+                    }
+                }
+                row {
+                    val play = {
+                        viewModel.playGreeting { outcome ->
+                            val message = when (outcome) {
+                                GreetingCoordinator.SimulationOutcome.STARTED -> null
+                                GreetingCoordinator.SimulationOutcome.BUSY -> R.string.greeting_test_busy
+                                GreetingCoordinator.SimulationOutcome.NOT_RUNNING -> R.string.greeting_test_not_running
+                                GreetingCoordinator.SimulationOutcome.FAILED -> R.string.greeting_test_failed
+                            }
+                            if (message != null) Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    SettingRow(
+                        title = stringResource(R.string.greeting_test_title),
+                        subtitle = stringResource(R.string.greeting_test_desc),
+                        onClick = play,
+                        trailing = { SettingButton(label = stringResource(R.string.greeting_test_button), onClick = play) },
+                    )
+                }
             }
         }
     }

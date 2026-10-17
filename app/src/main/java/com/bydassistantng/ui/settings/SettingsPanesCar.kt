@@ -251,6 +251,8 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
                         title = stringResource(R.string.autostart_title),
                         subtitle = stringResource(if (autoStartConfirmed) R.string.autostart_confirmed else R.string.autostart_unconfirmed),
                         trailing = { SettingButton(label = stringResource(R.string.action_open), primary = !autoStartConfirmed, onClick = openAutoStart) },
+                        // Amber until the screen has been opened, and again after an update: the same as the dot on the Car menu.
+                        attention = !autoStartConfirmed,
                     )
                 }
             }

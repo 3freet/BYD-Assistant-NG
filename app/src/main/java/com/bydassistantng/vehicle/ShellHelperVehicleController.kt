@@ -180,7 +180,8 @@ class ShellHelperVehicleController @Inject constructor(
 
     private suspend fun sendLine(line: String, timeoutMs: Long = COMMAND_TIMEOUT_MS): VehicleDispatchResult? {
         val helper = ensureSession() ?: return null
-        AppLogger.log(TAG, "Helper: $line")
+        // The greeting asks about the seat and the door several times a second for a while: it logs what changes itself.
+        if (line != "query ${VehicleQuery.DRIVER_PRESENCE.id}") AppLogger.log(TAG, "Helper: $line")
         val reply = try {
             helper.write(line)
             helper.readLineStartingWith(HelperProtocol.RESULT_PREFIX.trim(), timeoutMs)
