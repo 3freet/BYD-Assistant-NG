@@ -27,7 +27,9 @@ object RememberTool {
             "climate habits, how loud to be outside the car). Call it when the user asks you to remember " +
             "something, or after they agree to your offer to remember a preference. Never save something the " +
             "user has not asked for or agreed to, and nothing that is only true right now. Write it as one " +
-            "plain sentence about the user, such as \"Home address: Al Khuwair, Muscat\".",
+            "plain sentence about the user, such as \"Home address: Al Khuwair, Muscat\". When the user tells you how " +
+            "to greet them when they get in the car, start the sentence with \"When the driver gets in:\" so that it is " +
+            "used only for that greeting.",
         parameters = GeminiSchema(
             type = "OBJECT",
             properties = mapOf(

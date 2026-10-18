@@ -58,20 +58,35 @@ class MemoryRepository @Inject constructor(@ApplicationContext context: Context)
         outcome
     }
 
-    /** Forgets the facts containing [match]; returns how many went. */
+    /**
+     * Forgets the facts containing [match]; returns how many went. The last exchanges go too: they were shaped by what is
+     * forgotten, and carried into the next conversation they bring it back (the assistant kept answering the way a deleted
+     * greeting note told it to, copying its own earlier replies, for ten minutes after the note was gone).
+     */
     suspend fun forget(match: String): Int = lock.withLock {
         val (updated, removed) = MemoryFacts.forget(currentFacts(), match)
-        if (removed > 0) dataStore.edit { it[Keys.FACTS] = json.encodeToString(factsSerializer, updated) }
+        if (removed > 0) {
+            dataStore.edit {
+                it[Keys.FACTS] = json.encodeToString(factsSerializer, updated)
+                it.remove(Keys.RECENT)
+            }
+        }
         removed
     }
 
     suspend fun deleteFact(id: String) = lock.withLock {
         val updated = currentFacts().filterNot { it.id == id }
-        dataStore.edit { it[Keys.FACTS] = json.encodeToString(factsSerializer, updated) }
+        dataStore.edit {
+            it[Keys.FACTS] = json.encodeToString(factsSerializer, updated)
+            it.remove(Keys.RECENT) // see [forget]
+        }
     }
 
     suspend fun clearFacts() = lock.withLock {
-        dataStore.edit { it.remove(Keys.FACTS) }
+        dataStore.edit {
+            it.remove(Keys.FACTS)
+            it.remove(Keys.RECENT) // see [forget]
+        }
         AppLogger.log(TAG, "Long-term memory cleared")
     }
 

@@ -63,7 +63,11 @@ object MemoryFacts {
     fun promptSection(facts: List<MemoryFact>): String? {
         if (facts.isEmpty()) return null
         return "What you know about this user from earlier conversations (use it naturally when it helps; do not " +
-            "recite it unless asked): " + facts.joinToString("; ") { it.text.trimEnd('.', '!', '?') } + "."
+            "recite it unless asked): " + facts.joinToString("; ") { it.text.trimEnd('.', '!', '?') } + ". " +
+            // A note about how to greet them is for the greeting the car sends when they get in, not for every hello.
+            "A note about how to greet the driver applies only to the automatic greeting message you are sent when they " +
+            "get in (it says it is automatic); when the driver speaks to you first, answer what they said and do not greet " +
+            "them with that note."
     }
 }
 
@@ -100,7 +104,8 @@ object RecentExchanges {
             }
         }
         return "Your most recent exchanges with this user, a few minutes ago — context only, so that a follow-up " +
-            "such as \"do the same for the passenger\" makes sense; never mention that you were given this: $lines"
+            "such as \"do the same for the passenger\" makes sense; never mention that you were given this, and do not copy " +
+            "your earlier replies, answer what the user says now: $lines"
     }
 
     /**

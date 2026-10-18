@@ -185,4 +185,22 @@ class MemoryToolsTest {
         assertTrue(withRecent.contains("open the sunroof"))
         assertFalse(withRecent.contains("call remember"))
     }
+
+    @Test
+    fun aNoteAboutGreetingsIsKeptToTheAutomaticGreeting() {
+        val section = MemoryFacts.promptSection(listOf(MemoryFact("1", "When the driver gets in: say good day, captain", 0)))!!
+        assertTrue(section, section.contains("applies only to the automatic greeting message"))
+        assertTrue(section, section.contains("when the driver speaks to you first, answer what they said"))
+    }
+
+    @Test
+    fun theLastExchangesAreContextAndNotAScriptToCopy() {
+        val section = RecentExchanges.promptSection(listOf(Exchange("hello", "good day, captain", emptyList(), 0)))!!
+        assertTrue(section, section.contains("do not copy your earlier replies"))
+    }
+
+    @Test
+    fun theRememberToolMarksAGreetingNoteSoItIsUsedOnlyForTheGreeting() {
+        assertTrue(RememberTool.declaration.description.contains("When the driver gets in:"))
+    }
 }
