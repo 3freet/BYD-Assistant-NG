@@ -15,19 +15,63 @@ class VoiceVolumeTest {
     }
 
     @Test
-    fun aVeryLoudCabinGetsTheTopOfTheStream() {
-        assertEquals(24, index(-20.0))
-        assertEquals(24, index(-20.0, gain = 2))
+    fun aVeryLoudCabinGetsTheUpperMiddleOfTheStream() {
+        assertTrue("${index(-20.0)}", index(-20.0) in 12..17)
+        // The slider's +6 is where +4 was: from there it does not reach the top of the stream.
+        assertTrue("${index(-20.0, gain = 6)}", index(-20.0, gain = 6) < 24)
     }
 
     @Test
-    fun theCurveIsTheFittedLineMinusTheBaseOffset() {
+    fun theCurveIsTheFittedLineMinusTheBaseOffsetUpToTheKnee() {
         // The fitted line runs from index 5 at -62 dBFS to 24 at -22 dBFS; the whole curve sits BASE_OFFSET_STEPS lower.
-        for (noise in listOf(-48.0, -42.4, -40.5, -38.2, -30.0, -27.0)) {
+        for (noise in listOf(-62.0, -58.0, -55.0)) {
             val line = 5 + 19 * (noise + 62) / 40
             val expected = Math.round(line + VoiceVolume.BASE_OFFSET_STEPS).toInt().coerceIn(5, 24)
             assertEquals("$noise", expected, index(noise))
         }
+    }
+
+    @Test
+    fun aboveTheKneeTheVoiceRisesMoreSlowlyThanTheFittedLineAndTheRoadTrimIsTakenOff() {
+        for (noise in listOf(-44.0, -40.0, -36.0, -32.0)) {
+            val heard = VoiceVolume.KNEE_DBFS + (noise - VoiceVolume.KNEE_DBFS) * VoiceVolume.ABOVE_KNEE_SLOPE
+            val trim = VoiceVolume.roadTrim(noise, VoiceVolume.ROAD_TRIM_STEPS)
+            val expected = Math.round(5 + 19 * (heard + 62) / 40 + VoiceVolume.BASE_OFFSET_STEPS - trim).toInt()
+            assertEquals("$noise", expected, index(noise))
+        }
+    }
+
+    @Test
+    fun theRoadTrimGrowsFromNothingInACalmCabinToTheWholeAmountOnTheRoad() {
+        assertEquals(0.0, VoiceVolume.roadTrim(-62.0, 2.0), 0.0)
+        assertEquals(0.0, VoiceVolume.roadTrim(VoiceVolume.ROAD_TRIM_FROM_DBFS, 2.0), 0.0)
+        assertEquals(1.0, VoiceVolume.roadTrim(-50.0, 2.0), 0.0001)
+        assertEquals(2.0, VoiceVolume.roadTrim(VoiceVolume.ROAD_TRIM_FULL_DBFS, 2.0), 0.0)
+        assertEquals(2.0, VoiceVolume.roadTrim(-30.0, 2.0), 0.0)
+    }
+
+    @Test
+    fun theMotorwayLevelsOfTheDriveAreQuieterThanTheyWere() {
+        // 2026-10-18, the line as it was: 16 at -40 dBFS, 18 to 19 at -36 to -34. After the bend 14, 15. Then the road trim
+        // (two steps) and the slider's zero two steps lower: 10 and 11 at slider 0.
+        assertTrue("${index(-40.0)}", index(-40.0) in 9..11)
+        assertTrue("${index(-35.0)}", index(-35.0) in 10..12)
+        assertTrue(index(-40.0) > index(-55.0))
+    }
+
+    @Test
+    fun inACalmCabinTheRoadTrimDoesNothingAndTheLineIsTheFittedOneMinusTheBase() {
+        for (noise in listOf(-70.0, -62.0, -58.0, -55.0)) {
+            val line = 5 + 19 * (noise + 62).coerceAtLeast(0.0) / 40
+            assertEquals("$noise", Math.round(line + VoiceVolume.BASE_OFFSET_STEPS).toInt().coerceIn(5, 24), index(noise))
+        }
+    }
+
+    @Test
+    fun theSlidersZeroSitsTwoStepsBelowWhereItWas() {
+        // Before the shift the base was +1; the labels -6 to +6 are the same, two steps lower.
+        assertEquals(-1, VoiceVolume.BASE_OFFSET_STEPS)
+        assertEquals(Math.round(5 + 19 * (-55 + 62) / 40.0 + 1 - 2).toInt(), index(-55.0))
     }
 
     @Test
@@ -42,7 +86,7 @@ class VoiceVolumeTest {
         val base = index(-47.0)
         assertEquals(base + 3, index(-47.0, gain = 3))
         assertEquals(base - 3, index(-47.0, gain = -3))
-        assertEquals(24, index(-20.0, gain = 6))
+        assertEquals(8, VoiceVolume.indexFor(-20.0, 6, min = 5, max = 8))
         assertEquals(5, VoiceVolume.indexFor(-90.0, -6, min = 5, max = 8))
     }
 
@@ -97,9 +141,36 @@ class VoiceVolumeTest {
     }
 
     @Test
-    fun aLoudCabinGetsTheTopOfTheNavigationStream() {
-        assertEquals(10, headrest(-32.0).index)
-        assertEquals(10, headrest(-20.0, gain = 3).index)
+    fun aLoudCabinGetsTheUpperPartOfTheNavigationStreamAndTheSliderCanTakeItToTheTop() {
+        assertTrue("${headrest(-32.0).index}", headrest(-32.0).index in 6..8)
+        assertEquals(10, headrest(-20.0, gain = 4).index)
+    }
+
+    @Test
+    fun theHeadrestLineBendsAtTheKneeToo() {
+        // 2026-10-18, the line as it was: 8 at -41 dBFS, 9 at -36, 10 at -32. A step or two lower at speed, the same below.
+        assertTrue("${headrest(-41.0).index}", headrest(-41.0).index in 5..7)
+        assertTrue("${headrest(-36.0).index}", headrest(-36.0).index in 6..8)
+        assertTrue("${headrest(-32.0).index}", headrest(-32.0).index <= 8)
+    }
+
+    @Test
+    fun musicTakesPartOfTheFirstReadingOffAccordingToHowFarItIsTurnedDown() {
+        // Half down is 6 dB; 0.7 of it counts.
+        assertEquals(4.2, VoiceVolume.musicAllowanceDb(MusicDuck.LEVEL, 50), 0.05)
+        assertTrue(VoiceVolume.musicAllowanceDb(MusicDuck.LEVEL, 80) > VoiceVolume.musicAllowanceDb(MusicDuck.LEVEL, 30))
+        assertEquals(VoiceVolume.MAX_MUSIC_ALLOWANCE_DB, VoiceVolume.musicAllowanceDb(MusicDuck.LEVEL, 90), 0.0)
+        assertEquals(0.0, VoiceVolume.musicAllowanceDb(MusicDuck.KEEP, 50), 0.0)
+        assertTrue(VoiceVolume.musicAllowanceDb(MusicDuck.PAUSE, 50) > 0.0)
+        assertEquals(VoiceVolume.musicAllowanceDb(MusicDuck.LOWER, 50), VoiceVolume.musicAllowanceDb(MusicDuck.PAUSE, 50), 0.0)
+    }
+
+    @Test
+    fun theFirstReplyWithMusicIsAsLoudAsTheNextOnes() {
+        // The drive: -36.8 read before the dip, then -40 once the music was down. With the allowance they land together.
+        val first = index(-36.8 - VoiceVolume.musicAllowanceDb(MusicDuck.LEVEL, 50))
+        val next = index(-40.0)
+        assertTrue("$first vs $next", kotlin.math.abs(first - next) <= 1)
     }
 
     @Test

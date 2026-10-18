@@ -413,6 +413,16 @@ class LivePcmPlayer @Inject constructor(
         audioTrack == null || SystemClock.elapsedRealtime() - playbackEndsAtMs > NEW_REPLY_GAP_MS
     }
 
+    /**
+     * How much of a cabin-noise reading taken just now is the music, which the conversation is about to turn down (see
+     * [VoiceVolume.musicAllowanceDb]); 0 when no music is playing or it is left as it is.
+     */
+    fun musicAllowanceDb(): Double {
+        val options = voiceChannel
+        if (!options.enabled || !MusicPlayback.isPlaying(audioManager)) return 0.0
+        return VoiceVolume.musicAllowanceDb(options.music, options.dipPercent)
+    }
+
     /** Whether the whole of this conversation is being handled (see [beginConversationMusic]), not only the replies. */
     @Volatile private var musicHeldForConversation = false
 

@@ -649,7 +649,13 @@ class LiveConversationController @Inject constructor(
      */
     private suspend fun settleVolume(firstNoise: Deferred<Double?>?) {
         if (!player.voiceChannel.enabled) return
-        val measured = firstNoise?.let { withTimeoutOrNull(FIRST_NOISE_WAIT_MS) { it.await() } }
+        val read = firstNoise?.let { withTimeoutOrNull(FIRST_NOISE_WAIT_MS) { it.await() } }
+        // Heard with the music at its usual level, which the conversation is about to turn down: read as the cabin will sound.
+        val allowance = if (read != null) player.musicAllowanceDb() else 0.0
+        val measured = read?.minus(allowance)
+        if (allowance > 0.0) {
+            AppLogger.log(TAG, "Music is playing: the cabin reading of ${"%.1f".format(read)} dBFS counts as ${"%.1f".format(measured)} (the music is about to be turned down)")
+        }
         if (measured != null) lastNoise = measured to SystemClock.elapsedRealtime()
         val recent = lastNoise?.takeIf { SystemClock.elapsedRealtime() - it.second <= NOISE_FRESH_MS }?.first
         val noise = measured ?: recent

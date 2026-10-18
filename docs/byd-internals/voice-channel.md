@@ -84,12 +84,32 @@ band (7 dB lower in a silent cabin), so it is raised by 6 dB (`SPEECH_BAND_OFFSE
 Readings on the car (whole band): about -66 to -57 dBFS parked with the music low, -48 to -41 with the music up, and -53
 to -27 on a drive.
 
-The volume for the noise is a straight line from index 5 at -62 dBFS to 24 at -22 dBFS, plus 1 step, plus the slider.
+The volume for the noise is a straight line from index 5 at -62 dBFS to 24 at -22 dBFS, plus the base (-1 step now, see the bend and the road trim below), plus the slider.
 The line was fitted to the volumes the driver chose across those conditions (with the slider at -5: 6 at -60, 7 at -57,
 10 at -51, 14 at -42, 15 at -40, 16 at -38). The step is what is left of two corrections: 2 steps were taken off because
 the voice was still slightly loud with the slider at 0, and 3 were put back once a calm cabin's volume could go below the
-stream's lowest index (below), when it became too quiet. The curve has not been checked above about -27 dBFS, and the two
-ends, the slope and the offset are the part to re-measure on another car.
+stream's lowest index (below), when it became too quiet. The two ends, the slope and the offset are the part to re-measure
+on another car.
+
+**The bend above -48 dBFS.** A motorway drive (2026-10-18) read -47 to -34 dBFS in the speech band and left the voice
+too loud on this line: index 16 at -40, 18 to 19 at -36 to -34 (16 to 19 when the first reply came with music playing).
+The road's noise masks speech less than its level says, so above -48 dBFS only 0.4 of a decibel of noise counts for each one
+heard (`KNEE_DBFS`, `ABOVE_KNEE_SLOPE`): 14 at -40, 15 at -36 and -34, 16 at -32. Unchanged below the knee. The drive also
+showed the speech band reading 24 dB below the whole band at about 60 km/h (-63 against -40), a low rumble the filter
+leaves out, and 3 to 5 dB below it at motorway speed.
+
+**The road trim.** At slider 0 the motorway was still a little loud after the bend (14 at -40, 15 at -36), and +6 very loud.
+Two steps are now taken off in proportion from -55 dBFS (nothing) to -45 dBFS (the whole two), so calm and city levels are
+exactly where they were: 12 at -40, 13 at -36 and -34, 14 at -32. The slider keeps its labels, -6 to +6, but sits two steps
+lower (the base is -1 instead of +1: today's -2 is the new 0, and +6 is where +4 was), because +6 was very loud: at slider 0
+that is 10 at -40, 11 at -36 and 12 at -32, and 5 in a calm cabin. The headrest speaker gets one step off on the road (6 at -42
+to -38, 7 from -36) and keeps its own zero.
+
+**Music in the first reading.** The first reading of a conversation is taken while the connection opens, before the music
+is turned down; the readings after it are taken with it down. With music playing the first read 3 to 8 dB above the next
+(5 on average, music at half): -36.8 then -40.0, -34.6 then -39.8, -32.5 then -40.2. So the first reply was the loudest. Now
+that first reading has 0.7 of what the music's dip takes off (4.2 dB for half) taken off it
+(`MUSIC_DIP_SHARE`), so the first reply lands with the rest.
 
 **Below the lowest index.** In a calm cabin the curve asks for less than index 5, the stream's lowest, and the slider
 would then do nothing. So the stream stays at 5 and the rest is taken off the track itself, 2 dB for each step the
@@ -134,8 +154,10 @@ headrest, and the navigation stream can. That is what *Settings → Sound → Sp
   (a steady tone at the unprocessed microphone, the headrest on Interactive, cabin -61 dBFS: index 1 to 10 read -55.0,
   -53.1, -50.8, -48.1, -46.0, -43.6, -41.1, -38.7, -36.1, -33.6 dBFS). The curve runs from index 3 at -62 dBFS (5, the
   navigation volume the driver had, was louder than wanted in a calm cabin) to 10 at -32 dBFS, about 0.6 dB for each dB
-  of noise, since the speaker is close to the ear, and the slider moves it. Index 0 silences the stream, so the curve stops at 1 and the track is made
-  quieter below that. A first fit, not yet tuned on a drive.
+  of noise, since the speaker is close to the ear, and the slider moves it. On the motorway drive (2026-10-18) it read 7
+  at -46, 8 at -42 to -40 and 9 to 10 at -36 to -32, a little loud: above -48 dBFS it bends to 0.45 of a decibel for each
+  decibel (7 at -42 to -38, 8 from -36), and a step is taken off on the road (6 at -42 to -38, 7 from -36). Index 0 silences the stream, so the curve stops at 1 and the track is made
+  quieter below that. A first fit, tuned once on a drive.
 - The navigation volume is the one the car's navigation prompts use, so the app writes down what it was when it first
   changes it in a conversation, and puts it back 1.5 s after the last sound of the conversation, if the driver has not
   changed it since (and the next conversation puts it back if the app was stopped meanwhile). With the cabin-noise volume
