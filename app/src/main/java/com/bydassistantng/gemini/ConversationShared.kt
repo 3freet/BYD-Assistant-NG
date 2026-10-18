@@ -245,6 +245,7 @@ object VehicleFunctionDispatcher {
         val banner = when (what) {
             ReadCarTool.What.TYRES -> R.string.banner_tyres
             ReadCarTool.What.OUTSIDE_TEMPERATURE -> R.string.banner_outside_temperature
+            ReadCarTool.What.INSIDE_TEMPERATURE -> R.string.banner_inside_temperature
             ReadCarTool.What.AIR_QUALITY -> R.string.banner_air_quality
         }
         onDispatching(AppLanguage.string(context, banner))

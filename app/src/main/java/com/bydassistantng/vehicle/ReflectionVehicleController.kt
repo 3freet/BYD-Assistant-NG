@@ -53,6 +53,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
                 onSuccess = { VehicleDispatchResult.Success(OutsideTemperatureTool.encode(it)) },
                 onFailure = { queryFailure(it) },
             )
+            VehicleQuery.INSIDE_TEMPERATURE -> readInsideTemperature()
             VehicleQuery.TYRES -> TyreReader(context).read().fold(
                 onSuccess = { VehicleDispatchResult.Success(TyreStatusTool.encode(it)) },
                 onFailure = { queryFailure(it) },
@@ -64,6 +65,20 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             VehicleQuery.HEADREST_SOUND -> readHeadrestSound()
             VehicleQuery.DRIVER_PRESENCE -> readDriverPresence()
         }
+    }
+
+    /** The cabin air temperature from the climate system's inside sensor, and the unit that system shows temperatures in. */
+    private fun readInsideTemperature(): VehicleDispatchResult = try {
+        val instance = getOrCreateInstance(AC_DEVICE_CLASS)
+        if (instance == null) {
+            VehicleDispatchResult.Failure(VehicleDispatchError.CLASS_NOT_FOUND, "No usable instance for $AC_DEVICE_CLASS")
+        } else {
+            val celsius = InsideTemperatureTool.usable(readState(instance, InsideTemperatureTool.DEVICE_TYPE, InsideTemperatureTool.STATE_ID))
+            val unit = instance.javaClass.getMethod("getTemperatureUnit").invoke(instance) as? Int
+            VehicleDispatchResult.Success(InsideTemperatureTool.encode(RawInsideTemperature(celsius, unit)))
+        }
+    } catch (t: Throwable) {
+        queryFailure(t)
     }
 
     /** Whether the driver's seat is occupied and the driver's door is shut, as the car reports them (see [DriverPresence]). */
@@ -477,6 +492,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         private const val TAG = "VehicleController"
 
         private const val AC_SERVICE_NAME = "byd_airconditioning"
+        private const val AC_DEVICE_CLASS = "android.hardware.bydauto.ac.BYDAutoAcDevice"
 
         // Matches com.byd.ac.IBydAcService.DESCRIPTOR in the car's own /system/framework/com.byd.ac.jar.
         private const val AC_MASTER_INTERFACE_DESCRIPTOR = "com.byd.ac.IBydAcService"

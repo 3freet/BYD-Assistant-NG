@@ -14,6 +14,7 @@ import kotlin.math.floor
 enum class VehicleQuery(val id: String) {
     TYRES("tyres"),
     OUTSIDE_TEMPERATURE("outside_temperature"),
+    INSIDE_TEMPERATURE("inside_temperature"),
     AIR_QUALITY("air_quality"),
     HEADREST_SOUND("headrest_sound"),
     DRIVER_PRESENCE("driver_presence"),

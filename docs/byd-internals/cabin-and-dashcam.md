@@ -22,6 +22,30 @@ writes, the numbers, and how they were found. The commands themselves are in
 
 Writing the ion generator (`PM25_ANION_STATE_SET`) was not tried.
 
+
+## Cabin temperature
+
+The air temperature inside the car is a state on the climate device (`BYDAutoAcDevice`, type 1000), read with the generic
+`get(1000, id)` like the other climate states; the outside air is next to it. Whole degrees, in the unit the climate system
+shows (`getTemperatureUnit()`: 1 Celsius, 0 Fahrenheit).
+
+| State | Id | Read on the car (parked, climate on, set to 22, outside 36) |
+| --- | --- | --- |
+| `AC_TEMP_INSIDE_FILTERING` | 1320181776 (`0x4EB06010`) | 26 to 27, wandering by one; **the phone app showed 26** at the same time: the cabin's temperature |
+| `AC_TEMP_INSIDE` | 1031798832 (`0x3D800030`) | 24, then 22 four minutes later and 22 after that: the temperature the climate is set to, not the cabin's |
+| `AC_TEMP_OUT` | 1077936184 (`0x40400038`) | 36 to 37 (the cluster's `INSTRUMENT_DD_OUT_TEMP` read 36) |
+
+The assistant uses `AC_TEMP_INSIDE_FILTERING` (`read_car`, `what=inside_temperature`). It was first thought to be the other
+one, which was steady and fell as the cabin cooled; the phone app's 26 against that one's 22 showed it was following the
+set temperature, probably the air at the vents or the duct sensor, which the climate system holds near the set point (the
+recording of 2026-10-17 has it at 21 to 22 with the climate off, 25 for a moment as the climate started, then 22 again). The
+filtered one moves by a degree back and forth from reading to reading, so an answer can be a degree off the phone's.
+
+What does not give it: `getTemprature(area)` answers the temperatures the climate is **set** to (area 1 main 22, 2 deputy 22,
+3 rear no reading) and the outside air (area 4), nothing for the inside. `BYDAutoSensorDevice.getTemperatureSensorValue()`
+and `getHumiditySensorValue()` both answer -1.0 on this car. The generic read drops negative values, so a cabin below
+zero would read as no answer; zero is the climate system's own "no temperature" and is ignored.
+
 ## Ambient light
 
 Screen: Light → Inside → Ambient light. The page has an area choice (whole, front, rear), a colour strip, a

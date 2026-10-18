@@ -40,6 +40,7 @@
     <string name="banner_playing_favorites">تشغيل المفضّلة</string>
     <string name="banner_playing_playlists">تشغيل قوائم التشغيل</string>
     <string name="banner_outside_temperature">جارٍ قراءة حرارة الخارج</string>
+    <string name="banner_inside_temperature">جارٍ قراءة حرارة الداخل</string>
     <string name="banner_air_quality">جارٍ قراءة جودة الهواء</string>
     <string name="banner_volume">جارٍ قراءة مستوى الصوت</string>
     <string name="banner_passenger_open">جارٍ فتح %1$s على شاشة الراكب</string>
