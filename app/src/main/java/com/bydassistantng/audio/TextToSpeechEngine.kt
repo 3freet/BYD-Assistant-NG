@@ -105,6 +105,15 @@ class TextToSpeechEngine @Inject constructor(@ApplicationContext context: Contex
         }
     }
 
+    /**
+     * Whether this unit can speak a text at all: the platform's engine started. A head unit with no engine (the DiLink
+     * one has none) never does, so a text answer is never heard there.
+     */
+    suspend fun canSpeak(): Boolean {
+        val resolved = withTimeoutOrNull(INIT_TIMEOUT_MS) { awaitReady() } != null
+        return resolved && isReady
+    }
+
     fun stop() = tts.stop()
 
     fun shutdown() = tts.shutdown()

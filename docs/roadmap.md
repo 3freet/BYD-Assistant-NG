@@ -117,14 +117,26 @@ Testing only; there is nothing to build here unless it shows something is off.
 
 **The cabin-noise reading's speech band.** The volume that follows the cabin reads only the speech range (about 300 to
 3400 Hz) of the cabin microphone, not the whole sound, because a moving car's road and wind rumble made the voice too
-loud. The speech band reads lower than the whole band, so it is raised by 6 dB (`SPEECH_BAND_OFFSET_DB`) to sit where the
-fitted volume curve expects it for a fan and music. That 6 dB is a guess, to be checked with two runs:
-- On a drive at the usual speeds, with the gain slider at 0: is the voice too loud, about right, or now too quiet?
-- Parked with the music at the usual level: does the voice sit where it did before?
+loud. The speech band reads lower than the whole band, so it is raised by 6 dB (`SPEECH_BAND_OFFSET_DB`).
 
-The log carries both levels in each "Cabin noise now" line (speech band and whole band) next to the "Voice volume" line,
-which is what the offset is adjusted from. If driving is still too loud the next step is a flatter curve above about
--45 dBFS. The headrest speaker's own curve is tuned on the same drive.
+The first drive with it (2026-10-18, with music up on the motorway) was much better than before but still loud, and louder
+with music playing, and the headrest was a little loud at speed. Changed since: the line bends above -48 dBFS (the road
+counts for less than its level), the first reading with music playing has the music's dip taken off it, and the headrest
+line bends too (see [voice-channel.md](byd-internals/voice-channel.md)). A second drive found slider 0 a little loud on the
+road and +6 very loud, and the headrest a step loud: two steps (one for the headrest) are now taken off in proportion from
+-55 to -45 dBFS, and the car-speaker slider's zero moved two steps down (labels still -6 to +6). To check on the next drive: motorway levels, with and without music, in
+both speaker choices; and whether the reply still cuts itself off.
+
+The reply cutting itself off with music and road noise is not explained yet. In 20 minutes of the drive the detector fired 12
+times, most followed by something the driver said, but not all, and the echo of the assistant's own voice into the microphone
+was far higher at motorway volume (a coupling of 0.07 to 0.41, against 0.001 to 0.03 in a calm cabin; the detector counts
+anything above 0.25 as the driver). A quieter reply at speed should cut that; if it does not, the detector's bar needs to
+rise with the noise. The log keeps the time of each one (the "Barge-in" lines), which is what to note down.
+
+Found since, in the same log: a reply the server had already sent could start playing 10 to 14 ms after "Conversation
+ended" (six times in the evening and morning), over whatever came next, which sounds like two assistants at once. Events
+waiting to be handled were handled after the flush with the new playback generation; the conversation is now marked ended
+before the flush, and a reply that arrives after that is dropped.
 
 ## Ideas
 

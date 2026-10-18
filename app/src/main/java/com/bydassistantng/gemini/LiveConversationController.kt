@@ -264,6 +264,9 @@ class LiveConversationController @Inject constructor(
     private var openingTurn = false
     private var quietEnd = false
 
+    // Whether the log has said, for this conversation, that a late reply was dropped (it would say it for every chunk).
+    private var loggedLateReply = false
+
     // A turn that involves a function call completes twice: once when the model hands over the call,
     // and again after it has spoken the result. Only the second is the end of the exchange.
     private var awaitingSpokenReply = false
@@ -388,6 +391,7 @@ class LiveConversationController @Inject constructor(
         endAfterReply = false
         openingTurn = false
         quietEnd = false
+        loggedLateReply = false
         awaitingSpokenReply = false
         discardReply = false
         unansweredTurns = 0
@@ -484,8 +488,9 @@ class LiveConversationController @Inject constructor(
         awaitHeadrest()
         // The volume before the first tone, not after it: the tone is on the same stream as the voice.
         settleVolume(firstNoise)
-        if (opening == null) openGate() else beginOpening(opening)
+        // Active before the greeting's words are sent, so that the reply to them is not taken for a late one.
         conversationActive = true
+        if (opening == null) openGate() else beginOpening(opening)
         if (player.voiceChannel.enabled && player.voiceChannel.adaptive) {
             player.cabinNoise = { cabinNoise.estimate() }
             cabinNoise.start()
@@ -1021,6 +1026,9 @@ class LiveConversationController @Inject constructor(
      * session, and says so with the "done" tone. Safe to call at any time. */
     fun endConversation(quiet: Boolean = false) {
         AppLogger.log(TAG, "Conversation ended")
+        // Before the flush: replies the server had already sent are waiting to be handled, and handled after the flush they
+        // started a new sound that played on, over whatever came next (seen on the drive, 10 to 14 ms after this line).
+        conversationActive = false
         player.stopAndFlush()
         close()
         // The next press finds a connection to the server already open (see [GeminiLiveClient.preconnect]).
@@ -1254,6 +1262,14 @@ class LiveConversationController @Inject constructor(
 
     private suspend fun handleEvent(event: LiveEvent) {
         val report = onStatus ?: return
+        // After the conversation has ended, what the server had already sent is not for anyone: no sound, no tool call.
+        if (!conversationActive && event !is LiveEvent.Closed && event !is LiveEvent.Failed) {
+            if (event is LiveEvent.Audio && !loggedLateReply) {
+                loggedLateReply = true
+                AppLogger.log(TAG, "Dropped a reply that arrived after the conversation ended")
+            }
+            return
+        }
         // Which "generation" of playback this event belongs to: if the reply is cut off before its audio
         // is written, the write is dropped (see [LivePcmPlayer.currentEpoch]).
         val playbackEpoch = player.currentEpoch

@@ -218,6 +218,14 @@ class WheelKeyService : AccessibilityService(), GreetingHost {
                 return@launch
             }
 
+            // The older mode answers in text, which is only heard through the platform's speech engine. A unit without one (this
+            // head unit has none) would record the driver for several seconds and then say nothing: say it could not connect.
+            if (!ttsEngine.canSpeak()) {
+                AppLogger.log(TAG, "Live unavailable ($failure) and this unit cannot speak a text — telling the driver instead of recording")
+                signalFailure(liveConversationController.lastStartMessage)
+                return@launch
+            }
+
             AppLogger.log(TAG, "Live unavailable this turn, falling back to the classic pipeline")
             val file = audioRecorder.start(onMaxDurationReached = { onTriggerPressed() }, onSilenceDetected = { onTriggerPressed() })
             if (file == null) {
