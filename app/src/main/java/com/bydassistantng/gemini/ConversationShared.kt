@@ -307,6 +307,7 @@ fun voiceAssistantSystemPrompt(
     dialect: ArabicDialect = ArabicDialect.MATCH,
     webSearch: Boolean = false,
     memory: MemoryContext = MemoryContext(),
+    musicHint: Boolean = false,
 ): String {
     // A fixed language is a firm rule and is said twice (here and again at the very end): a model that listens in many
     // languages, and was told only once, tends to answer in whichever it heard, which an unclear word can make the wrong one.
@@ -357,6 +358,11 @@ fun voiceAssistantSystemPrompt(
         MemoryFacts.promptSection(memory.facts)?.let { append(" $it") }
         RecentExchanges.promptSection(memory.recent)?.let { append(" $it") }
     }
+    // Opt-in: music with singing can reach the microphone, and the model takes sung words for someone speaking to it.
+    val musicInstruction = if (musicHint) {
+        " Music may be playing in the car. Sung words and other music are not the driver speaking to you: ignore them, and " +
+            "answer only when a person speaks to you."
+    } else ""
     return "You are a concise voice assistant built into a car's head unit. $languageInstruction$dialectInstruction " +
         "Keep replies short — they will be read aloud.$listeningHint When the user asks to be taken somewhere, call " +
         "navigate_to with the place name instead of describing the route. When the user asks to open an app, call " +
@@ -364,7 +370,7 @@ fun voiceAssistantSystemPrompt(
         "call media_control. When the user asks you to " +
         "control something in the car and a matching function is available, call that function instead " +
         "of describing the action in words. If no matching function is available, say so plainly rather " +
-        "than pretending to have done it.$searchInstruction$memoryInstruction" +
+        "than pretending to have done it.$searchInstruction$memoryInstruction$musicInstruction" +
         (
             if (conversation) {
                 " This is an ongoing conversation: after you answer, the user may keep talking, so answer " +

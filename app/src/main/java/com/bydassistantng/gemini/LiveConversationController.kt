@@ -18,6 +18,8 @@ import com.bydassistantng.audio.CabinNoiseMonitor
 import com.bydassistantng.audio.LivePcmPlayer
 import com.bydassistantng.audio.VoiceChannel
 import com.bydassistantng.audio.VoiceChannelOptions
+import com.bydassistantng.audio.LevelGate
+import com.bydassistantng.audio.VoiceSensitivity
 import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.audio.LivePcmRecorder
 import com.bydassistantng.audio.ExteriorVolume
@@ -120,6 +122,9 @@ private const val FIRST_NOISE_WAIT_MS = 150L
 private const val NOISE_FRESH_MS = 10 * 60_000L
 private const val HEADREST_HOLD_MS = 4_000L
 
+// How often the mic's thread looks at whether music is playing (a call to the audio service), for the level gate.
+private const val MUSIC_CHECK_MS = 1_000L
+
 // A session opened ahead of a greeting is not used once it is older than this (the server drops idle sessions).
 private const val PREPARED_MAX_MS = 150_000L
 
@@ -159,8 +164,8 @@ private const val REFERENCE_WINDOW_END_MS = 40L
 
 // Real speech through the processed mic peaks at 5,000+; the "end of speech" the endpointer sometimes
 // finds in cabin noise peaks well under 1,000. Anything fainter than this isn't a sentence, so it's
-// ignored instead of being sent off and waited on.
-private const val MIN_UTTERANCE_PEAK = 1_500
+// ignored instead of being sent off and waited on. The level is [VoiceSensitivity.BASE_UTTERANCE_PEAK] moved by
+// the voice sensitivity setting: see [minUtterancePeak].
 
 // An interruption spoken while the server is still finishing the reply it was cut off from is held back
 // until that reply's turn completes (see [UtteranceHold]). If neither "complete" nor "interrupted" shows up,
@@ -304,6 +309,18 @@ class LiveConversationController @Inject constructor(
     private var endpointer = newEndpointer()
     private val bargeInDetector = BargeInDetector()
 
+    // How firm a sound has to be to count as a sentence for this conversation (see [VoiceSensitivity]).
+    @Volatile private var minUtterancePeak = VoiceSensitivity.BASE_UTTERANCE_PEAK
+
+    // Keeps sung words out of what is sent while music plays (see [LevelGate]): whether it is on for this conversation, how
+    // many times the background its bar is, and whether music is playing (looked at about once a second, from the mic's thread).
+    private val levelGate = LevelGate()
+    @Volatile private var levelGateForSession = false
+    @Volatile private var levelGateMultiplier = LevelGate.multiplier(VoiceSensitivity.DEFAULT)
+    private var musicPlayingNow = false
+    private var musicCheckedAtMs = 0L
+    private var musicHintForSession = false
+
     // Between "the detector thinks that's the user" and "it is, cut the reply" / "it isn't, carry on": the
     // reply is turned down and the mic watched. Only touched from the capture thread and the resets below.
     private val dipConfirmer = DipConfirmer()
@@ -408,6 +425,18 @@ class LiveConversationController @Inject constructor(
 
         loadSessionSettings(forGreeting = opening != null)
         bargeInEnabled = preferencesRepository.bargeInEnabled.first()
+        val sensitivity = preferencesRepository.voiceSensitivity.first()
+        minUtterancePeak = VoiceSensitivity.utterancePeak(sensitivity)
+        bargeInDetector.minRms = VoiceSensitivity.bargeInRms(sensitivity)
+        levelGateForSession = preferencesRepository.levelGateEnabled.first()
+        levelGateMultiplier = LevelGate.multiplier(sensitivity)
+        levelGate.reset()
+        musicPlayingNow = false
+        musicCheckedAtMs = 0L
+        if (levelGateForSession) AppLogger.log(TAG, "Level gate on: while music plays, only what is ${"%.1f".format(levelGateMultiplier)} times as loud as the music and cabin is sent")
+        if (sensitivity != VoiceSensitivity.DEFAULT) {
+            AppLogger.log(TAG, "Voice sensitivity $sensitivity: a sound counts as speech from a peak of $minUtterancePeak, and as talking over the assistant from ${bargeInDetector.minRms}")
+        }
         silenceEndMsForSession = EndOfSpeechWait.clamp(preferencesRepository.endOfSpeechWaitMs.first())
         // The voice channel: where and how replies are spoken, for this conversation (off on a car without one).
         player.recoverMusicVolume()
@@ -531,6 +560,7 @@ class LiveConversationController @Inject constructor(
             enabled = ClusterScreenAvailability.isOnThisCar(context) && preferencesRepository.clusterScreenEnabled.first(),
             keepMapsDisabled = preferencesRepository.clusterKeepMapsDisabled.first(),
         )
+        musicHintForSession = preferencesRepository.musicHintEnabled.first()
         factsForSession = if (longTermForSession) memory.currentFacts() else emptyList()
         recentForSession = if (shortTermForSession && !forGreeting) memory.recentExchanges() else emptyList()
         if (factsForSession.isNotEmpty() || recentForSession.isNotEmpty()) {
@@ -714,6 +744,7 @@ class LiveConversationController @Inject constructor(
                         dialect = dialectForSession,
                         webSearch = webSearchForSession,
                         memory = MemoryContext(tools = longTermForSession, facts = factsForSession, recent = recentForSession),
+                        musicHint = musicHintForSession,
                     ),
                 ),
             ),
@@ -786,6 +817,7 @@ class LiveConversationController @Inject constructor(
         utteranceHold.discard()
         synchronized(preRoll) { preRoll.clear() }
         quietEnd = false
+        levelGate.beginTurn()
         gate = Gate.OPEN
         earcons.play(Earcon.LISTENING)
         armListenTimeouts(afterBargeIn = false)
@@ -819,7 +851,7 @@ class LiveConversationController @Inject constructor(
 
     /** Whether a sentence (not just cabin noise, which the filter below ignores) has been heard this turn. */
     private fun heardRealSpeech(): Boolean =
-        endpointer.speechDetected && (!recorder.usesVoiceProcessing || endpointer.peak >= MIN_UTTERANCE_PEAK)
+        endpointer.speechDetected && (!recorder.usesVoiceProcessing || endpointer.peak >= minUtterancePeak)
 
     private fun armListenTimeouts(afterBargeIn: Boolean) {
         listenCapJob?.cancel()
@@ -850,6 +882,30 @@ class LiveConversationController @Inject constructor(
         }
     }
 
+    /** Whether the level gate is working now: it is on for this conversation and music is playing (looked at about once a second). */
+    private fun levelGateActive(): Boolean {
+        if (!levelGateForSession) return false
+        val now = SystemClock.elapsedRealtime()
+        if (now - musicCheckedAtMs >= MUSIC_CHECK_MS) {
+            musicCheckedAtMs = now
+            val playing = player.musicIsPlaying()
+            if (playing != musicPlayingNow) {
+                musicPlayingNow = playing
+                AppLogger.log(TAG, if (playing) "Music is playing: the level gate is working" else "No music is playing: the level gate is idle")
+                levelGate.beginTurn()
+            }
+        }
+        return musicPlayingNow
+    }
+
+    /** For the log: what the level gate did this turn, or nothing when it was idle. */
+    private fun levelGateNote(): String =
+        if (levelGateForSession && musicPlayingNow && levelGate.chunksSeen > 0) {
+            ", level gate silenced ${levelGate.chunksSilenced} of ${levelGate.chunksSeen} (bar ${levelGate.bar} over a background of ${levelGate.backgroundLevel})"
+        } else {
+            ""
+        }
+
     /** Called ~every 50ms from the mic's capture thread, whatever the gate. */
     private fun onMicChunk(chunk: ByteArray) {
         try {
@@ -868,12 +924,15 @@ class LiveConversationController @Inject constructor(
         when (gate) {
             Gate.OPEN -> {
                 bargeInDetector.observeAmbient(pcm16Rms(chunk))
-                if (!utteranceHold.offer(chunk)) {
-                    liveClient.sendAudioChunk(chunk)
+                // While music plays (and the setting is on) only what is clearly louder than the music goes to the server; the
+                // rest goes as silence, a few chunks late (see [LevelGate]).
+                val outgoing = if (levelGateActive()) levelGate.process(chunk, pcm16Rms(chunk), levelGateMultiplier) else chunk
+                if (outgoing != null && !utteranceHold.offer(outgoing)) {
+                    liveClient.sendAudioChunk(outgoing)
                     chunksThisTurn++
                 }
                 if (endpointer.onChunk(pcm16Rms(chunk))) {
-                    if (recorder.usesVoiceProcessing && endpointer.peak < MIN_UTTERANCE_PEAK) {
+                    if (recorder.usesVoiceProcessing && endpointer.peak < minUtterancePeak) {
                         // Cabin noise, not a sentence: keep listening rather than sending it off and
                         // waiting up to 12s for an answer that will never come.
                         AppLogger.log(TAG, "Ignored a faint sound (${endpointer.summary()})")
@@ -881,7 +940,7 @@ class LiveConversationController @Inject constructor(
                     } else {
                         scope.launch {
                             if (isListening) {
-                                AppLogger.log(TAG, "User stopped speaking — ending the turn (${endpointer.summary()}, sent $chunksThisTurn audio chunks)")
+                                AppLogger.log(TAG, "User stopped speaking — ending the turn (${endpointer.summary()}, sent $chunksThisTurn audio chunks${levelGateNote()})")
                                 VehicleFunctionDispatcher.newUserTurn()
                                 stopListening()
                             }

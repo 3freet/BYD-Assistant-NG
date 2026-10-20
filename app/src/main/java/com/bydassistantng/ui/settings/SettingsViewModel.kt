@@ -11,6 +11,7 @@ import com.bydassistantng.audio.HeadrestRoute
 import com.bydassistantng.audio.MusicDuck
 import com.bydassistantng.audio.VoiceChannel
 import com.bydassistantng.audio.VoiceChannelOptions
+import com.bydassistantng.audio.VoiceSensitivity
 import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
@@ -80,6 +81,27 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CoreFeatures.VEHICLE_CONTROL_DEFAULT)
     val bargeInEnabled: StateFlow<Boolean> = preferencesRepository.bargeInEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    val voiceSensitivity: StateFlow<Int> = preferencesRepository.voiceSensitivity
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VoiceSensitivity.DEFAULT)
+
+    fun setVoiceSensitivity(step: Int) {
+        viewModelScope.launch { preferencesRepository.setVoiceSensitivity(step) }
+    }
+
+    val levelGateEnabled: StateFlow<Boolean> = preferencesRepository.levelGateEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setLevelGateEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setLevelGateEnabled(enabled) }
+    }
+
+    val musicHintEnabled: StateFlow<Boolean> = preferencesRepository.musicHintEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setMusicHintEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setMusicHintEnabled(enabled) }
+    }
 
     val endOfSpeechWaitMs: StateFlow<Int> = preferencesRepository.endOfSpeechWaitMs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EndOfSpeechWait.DEFAULT_MS)

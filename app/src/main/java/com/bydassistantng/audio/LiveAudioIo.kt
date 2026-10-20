@@ -413,6 +413,9 @@ class LivePcmPlayer @Inject constructor(
         audioTrack == null || SystemClock.elapsedRealtime() - playbackEndsAtMs > NEW_REPLY_GAP_MS
     }
 
+    /** Whether music is playing now (see [MusicPlayback]). */
+    fun musicIsPlaying(): Boolean = MusicPlayback.isPlaying(audioManager)
+
     /**
      * How much of a cabin-noise reading taken just now is the music, which the conversation is about to turn down (see
      * [VoiceVolume.musicAllowanceDb]); 0 when no music is playing or it is left as it is.

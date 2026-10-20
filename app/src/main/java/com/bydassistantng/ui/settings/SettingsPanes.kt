@@ -31,6 +31,7 @@ import com.bydassistantng.R
 import com.bydassistantng.audio.EndOfSpeechWait
 import com.bydassistantng.audio.MusicDuck
 import com.bydassistantng.audio.VoiceChannelOptions
+import com.bydassistantng.audio.VoiceSensitivity
 import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.data.ArabicDialect
 import com.bydassistantng.data.AssistantLanguage
@@ -262,28 +263,66 @@ internal fun AssistantPane(viewModel: SettingsViewModel) {
 internal fun ConversationPane(viewModel: SettingsViewModel) {
     val bargeInEnabled by viewModel.bargeInEnabled.collectAsState()
     val waitMs by viewModel.endOfSpeechWaitMs.collectAsState()
+    val sensitivity by viewModel.voiceSensitivity.collectAsState()
+    val levelGate by viewModel.levelGateEnabled.collectAsState()
+    val musicHint by viewModel.musicHintEnabled.collectAsState()
 
-    SettingsSection("") {
-        row {
-            SwitchSetting(
-                title = stringResource(R.string.barge_title),
-                subtitle = stringResource(R.string.barge_desc),
-                checked = bargeInEnabled,
-                onCheckedChange = { viewModel.setBargeInEnabled(it) },
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        SettingsSection("") {
+            row {
+                SwitchSetting(
+                    title = stringResource(R.string.barge_title),
+                    subtitle = stringResource(R.string.barge_desc),
+                    checked = bargeInEnabled,
+                    onCheckedChange = { viewModel.setBargeInEnabled(it) },
+                )
+            }
+            row {
+                StepperSetting(
+                    title = stringResource(R.string.end_wait_title),
+                    subtitle = stringResource(R.string.end_wait_desc),
+                    value = waitMs,
+                    range = EndOfSpeechWait.MIN_MS..EndOfSpeechWait.MAX_MS,
+                    step = EndOfSpeechWait.STEP_MS,
+                    valueText = { stringResource(R.string.end_wait_value, it) },
+                    onValueChange = { viewModel.setEndOfSpeechWaitMs(EndOfSpeechWait.clamp(it)) },
+                    resetLabel = stringResource(R.string.end_wait_reset, EndOfSpeechWait.DEFAULT_MS).takeIf { waitMs != EndOfSpeechWait.DEFAULT_MS },
+                    onReset = { viewModel.setEndOfSpeechWaitMs(EndOfSpeechWait.DEFAULT_MS) },
+                )
+            }
+            row {
+                StepperSetting(
+                    title = stringResource(R.string.sensitivity_title),
+                    subtitle = stringResource(R.string.sensitivity_desc),
+                    value = sensitivity,
+                    range = VoiceSensitivity.RANGE,
+                    step = 1,
+                    valueText = { stringResource(R.string.sensitivity_value, it) },
+                    onValueChange = { viewModel.setVoiceSensitivity(VoiceSensitivity.clamp(it)) },
+                    resetLabel = stringResource(R.string.sensitivity_reset).takeIf { sensitivity != VoiceSensitivity.DEFAULT },
+                    onReset = { viewModel.setVoiceSensitivity(VoiceSensitivity.DEFAULT) },
+                )
+            }
         }
-        row {
-            StepperSetting(
-                title = stringResource(R.string.end_wait_title),
-                subtitle = stringResource(R.string.end_wait_desc),
-                value = waitMs,
-                range = EndOfSpeechWait.MIN_MS..EndOfSpeechWait.MAX_MS,
-                step = EndOfSpeechWait.STEP_MS,
-                valueText = { stringResource(R.string.end_wait_value, it) },
-                onValueChange = { viewModel.setEndOfSpeechWaitMs(EndOfSpeechWait.clamp(it)) },
-                resetLabel = stringResource(R.string.end_wait_reset, EndOfSpeechWait.DEFAULT_MS).takeIf { waitMs != EndOfSpeechWait.DEFAULT_MS },
-                onReset = { viewModel.setEndOfSpeechWaitMs(EndOfSpeechWait.DEFAULT_MS) },
-            )
+        SettingsSection(stringResource(R.string.group_music_in_background)) {
+            row {
+                SwitchSetting(
+                    title = stringResource(R.string.level_gate_title),
+                    subtitle = stringResource(R.string.level_gate_desc),
+                    note = stringResource(R.string.level_gate_note),
+                    checked = levelGate,
+                    onCheckedChange = { viewModel.setLevelGateEnabled(it) },
+                )
+            }
+            row {
+                SwitchSetting(
+                    title = stringResource(R.string.music_hint_title),
+                    subtitle = stringResource(R.string.music_hint_desc),
+                    note = stringResource(R.string.music_hint_note),
+                    checked = musicHint,
+                    onCheckedChange = { viewModel.setMusicHintEnabled(it) },
+                )
+            }
         }
     }
 }

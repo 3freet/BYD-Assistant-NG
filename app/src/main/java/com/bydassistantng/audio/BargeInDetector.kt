@@ -42,6 +42,12 @@ class BargeInDetector(
      * ~0.17, genuine speech from 0.35 — the ceiling sits between, nearer the echo. */
     private val echoCeiling: Double = 0.25,
 ) {
+    /**
+     * The absolute minimum a mic level has to clear (see [minBargeInRms]); the voice sensitivity setting moves it for a
+     * conversation (see [VoiceSensitivity]).
+     */
+    @Volatile var minRms: Int = minBargeInRms
+
     private var noiseFloor = Double.MAX_VALUE
     private var echoCoupling = 0.0
     private var replyMs = 0
@@ -90,7 +96,7 @@ class BargeInDetector(
         if (playing) learnEcho(micRms, referenceRms)
 
         val echoAllowance = if (playing) echoMargin * echoCoupling * referenceRms else 0.0
-        val bar = maxOf(minBargeInRms.toDouble(), floorOrZero() * noiseMultiplier, floorOrZero() + echoAllowance)
+        val bar = maxOf(minRms.toDouble(), floorOrZero() * noiseMultiplier, floorOrZero() + echoAllowance)
         lastMic = micRms; lastReference = referenceRms; lastBar = bar.toInt()
 
         recent[recentIndex] = micRms >= bar

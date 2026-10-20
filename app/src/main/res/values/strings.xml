@@ -144,6 +144,17 @@
     <string name="end_wait_title">Wait after you stop speaking</string>
     <string name="end_wait_desc">How long the assistant waits in silence before it decides you have finished. A shorter wait answers sooner but may cut you off when you pause in the middle of a sentence.</string>
     <string name="end_wait_value">%1$d ms</string>
+    <string name="sensitivity_title">How easily it hears you</string>
+    <string name="sensitivity_desc">How firm a sound has to be for the assistant to take it for you speaking, both when it starts listening to you and when you talk over it. Higher picks up a softer voice but is easier to fool with noise; lower needs a firmer voice. If it answers sounds you did not make, or stops talking by itself, lower it; if it misses you, raise it.</string>
+    <string name="sensitivity_value">%1$+d</string>
+    <string name="sensitivity_reset">Back to 0</string>
+    <string name="group_music_in_background">Music in the background</string>
+    <string name="level_gate_title">Ignore music in the background</string>
+    <string name="level_gate_desc">While music is playing, the assistant learns how loud the music and the cabin are just before you speak, and sends only what is clearly louder, so the words of a song are not taken for you. It does nothing when no music is playing.</string>
+    <string name="level_gate_note">Your voice has to be clearly louder than the music. If it cuts you off or misses you, turn the music down more (Settings → Sound), raise \'How easily it hears you\', or turn this off. Off by default.</string>
+    <string name="music_hint_title">Tell the assistant that music may be playing</string>
+    <string name="music_hint_desc">Adds a line to the assistant\'s instructions: music may be playing, sung words are not you talking to it, and it should answer only a person speaking to it.</string>
+    <string name="music_hint_note">It can sometimes make the assistant ignore you while music plays. Off by default.</string>
     <string name="end_wait_reset">Back to the default (%1$d ms)</string>
     <string name="memory_short_title">Short-term memory</string>
     <string name="memory_short_desc">Keeps the last few exchanges for ten minutes, so a follow-up such as \"do the same for the passenger\" works in the next conversation.</string>

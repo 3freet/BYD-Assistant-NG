@@ -27,6 +27,7 @@ it needs before promising it.
 
 | Feature | What it would do | Priority |
 | --- | --- | --- |
+| **More AI models** | Today the assistant talks to one provider (Google's Gemini Live API), and its live voice, tools, memory and the greeting are built on it. Plan and add others, such as Claude and more, as a choice in the settings (a key per provider). To settle first: most other models have no live-audio API, so they would need speech in (a speech-to-text step), the model, and speech out, and the head unit has no speech engine of its own, so the voice would come from a cloud service; what each can do with the tools (car controls, memory, the greeting), and what it costs per conversation. | To plan |
 | **Trip briefing** | Let the assistant brief the driver on recent trips and consumption ("how was my last trip?", "what did I use this week?") from a trip-recording app, linked through an Android intent whose name and reply are still to be defined. Everything stays on the device. | Medium |
 | **Routines** | Saved, named routines ("arriving", "cool it down"): one phrase runs a set of controls together (A/C, seat ventilation, ambient light, windows). The model can already chain controls loosely; a saved routine is faster and predictable. Mostly app-side work, on the existing registry and memory. | Medium |
 | **"How's the car?"** | A read-only tool for "are the doors locked and shut?", "is any window or the sunroof open?", "how much battery and fuel, and what range?", "is the parking brake on?", "what was my consumption?". The framework names the states (door lock and open states, a statistics device with battery, fuel and EV and fuel range, the parking brake); each reading is confirmed with the read-only probe on the car first, as the tyres were. No writes. | Very low |
@@ -137,6 +138,15 @@ Found since, in the same log: a reply the server had already sent could start pl
 ended" (six times in the evening and morning), over whatever came next, which sounds like two assistants at once. Events
 waiting to be handled were handled after the flush with the new playback generation; the conversation is now marked ended
 before the flush, and a reply that arrives after that is dropped.
+
+**Music in the background.** Sung words can reach the microphone and be taken for the user (Settings → Conversation → Music
+in the background, both off by default). The level gate (`LevelGate`) learns the music and cabin level just before the user
+speaks and sends only what is clearly above it (1.7 times at the middle sensitivity, 1.5 to 2.1 across the steps), as silence
+otherwise; the other switch adds a line to the assistant's instructions saying sung words are not the driver. Neither has been
+tried on a drive. To do: with a song with vocals playing, open the assistant and stay silent for 12 s and read from the log
+what it heard and at what level, then speak over the music at the usual volume and read the "level gate silenced X of Y
+chunks (bar N over a background of M)" part of each "User stopped speaking" line; tune `BASE_MULTIPLIER`, `MIN_BAR` and the
+percentile from that, and decide whether either switch should be on by default.
 
 ## Ideas
 

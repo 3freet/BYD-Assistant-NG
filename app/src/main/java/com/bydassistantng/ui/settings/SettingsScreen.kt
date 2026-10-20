@@ -331,6 +331,9 @@ private fun searchIndex(viewModel: SettingsViewModel, hasCarVoice: Boolean): Lis
     }
     add(SettingsCategory.CONVERSATION, R.string.barge_title)
     add(SettingsCategory.CONVERSATION, R.string.end_wait_title)
+    add(SettingsCategory.CONVERSATION, R.string.sensitivity_title)
+    add(SettingsCategory.CONVERSATION, R.string.level_gate_title)
+    add(SettingsCategory.CONVERSATION, R.string.music_hint_title)
     add(SettingsCategory.MEMORY, R.string.memory_short_title)
     add(SettingsCategory.MEMORY, R.string.memory_long_title)
     add(SettingsCategory.MEMORY, R.string.memory_dialog_title)

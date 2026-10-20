@@ -175,4 +175,14 @@ class AssistantSetupTest {
         assertNull(ReplyLanguage.matches(AssistantLanguage.AUTO, "anything at all"))
         assertNull(ReplyLanguage.matches(AssistantLanguage.ARABIC, "..."))
     }
+
+    @Test
+    fun theMusicLineIsInThePromptOnlyWhenAskedFor() {
+        val off = voiceAssistantSystemPrompt(AssistantLanguage.AUTO, conversation = true)
+        val on = voiceAssistantSystemPrompt(AssistantLanguage.AUTO, conversation = true, musicHint = true)
+        assertFalse(off.contains("Music may be playing"))
+        assertTrue(on.contains("Music may be playing in the car"))
+        assertTrue(on.contains("Sung words and other music are not the driver speaking to you"))
+        assertTrue(on.contains("answer only when a person speaks to you"))
+    }
 }

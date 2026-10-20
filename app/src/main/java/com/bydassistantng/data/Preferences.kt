@@ -13,6 +13,7 @@ import com.bydassistantng.audio.EndOfSpeechWait
 import com.bydassistantng.audio.ExteriorVolume
 import com.bydassistantng.audio.MusicDuck
 import com.bydassistantng.audio.VoiceChannelOptions
+import com.bydassistantng.audio.VoiceSensitivity
 import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.util.WheelKeys
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -80,6 +81,9 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val HEADREST_SPEAKER_PRESENT = booleanPreferencesKey("headrest_speaker_present")
         val GREETING_ENABLED = booleanPreferencesKey("greeting_enabled")
         val GREETING_SPEAKER = stringPreferencesKey("greeting_speaker")
+        val VOICE_SENSITIVITY = intPreferencesKey("voice_sensitivity")
+        val LEVEL_GATE_ENABLED = booleanPreferencesKey("level_gate_enabled")
+        val MUSIC_HINT_ENABLED = booleanPreferencesKey("music_hint_enabled")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -143,6 +147,28 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.data.map { prefs -> prefs[Keys.GREETING_SPEAKER]?.let { VoiceSpeaker.from(it) } ?: VoiceSpeaker.HEADREST }
     suspend fun setGreetingSpeaker(speaker: VoiceSpeaker) {
         dataStore.edit { it[Keys.GREETING_SPEAKER] = speaker.key }
+    }
+
+    /** How easily a sound is taken for the user speaking, in steps around 0 (see [VoiceSensitivity]). */
+    val voiceSensitivity: Flow<Int> = dataStore.data.map { VoiceSensitivity.clamp(it[Keys.VOICE_SENSITIVITY] ?: VoiceSensitivity.DEFAULT) }
+    suspend fun setVoiceSensitivity(step: Int) {
+        dataStore.edit { it[Keys.VOICE_SENSITIVITY] = VoiceSensitivity.clamp(step) }
+    }
+
+    /**
+     * Whether, while music is playing, only what is clearly louder than the music and the cabin is sent to the server, so
+     * that sung words are not taken for the user (see [com.bydassistantng.audio.LevelGate]). Off by default: it has to be
+     * tuned on a drive, and a user who is not clearly louder than the music is cut.
+     */
+    val levelGateEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.LEVEL_GATE_ENABLED] ?: false }
+    suspend fun setLevelGateEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.LEVEL_GATE_ENABLED] = enabled }
+    }
+
+    /** Whether the assistant's instructions say that music may be playing and that sung words are not the user. Off by default. */
+    val musicHintEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.MUSIC_HINT_ENABLED] ?: false }
+    suspend fun setMusicHintEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.MUSIC_HINT_ENABLED] = enabled }
     }
 
     /** Whether the user can talk over the assistant to interrupt it. On by default; off makes the mic
