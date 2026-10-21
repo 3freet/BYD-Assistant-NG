@@ -322,6 +322,9 @@ fun OnboardingScreen(onFinished: () -> Unit, viewModel: OnboardingViewModel = hi
                                             }
                                         },
                                         below = {
+                                            if (!wheelSetup.enabled && wheelSetup.busy) {
+                                                Text(stringResource(R.string.wheel_waiting_for_prompt), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
                                             if (!wheelSetup.enabled && wheelSetup.failed) {
                                                 Text(wheelSetup.failureHint, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
                                             }

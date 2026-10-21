@@ -251,12 +251,73 @@ class GreetingCoordinatorTest {
     }
 
     @Test
-    fun givesUpAfterTooManyTriesThatCouldNotStart() {
+    fun givesUpWhenTheConversationCannotStartForTooLong() {
         val host = FakeHost(mutableListOf(GreetResult.LATER))
         val rig = Rig(FakeCar(listOf(seatedShut)), host)
         rig.coordinator.onWake()
 
-        assertEquals(GreetingCoordinator.MAX_ATTEMPTS, host.openings.size)
+        // One try every RETRY_MS (and a look) for PATIENCE_MS, so about twenty.
+        val expected = (GreetingCoordinator.PATIENCE_MS / (GreetingCoordinator.RETRY_MS + GreetingCoordinator.POLL_MS)).toInt()
+        assertTrue("${host.openings.size} tries, expected about $expected", host.openings.size in expected - 2..expected + 2)
+        assertTrue(rig.logs.last(), rig.logs.last().startsWith("Gave up greeting"))
+    }
+
+    @Test
+    fun keepsTryingThroughALateNetwork() {
+        // The tethered phone takes most of a minute to be reachable: the greeting still goes out when it is.
+        val host = FakeHost(mutableListOf<GreetResult>().apply { repeat(12) { add(GreetResult.LATER) }; add(GreetResult.STARTED) })
+        val rig = Rig(FakeCar(listOf(seatedShut)), host)
+        rig.coordinator.onWake()
+
+        assertEquals(13, host.openings.size)
+        assertTrue(rig.logs.any { it == "Greeting the driver" })
+    }
+
+    @Test
+    fun givesUpWhenTheAssistantNeverComesUp() {
+        val rig = Rig(FakeCar(listOf(seatedShut)), host = null)
+        rig.coordinator.onWake()
+
+        assertTrue(rig.logs.last(), rig.logs.last().startsWith("Gave up greeting"))
+        // Not a look every quarter second for the rest of the window.
+        assertTrue("${rig.car.presenceReads} reads", rig.car.presenceReads < 500)
+    }
+
+    @Test
+    fun greetsADriverWhoArrivesLongAfterTheWake() {
+        // Opened remotely and left for ten minutes, then the door opens and the driver sits and shuts it.
+        val waiting = List(300) { emptyShut }
+        val rig = Rig(FakeCar(waiting + listOf(emptyOpen, seatedOpen, seatedShut, seatedShut)))
+        rig.coordinator.onWake()
+
+        assertEquals(1, rig.host!!.openings.size)
+        // While nobody was about it looked every few seconds, not four times a second.
+        assertTrue("${rig.car.presenceReads} reads", rig.car.presenceReads < 320)
+        // The session was opened when the door opened, and used.
+        assertEquals(1, rig.prepares)
+        assertEquals(0, rig.discards)
+    }
+
+    @Test
+    fun opensNoSessionAndKeepsADistanceWhileNobodyIsAbout() {
+        val rig = Rig(FakeCar(listOf(emptyShut)))
+        rig.coordinator.onWake()
+
+        assertEquals(0, rig.prepares)
+        assertEquals(0, rig.discards)
+        val expected = (GreetingCoordinator.WINDOW_MS / GreetingCoordinator.IDLE_POLL_MS).toInt()
+        assertTrue("${rig.car.presenceReads} reads, expected about $expected", rig.car.presenceReads in expected - 5..expected + 5)
+        assertTrue(rig.logs.last(), rig.logs.last().startsWith("No greeting"))
+    }
+
+    @Test
+    fun letsTheSessionGoWhenTheDoorIsShutAgainWithNobodyInAndOpensAnotherForTheNextTime() {
+        val rig = Rig(FakeCar(listOf(emptyOpen, emptyShut, emptyShut, emptyOpen, seatedOpen, seatedShut, seatedShut)))
+        rig.coordinator.onWake()
+
+        assertEquals(2, rig.prepares)
+        assertEquals(1, rig.discards)
+        assertEquals(1, rig.host!!.openings.size)
     }
 
     @Test

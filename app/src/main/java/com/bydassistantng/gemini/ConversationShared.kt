@@ -63,8 +63,8 @@ private fun mediaActionText(context: Context, action: String): String = when (ac
  * control armed and only in a build that has one; [soundEffects] are the ready-made sounds it can play.
  * [memoryTools] offers remembering and forgetting facts, in a conversation with long-term memory on.
  * [driveModes] offers changing the car's drive mode, like the exterior speaker only in a build that can.
- * [clusterScreen] offers putting an app on the instrument cluster (experimental: a build and a car that have it, with
- * its switch on). */
+ * [clusterScreen] offers putting an app on the instrument cluster (experimental: a car that has it, with its
+ * switch on). */
 fun assistantTools(
     vehicleControlEnabled: Boolean,
     conversation: Boolean = false,

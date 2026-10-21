@@ -186,6 +186,9 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
                         null
                     },
                     below = {
+                        if (!wheelSetup.enabled && wheelSetup.busy) {
+                            Text(stringResource(R.string.wheel_waiting_for_prompt), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         if (!wheelSetup.enabled && wheelSetup.failed) {
                             Text(wheelSetup.failureHint, fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
                         }

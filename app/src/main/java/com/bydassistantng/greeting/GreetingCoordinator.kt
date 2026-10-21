@@ -62,7 +62,9 @@ enum class GreetResult {
  * The app is stopped when the car is switched off and only started again by the wake broadcast, which on the car came
  * well after the driver had sat and shut the door (see `docs/byd-internals/driver-presence.md`). So it cannot wait to
  * see those two happen: it reads the seat and the door from the start and greets as soon as both hold, for a limited
- * time after the wake. One greeting per wake, and none if the driver has started a conversation themselves.
+ * time after the wake. That time is long, because the car can wake for a remote unlock or a pre-cooling and then wait for
+ * the driver for many minutes; while nobody is about it only looks every few seconds. One greeting per wake, and none if
+ * the driver has started a conversation themselves.
  */
 @Singleton
 class GreetingCoordinator internal constructor(
@@ -119,6 +121,7 @@ class GreetingCoordinator internal constructor(
     private val lock = Any()
     private var loggedWaitingForAssistant = false
     private var greeted = false
+    private var sessionAhead = false
     private var activeWake = Long.MIN_VALUE
     private var watching: Job? = null
     private var lastWakeAt = Long.MIN_VALUE / 2
@@ -151,13 +154,29 @@ class GreetingCoordinator internal constructor(
     private suspend fun watch(wakeAt: Long) {
         loggedWaitingForAssistant = false
         greeted = false
+        sessionAhead = false
         if (!enabled()) {
             log("The greeting is off — not watching")
             return
         }
-        log("The car woke: waiting for the driver to sit down and shut the door (up to ${WINDOW_MS / 1000} s)")
-        // While the driver gets in, the assistant's session is opened, so that the greeting has only to be said. If it
-        // is not wanted after all (the window runs out, a conversation was started by hand) it is let go.
+        log("The car woke: waiting for the driver to sit down and shut the door (up to ${WINDOW_MS / 60_000} min)")
+        try {
+            watchSeatAndDoor(wakeAt)
+        } finally {
+            // Not when a newer wake has taken over: the session now open is that one's.
+            if (sessionAhead && !greeted && activeWake == wakeAt) discardSession()
+        }
+    }
+
+    /**
+     * While the driver gets in, the assistant's session is opened, so that the greeting has only to be said. It is done
+     * when somebody is at the door, not at the wake: a driver may be many minutes away, and a session kept open that
+     * long is worth nothing. If it is not wanted after all (the window runs out, a conversation was started by hand,
+     * the door is shut again with nobody in) it is let go.
+     */
+    private fun openSessionAhead() {
+        if (sessionAhead) return
+        sessionAhead = true
         scope.launch {
             try {
                 prepareSession()
@@ -167,17 +186,17 @@ class GreetingCoordinator internal constructor(
                 log("Could not open the session ahead: $e")
             }
         }
-        try {
-            watchSeatAndDoor(wakeAt)
-        } finally {
-            // Not when a newer wake has taken over: the session now open is that one's.
-            if (!greeted && activeWake == wakeAt) discardSession()
-        }
+    }
+
+    private fun letSessionGo() {
+        if (!sessionAhead) return
+        sessionAhead = false
+        discardSession()
     }
 
     private suspend fun watchSeatAndDoor(wakeAt: Long) {
         var steady = 0
-        var attempts = 0
+        var triedSince: Long? = null
         var lastShown: DriverPresence.State? = null
         var unreadable = false
         var firstRead = true
@@ -196,27 +215,29 @@ class GreetingCoordinator internal constructor(
                 // Already seated with the door shut when first looked at: that is no flicker, it was so before the
                 // app started (the wake broadcast comes late), so there is nothing to wait to confirm.
                 steady = if (state.ready) (if (firstRead) STEADY_READS else steady + 1) else 0
+                if (state.someoneAbout) openSessionAhead() else if (state.nobodyAbout) letSessionGo()
             }
             firstRead = false
-            if (steady >= STEADY_READS) {
-                when (attempt()) {
-                    Attempt.DONE -> return
-                    Attempt.WAIT_FOR_ASSISTANT -> {
-                        sleep(HOST_POLL_MS)
-                        continue
-                    }
-                    Attempt.TRY_AGAIN -> {
-                        if (++attempts >= MAX_ATTEMPTS) {
-                            log("Gave up greeting after $attempts attempts")
-                            return
-                        }
-                        sleep(RETRY_MS)
-                    }
+            if (steady < STEADY_READS) {
+                triedSince = null
+            } else {
+                val since = triedSince ?: now().also { triedSince = it }
+                val outcome = attempt()
+                if (outcome == Attempt.DONE) return
+                if (now() - since >= PATIENCE_MS) {
+                    log("Gave up greeting: it could not start within ${PATIENCE_MS / 1000} s of the driver being ready")
+                    return
                 }
+                if (outcome == Attempt.WAIT_FOR_ASSISTANT) {
+                    sleep(HOST_POLL_MS)
+                    continue
+                }
+                sleep(RETRY_MS)
             }
-            sleep(POLL_MS)
+            // Nobody about: the door has to open before anyone can sit, and it stays open for seconds, so a slow look is enough.
+            sleep(if (state?.nobodyAbout == true) IDLE_POLL_MS else POLL_MS)
         }
-        log("No greeting: the driver was not in the seat with the door shut within ${WINDOW_MS / 1000} s of the wake")
+        log("No greeting: the driver was not in the seat with the door shut within ${WINDOW_MS / 60_000} min of the wake")
     }
 
     private enum class Attempt {
@@ -325,16 +346,27 @@ class GreetingCoordinator internal constructor(
     }
 
     internal companion object {
-        /** How long after the wake the driver can still be greeted; a later arrival is not "the car just woke". */
-        const val WINDOW_MS = 3 * 60_000L
+        /**
+         * How long after the wake the driver can still be greeted; a later arrival is not "the car just woke". The car
+         * wakes for a remote unlock or a pre-cooling and can wait ten minutes or more for the driver.
+         */
+        const val WINDOW_MS = 30 * 60_000L
         const val POLL_MS = 400L
+
+        /** How often to look while nobody is about (the seat empty, the door shut). */
+        const val IDLE_POLL_MS = 2_000L
 
         /** How often to look for the assistant's service to have bound, when the driver is ready and it has not. */
         const val HOST_POLL_MS = 250L
 
         /** The seated-and-shut state has to be read this many times running, so a flicker is not a greeting. */
         const val STEADY_READS = 2
-        const val MAX_ATTEMPTS = 10
+
+        /**
+         * How long a greeting that cannot start yet (no connection to the server, the assistant's service not bound) is
+         * kept trying, from the driver being ready.
+         */
+        const val PATIENCE_MS = 90_000L
         const val RETRY_MS = 4_000L
         const val SAME_WAKE_MS = 20_000L
         private const val CELSIUS_UNIT_CODE = 1

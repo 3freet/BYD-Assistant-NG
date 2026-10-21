@@ -1,6 +1,5 @@
 package com.bydassistantng.vehicle
 
-import com.bydassistantng.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -49,9 +48,8 @@ sealed interface DriveModeOutcome {
 }
 
 /**
- * Where the assistant's drive mode requests go. It exists only in a build with the experimental car features
- * ([BuildConfig.EXPERIMENTAL_CAR_FEATURES]) and only on a car whose framework names the drive mode feature the
- * way it was verified (see [DriveModeControl]); anywhere else the model is never offered the tool. Even then
+ * Where the assistant's drive mode requests go. It exists only on a car whose framework names the drive mode feature
+ * the way it was verified (see [DriveModeControl]); anywhere else the model is never offered the tool. Even then
  * it stays off until the user switches it on in Advanced settings.
  */
 interface DriveModeSwitch {
@@ -59,14 +57,14 @@ interface DriveModeSwitch {
     suspend fun switchTo(mode: DriveMode): DriveModeOutcome
 }
 
-/** Provides the drive mode switch where the build and the car have one, and nothing where they do not. */
+/** Provides the drive mode switch where the car has one, and nothing where it does not. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal object DriveModeSwitchModule {
     @Provides
     @Singleton
     fun driveModeSwitch(switch: Provider<CarDriveModeSwitch>): Optional<DriveModeSwitch> =
-        if (BuildConfig.EXPERIMENTAL_CAR_FEATURES && DriveModeControl.isOnThisCar()) {
+        if (DriveModeControl.isOnThisCar()) {
             Optional.of(switch.get())
         } else {
             Optional.empty()

@@ -10,7 +10,7 @@ Thank you for helping. The most valuable contributions are **confirmations from 
   the security system, power — stays unreachable. A command in one of those domains is rejected when the
   registry loads, and a unit test guards it. The only exceptions are the two experimental, opt-in features
   described in [SECURITY.md](SECURITY.md) (the exterior speaker switch and the drive-mode request); each is one
-  feature id with fixed values, outside the registry, behind the build flag and the user's own switch. Do not add
+  feature id with fixed values, outside the registry, behind the car check and the user's own switch. Do not add
   a third without discussing it first.
 - **Your own vehicle only.** A control must come from what *you* observed on *your* head unit, using the
   read-only method in [research-method.md](docs/byd-internals/research-method.md). Do not paste ids, tables or
@@ -95,10 +95,9 @@ Pass `-Passistant.updateRepo=owner/repo` to enable the in-app update check and t
 
 ## Experimental car features
 
-The exterior speaker and drive modes are compiled into debug and beta builds only: `EXPERIMENTAL_CAR_FEATURES` in
-`app/build.gradle.kts` is `true` there and `false` for release, so a stable build offers neither. On top of the flag
-they need the car's framework to name the feature with the confirmed id (`CarFeatureIds`) and the user's switch in
-Settings, under Car (`OptInFeatures` holds the defaults, which are off). The vehicle helper answers `drivemode set <n>`
+The exterior speaker, drive modes and the instrument cluster are in every build. They need the car's framework to
+name the feature with the confirmed id (`CarFeatureIds`) and the user's switch in Settings, under Car (`OptInFeatures`
+holds the defaults, which are off). The vehicle helper answers `drivemode set <n>`
 itself; the model is never offered it as a registry command. Unit tests guard the exact ids and values; keep them
 in step with [exterior-speaker.md](docs/byd-internals/exterior-speaker.md) and
 [drive-modes.md](docs/byd-internals/drive-modes.md) if you change either.

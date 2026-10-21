@@ -59,7 +59,6 @@ safeguards. A modified build, or any other program using the same ADB access, is
   **no park check** and anything shown there is in the driver's view, so it is for a parked car. ([details](docs/byd-internals/cluster-screen.md))
 
 None of them goes through the command registry, so the model is never offered them as vehicle commands. Each is used
-only in a build that contains the experimental car features (beta and debug builds; not stable releases yet) **and**
 only when the car's framework gives the feature name the id it was confirmed with on the development vehicle — on any
 other car, or on a phone, they are absent (the cluster feature also needs the cluster's own display and BYD's
 navigation app to be there). All three were confirmed on a single vehicle; another model may number the same names

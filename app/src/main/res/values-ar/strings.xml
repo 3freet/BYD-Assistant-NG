@@ -124,6 +124,7 @@
     <string name="wheel_title">زر المقود</string>
     <string name="wheel_off">متوقف. شغّله لتبدأ الاستماع بزر الميكروفون في المقود. يراقب هذا الزر فقط.</string>
     <string name="wheel_turning_on">جارٍ التشغيل…</string>
+    <string name="wheel_waiting_for_prompt">إذا ظهرت رسالة «السماح بتصحيح USB؟» من السيارة، اضغط «سماح». ينتظر التطبيق ردّك مدة دقيقة.</string>
     <string name="wheel_turn_on">تشغيل</string>
     <string name="wheel_press_now">اضغط الزر في المقود الآن…</string>
     <string name="wheel_on">مفعّل. %1$s يبدأ الاستماع ويوقفه.</string>
@@ -139,7 +140,7 @@
     <string name="car_voice_confirm_body">سيُوقَف المساعد الصوتي الخاص بالسيارة فلا يستجيب بعدها لزر الميكروفون في المقود، وتتوقف أوامره الصوتية أيضًا إلى أن تعيد تشغيله من هنا. لا يُحذف شيء.</string>
     <string name="car_voice_failed">تعذّر التغيير. يحتاج ذلك إلى تفعيل تصحيح ADB على هذه الوحدة.</string>
     <string name="wheel_conflict_note">إذا كان تطبيق آخر (مثل تطبيق لتخصيص الأزرار) يستخدم هذا الزر، فأزل تعيينه هناك — وإلا سيستجيب الاثنان معاً.</string>
-    <string name="wheel_failure_hint">تعذّر التشغيل تلقائياً — يتطلب ذلك تفعيل تصحيح ADB في هذه الوحدة. أو نفّذ مرة واحدة من حاسوب: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS ثم حاول مجدداً.</string>
+    <string name="wheel_failure_hint">تعذّر التشغيل تلقائياً — يتطلب ذلك تفعيل تصحيح ADB في هذه الوحدة والضغط على «سماح» في رسالة «السماح بتصحيح USB؟» من السيارة. أو نفّذ مرة واحدة من حاسوب: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS ثم حاول مجدداً.</string>
     <string name="end_wait_title">مدة الانتظار بعد أن تتوقف عن الكلام</string>
     <string name="end_wait_desc">المدة التي ينتظرها المساعد في الصمت قبل أن يعتبر أنك أنهيت كلامك. المدة الأقصر تعطي ردًا أسرع لكنها قد تقاطعك عندما تتوقف في منتصف الجملة.</string>
     <string name="end_wait_value">%1$d مللي ثانية</string>

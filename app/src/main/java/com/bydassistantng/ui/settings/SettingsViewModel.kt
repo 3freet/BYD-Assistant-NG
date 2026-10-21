@@ -179,7 +179,7 @@ class SettingsViewModel @Inject constructor(
     /** Whether this build can change the car's drive mode, and so has a switch for it. */
     val driveModesSupported: Boolean = driveModes.isPresent
 
-    /** Whether this build and this car offer the instrument cluster feature (experimental; it turns BYD Maps on and off). */
+    /** Whether this car offers the instrument cluster feature (experimental; it turns BYD Maps on and off). */
     val clusterSupported: Boolean = ClusterScreenAvailability.isOnThisCar(context)
 
     /** The experimental car features are off until the user switches them on (see [OptInFeatures]). */

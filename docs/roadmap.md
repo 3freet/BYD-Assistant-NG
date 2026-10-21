@@ -31,6 +31,7 @@ it needs before promising it.
 | **Trip briefing** | Let the assistant brief the driver on recent trips and consumption ("how was my last trip?", "what did I use this week?") from a trip-recording app, linked through an Android intent whose name and reply are still to be defined. Everything stays on the device. | Medium |
 | **Routines** | Saved, named routines ("arriving", "cool it down"): one phrase runs a set of controls together (A/C, seat ventilation, ambient light, windows). The model can already chain controls loosely; a saved routine is faster and predictable. Mostly app-side work, on the existing registry and memory. | Medium |
 | **"How's the car?"** | A read-only tool for "are the doors locked and shut?", "is any window or the sunroof open?", "how much battery and fuel, and what range?", "is the parking brake on?", "what was my consumption?". The framework names the states (door lock and open states, a statistics device with battery, fuel and EV and fuel range, the parking brake); each reading is confirmed with the read-only probe on the car first, as the tyres were. No writes. | Very low |
+| **AUX volume dip** | Turn the AUX input down while the assistant speaks, as the radio and Bluetooth music are. AUX has a volume of its own and no media session to say it is playing, so the app cannot tell when something is; it would have to be turned down whenever the assistant speaks, or by listening for sound on the input. Few cars have anything plugged in now. | Low |
 | **Seat position profiles** | Save and restore seat positions by name, using the long-term memory the assistant already has. The seat-position ids exist, but this moves things in the cabin, so it is parked-only, with the car's own protection against trapping confirmed and a stop. Needs research on the car first. | Low |
 
 ## The greeting when the driver sits down
@@ -48,7 +49,10 @@ demand.
 How it works, and why: the apps are stopped when the car is switched off and started again by the wake broadcast, which
 comes late (23 s after the screens in the first recording), so the app cannot watch the driver sit down and the door
 shut. It reads the seat and the door when it starts (see [driver-presence.md](byd-internals/driver-presence.md)) and
-greets as soon as both hold, for up to three minutes after the wake. It needs the assistant's wheel-button service (it
+greets as soon as both hold, for up to 30 minutes after the wake: the car also wakes for a remote unlock or a pre-cooling and
+can wait ten minutes or more for the driver (a first version gave up after three, and missed a driver who arrived after seven
+and a half). While nobody is about (the seat empty, the door shut) it looks only every two seconds, since the door has to open
+before anyone can sit; it opens the assistant's server session when the door opens, not at the wake. It needs the assistant's wheel-button service (it
 owns the microphone), so it waits for that to bind, and ADB debugging for the reads.
 
 Timing on the car: the first real run took 9.6 s from the wake broadcast to the first word, of which about 3 s was
@@ -60,8 +64,12 @@ the app running well before the driver sat down, the first word came 2.1 s after
 the helper starting (about 1 s), the service binding, and the model's first word (1 to 1.7 s). Also possible: sending the
 words before the headrest route and the cabin-noise reading are done (about 0.4 s), holding the audio until they are.
 
-To check: the delay from the wake broadcast after a night's sleep, and whether the broadcast always comes before the
-driver is ready.
+A greeting that cannot start (no connection to the server yet, with the phone's hotspot still coming up) is tried again every
+four seconds for up to 90 seconds after the driver is ready; a first version stopped after ten tries, 45 seconds, and one
+morning that was not enough.
+
+To check: the delay from the wake broadcast after a night's sleep, whether the broadcast always comes before the driver is
+ready, and a driver arriving 10 to 30 minutes after a remote unlock.
 
 ## Discussion: the factory test controls ("simulate down")
 
@@ -108,7 +116,7 @@ one): the assistant speaks on the navigation stream, which the headrest sound's 
 alone, and the mode is set for the conversation and given back after. Its volume follows the cabin noise on a first fit
 of its own. To do: tune the fit in a loud cabin, on a drive.
 
-Still open: AUX, which has a volume of its own and no media session to say it is playing, so it is not dipped (the radio and Bluetooth music are: they are seen through the media sessions, and the switch "Also when nothing is listed as playing" is the fallback for the media volume), whether the car's own dip handles them, the "pause" choice, the top of the
+Still open: AUX is not dipped (see the table above; the radio and Bluetooth music are: they are seen through the media sessions, and the switch "Also when nothing is listed as playing" is the fallback for the media volume), whether the car's own dip handles them, the "pause" choice, the top of the
 volume curve in a very loud cabin, how the voice behaves in the headrest's Exclusive mode, and other models (it is
 offered only where the stream has the measured range).
 

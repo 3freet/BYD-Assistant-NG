@@ -125,6 +125,7 @@
     <string name="wheel_title">Steering-wheel button</string>
     <string name="wheel_off">Off. Turn it on to start listening with the mic button on the wheel. It only watches that one button.</string>
     <string name="wheel_turning_on">Turning on…</string>
+    <string name="wheel_waiting_for_prompt">If the car asks \"Allow USB debugging?\", tap Allow. It waits for your answer for a minute.</string>
     <string name="wheel_turn_on">Turn on</string>
     <string name="wheel_press_now">Press the button on the wheel now…</string>
     <string name="wheel_on">On. %1$s starts and stops listening.</string>
@@ -140,7 +141,7 @@
     <string name="car_voice_confirm_body">This switches off the car\'s own voice assistant, so it no longer answers the steering-wheel mic button. Its own voice commands stop working too, until you turn it back on here. Nothing is uninstalled.</string>
     <string name="car_voice_failed">Couldn\'t change it. That needs ADB debugging switched on for this head unit.</string>
     <string name="wheel_conflict_note">If another app (a button mapper, for instance) already uses this button, remove its mapping there — both would otherwise react.</string>
-    <string name="wheel_failure_hint">Couldn\'t turn it on automatically — that needs ADB debugging switched on for this head unit. Or, once from a computer: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS, then try again.</string>
+    <string name="wheel_failure_hint">Couldn\'t turn it on automatically — that needs ADB debugging switched on for this head unit, and Allow tapped on the car\'s \"Allow USB debugging?\" prompt. Or, once from a computer: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS, then try again.</string>
     <string name="end_wait_title">Wait after you stop speaking</string>
     <string name="end_wait_desc">How long the assistant waits in silence before it decides you have finished. A shorter wait answers sooner but may cut you off when you pause in the middle of a sentence.</string>
     <string name="end_wait_value">%1$d ms</string>

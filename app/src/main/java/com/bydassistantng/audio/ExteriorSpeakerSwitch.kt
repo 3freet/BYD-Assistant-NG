@@ -6,9 +6,8 @@ package com.bydassistantng.audio
  *
  * The denylist itself is untouched. Nothing here goes through the command registry, so the model can
  * never be offered it; the shell helper that writes it ([OutsideSpeakerHelper]) has this one feature
- * id and the values 0 and 1 compiled in and refuses everything else. It is only reachable in a build with
- * the experimental car features, on a car whose framework gives the feature the verified id
- * ([isOnThisCar]), and after the user switched it on in Advanced settings.
+ * id and the values 0 and 1 compiled in and refuses everything else. It is only reachable on a car whose
+ * framework gives the feature the verified id ([isOnThisCar]), and after the user switched it on in Advanced settings.
  */
 internal object ExteriorSpeakerSwitch {
     /** The car's audio device, the same one the volume control uses. */

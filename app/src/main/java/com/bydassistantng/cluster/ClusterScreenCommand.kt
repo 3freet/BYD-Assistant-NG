@@ -12,7 +12,7 @@ import java.lang.reflect.Method
 /**
  * `cluster <action> ...`: puts one app on the instrument cluster and takes it off again, from the vehicle helper
  * (ADB shell identity). Like the passenger screen it is a command of its own, not an entry of the vehicle command
- * registry, and it exists only in a build with the experimental car features (debug and beta builds).
+ * registry.
  *
  *     cluster open <package> disable|keep [<link>]
  *                                     show the app on the cluster (in its middle, where the map shows), on a link; the

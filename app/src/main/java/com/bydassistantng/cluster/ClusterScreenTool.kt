@@ -40,8 +40,8 @@ enum class ClusterAction(val word: String) {
 /**
  * "Show Yandex Navi on the instrument cluster", "take it off the cluster": puts an app on the driver's instrument
  * cluster and takes it off again, through the vehicle helper (see [ClusterScreenCommand]). An experimental
- * feature: it is offered only in a build with the experimental car features, on a car that has the cluster (see
- * [ClusterScreenAvailability]), and with its switch on in Advanced settings.
+ * feature: it is offered only on a car that has the cluster (see [ClusterScreenAvailability]), and with its switch on
+ * in Advanced settings.
  */
 object ClusterScreenTool {
     const val FUNCTION_NAME = "cluster_screen"

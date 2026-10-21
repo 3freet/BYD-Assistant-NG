@@ -9,9 +9,8 @@ package com.bydassistantng.vehicle
  * The denylist itself is untouched. Nothing here goes through the command registry, so the model can never
  * be offered it as a vehicle command; the command that writes it ([DriveModeCommand], run inside the vehicle
  * helper) has this one feature id and these values compiled in, refuses anything else, and refuses at or
- * above [MAX_SPEED_KMH]. It is only reachable in a build with the experimental car features, on a car whose
- * framework gives the feature the verified id ([isOnThisCar]), and after the user switched it on in
- * Advanced settings.
+ * above [MAX_SPEED_KMH]. It is only reachable on a car whose framework gives the feature the verified id
+ * ([isOnThisCar]), and after the user switched it on in Advanced settings.
  *
  * What it is, from the car's own screen (`com.byd.dlc.drivingmode`) on this car, 2026-10-11: it calls
  * `AbsBYDAutoDevice.set(int[]{SETTING_PRESELECTED_DRIVING_MODE_SET}, BYDAutoEventValue(mode))` on the

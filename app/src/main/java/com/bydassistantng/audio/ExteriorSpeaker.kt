@@ -1,7 +1,6 @@
 package com.bydassistantng.audio
 
 import android.media.AudioTrack
-import com.bydassistantng.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -40,8 +39,7 @@ data class SoundEffect(val name: String, val description: String)
  * The car's exterior speaker as a place the assistant's voice can come out of: while it is open, what a
  * reply plays is heard outside the car only.
  *
- * It exists only in a build with the experimental car features ([BuildConfig.EXPERIMENTAL_CAR_FEATURES]) and
- * only on a car whose framework names the exterior speaker switch the way it was verified (see
+ * It exists only on a car whose framework names the exterior speaker switch the way it was verified (see
  * [ExteriorSpeakerSwitch]); anywhere else the assistant cannot use it and never offers the model the tools
  * for it (see [SpeakOutsideTool]). Even then it stays off until the user switches it on in Advanced settings.
  */
@@ -72,14 +70,14 @@ interface ExteriorSpeaker {
     fun renderEffect(name: String): ShortArray? = null
 }
 
-/** Provides the exterior speaker where the build and the car have one, and nothing where they do not. */
+/** Provides the exterior speaker where the car has one, and nothing where it does not. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal object ExteriorSpeakerModule {
     @Provides
     @Singleton
     fun exteriorSpeaker(speaker: Provider<CarExteriorSpeaker>): Optional<ExteriorSpeaker> =
-        if (BuildConfig.EXPERIMENTAL_CAR_FEATURES && ExteriorSpeakerSwitch.isOnThisCar()) {
+        if (ExteriorSpeakerSwitch.isOnThisCar()) {
             Optional.of(speaker.get())
         } else {
             Optional.empty()

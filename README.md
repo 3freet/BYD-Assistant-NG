@@ -72,12 +72,11 @@ exterior speaker or change the drive mode.
   (screens and messages) and *Reply language* (what the assistant answers in) are separate settings, as are the
   assistant's voice and, for Arabic, its dialect.
 
-### Experimental features (beta builds, off by default)
+### Experimental features (off by default)
 
 These reach further into the car than the comfort controls, so they are **off until you switch them on** under
 *Settings → Car → Experimental features*, each with its own confirmation. They are only offered on
-a car whose framework names the feature the way it was confirmed on the development vehicle, and only in beta
-builds for now. Everything about how they work is in [docs/byd-internals](docs/byd-internals/README.md).
+a car whose framework names the feature the way it was confirmed on the development vehicle. Everything about how they work is in [docs/byd-internals](docs/byd-internals/README.md).
 
 - **Exterior speaker**: "tell the person outside I'm coming" makes the assistant's reply come out of the car's
   exterior speaker (nobody in the cabin hears it), and "play a doorbell outside" plays one of nine short effects
@@ -208,7 +207,7 @@ Optional build settings:
 | `service/` | The steering-wheel accessibility service and the status banner |
 | `apps/`, `media/`, `navigation/` | The open-app, close-app, media and navigation tools |
 | `passenger/` | The passenger screen: its tool, helper command and parsing (apps, backlight, brightness) |
-| `cluster/` | Experimental, beta and debug builds: putting an app on the instrument cluster |
+| `cluster/` | Experimental: putting an app on the instrument cluster |
 | `res/values`, `res/values-ar` | English and Arabic strings — a unit test keeps the two in step |
 
 ## License

@@ -61,11 +61,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
         buildConfigField("String", "SOURCE_URL", "\"$sourceUrl\"")
-        // The experimental car features (the exterior speaker, drive mode switching): off here, on in the debug
-        // and beta builds below. Each stays off until the user switches it on in Advanced settings, and is only
-        // offered on a car whose framework names its feature as it was verified. Turn it on for release when
-        // they graduate from beta.
-        buildConfigField("boolean", "EXPERIMENTAL_CAR_FEATURES", "false")
     }
 
     signingConfigs {
@@ -93,7 +88,6 @@ android {
         debug {
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            buildConfigField("boolean", "EXPERIMENTAL_CAR_FEATURES", "true")
         }
 
         release {
@@ -113,7 +107,6 @@ android {
             initWith(getByName("release"))
             matchingFallbacks += listOf("release")
             versionNameSuffix = "-beta.${betaNumber.get()}"
-            buildConfigField("boolean", "EXPERIMENTAL_CAR_FEATURES", "true")
         }
     }
     compileOptions {

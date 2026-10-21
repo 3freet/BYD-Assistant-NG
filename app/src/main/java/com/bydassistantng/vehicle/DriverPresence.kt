@@ -30,6 +30,12 @@ object DriverPresence {
 
         /** The driver is in the seat and the door is shut. */
         val ready: Boolean get() = seated && doorShut
+
+        /** Somebody is getting in or out: the door is open or the seat is taken. */
+        val someoneAbout: Boolean get() = seated || door == DOOR_OPEN
+
+        /** Nobody about, read for certain: the seat is empty and the door is shut. */
+        val nobodyAbout: Boolean get() = seat == SEAT_EMPTY && doorShut
     }
 
     fun encode(state: State): String = "seat=${state.seat ?: UNREAD} door=${state.door ?: UNREAD}"
