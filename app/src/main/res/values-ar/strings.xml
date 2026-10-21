@@ -147,6 +147,7 @@
     <string name="sensitivity_desc">مدى قوة الصوت اللازمة ليعدّه المساعد كلامك، عند بدء الاستماع إليك وعند مقاطعتك له. الأعلى يلتقط صوتًا أخفض لكنه أسهل خداعًا بالضوضاء؛ والأدنى يحتاج صوتًا أقوى. إذا ردّ على أصوات لم تصدرها أو توقف عن الكلام من تلقاء نفسه فاخفضه؛ وإن فاتك شيء فارفعه.</string>
     <string name="sensitivity_value">%1$+d خطوة</string>
     <string name="sensitivity_reset">العودة إلى 0</string>
+    <string name="media_access_service_name">الوسائط قيد التشغيل (لا يقرأ أي إشعار)</string>
     <string name="group_music_in_background">الموسيقى في الخلفية</string>
     <string name="level_gate_title">تجاهل الموسيقى في الخلفية</string>
     <string name="level_gate_desc">أثناء تشغيل الموسيقى، يتعلم المساعد مدى علو الموسيقى والمقصورة قبل أن تتكلم مباشرة، ولا يرسل إلا ما هو أعلى منها بوضوح، فلا تُعدّ كلمات الأغنية كلامك. لا يفعل شيئًا إن لم تكن هناك موسيقى.</string>
@@ -268,6 +269,9 @@
     <string name="voice_music_lower_desc">تخفض السيارة صوت الموسيقى أثناء المحادثة بخفضها العميق الذي لا يمكن تغييره، وترفعه بعدها. وقد تتوقف الموسيقى لحظة عند عودتها.</string>
     <string name="voice_music_level">اخفض صوتها</string>
     <string name="voice_music_level_desc">يُخفض مستوى صوت الموسيقى بالنسبة التي تختارها أثناء استماع المساعد وكلامه، ويعود عند انتهاء المحادثة. فقط أثناء تشغيل موسيقى.</string>
+    <string name="voice_channel_dip_always_title">حتى لو لم يُدرَج شيء كمشغَّل</string>
+    <string name="voice_channel_dip_always_desc">يخفض مستوى صوت الوسائط في كل محادثة، حتى لو لم تُبلغ السيارة بأن شيئًا قيد التشغيل. احتياط لحالة عجز التطبيق عن معرفة ما يعمل.</string>
+    <string name="voice_channel_dip_always_note">يتحرك شريط مستوى الصوت في السيارة عند بداية كل محادثة ونهايتها، حتى لو لم يكن شيء يعمل. متوقف افتراضيًا.</string>
     <string name="voice_channel_dip_title">مقدار خفض الموسيقى</string>
     <string name="voice_channel_dip_desc">نسبة مستوى صوت الموسيقى التي تُخفض أثناء عمل المساعد.</string>
     <string name="voice_channel_dip_value">أقل بنسبة %1$d%%</string>

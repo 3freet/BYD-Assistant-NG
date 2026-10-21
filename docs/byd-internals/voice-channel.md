@@ -54,13 +54,31 @@ Read from the code of its apps (the assistant did not respond on our car, so not
   listens) until it ends. The choices: leave it, turn it down by a share (the default), the car's own dip (the focus
   request above), or pause it.
   - *Turn it down by a share* lowers the media volume index by 10 to 90 % (default 50), in a fade of about four
-    tenths of a second, and brings it back the same way. It does this only while music is playing, and leaves the
-    volume alone if the user has changed it meanwhile. "Music is playing" is judged from the players the system
-    lists as active (media or game, not the assistant's own voice, content type 10, and not a navigation prompt,
-    content type 6): `AudioManager.isMusicActive` answers true all the time on this unit, with no player started at
-    all. The index is written to disk while it is down, so that a
-    stopped app puts it back at the next conversation. It does not touch the radio or Bluetooth music, which are on
-    other streams, and at a music volume of 1 or less there is nothing to turn down.
+    tenths of a second, and brings it back the same way. By default it does this **only while something is playing**, and leaves the
+    volume alone if the user has changed it meanwhile. "Something is playing" is a player the system lists as active
+    (media or game, not the assistant's own voice, content type 10, and not a navigation prompt, content type 6) **or a
+    media session in a playing state**. `AudioManager.isMusicActive` answers true all the time on this unit, with no
+    player started at all, and a first version that used it turned the volume down at every conversation, which was
+    reported as a bug on 16 Oct. The radio is not a player the system lists: with the radio playing, `dumpsys audio`
+    showed no active player, only the radio app (`com.byd.mediacenter`) holding audio focus with content type FM, and
+    the dip did nothing. It does publish a media session (`active=true`, playback state 3, the station as its
+    description), and its volume follows the media volume (stream 12 read 4 when stream 3 was set to 4, and 5 when it
+    was set back). `MediaSources` follows the sessions through a no-op notification listener: the system shows them only
+    to an app with notification access, which the app gives itself once with `cmd notification allow_listener` over the
+    loopback ADB connection (writing the `enabled_notification_listeners` setting directly was refused: "Missing
+    permission to control media"). The grant survived the app being reinstalled. The system calls back when a session
+    starts, stops or changes, so nothing is polled and nothing runs over ADB afterwards; only the name of the app and
+    whether it is playing are kept. With it the radio is dipped, and the first-reading adjustment and the level gate see
+    it. A switch under the dip, **Also when nothing is listed as playing** (off by default), turns the media volume down
+    at every conversation anyway, for when the access cannot be given (ADB debugging off); the volume bar then moves each
+    time. The index is written to disk while it is down, so that a stopped app puts it back at the next conversation.
+    Bluetooth music is on a volume of its own, stream 14 (it read 15 with the phone disconnected and 5, the media volume's
+    value, once the phone was connected), so while its session is playing (`com.android.bluetooth`) that volume is turned
+    down by the same share and put back the same way, with its own saved value. Tried on the car with a phone playing: the
+    music dipped for the 8 seconds stream 14 was held at 2 (from 5), the media volume (stream 3, 5), the radio's (12) and AUX's
+    (13, 8) did not move, the phone's own volume bar did not move, and it came back to exactly 5; the car's on-screen volume bar
+    followed. AUX (stream 13) has no media session to tell that it is playing, so it is not dipped. At a music volume of 1 or
+    less there is nothing to turn down.
 - **The reply's volume** can follow the cabin noise (a switch, with a gain slider of -6 to +6 steps).
 
 ## The cabin noise

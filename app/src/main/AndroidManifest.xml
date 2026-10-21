@@ -99,6 +99,17 @@
                 android:resource="@xml/wheel_key_service_config" />
         </service>
 
+        <!-- Lets the app see which media sessions are playing (the radio is not an Android player); it reads no notification. -->
+        <service
+            android:name=".service.MediaAccessService"
+            android:exported="true"
+            android:label="@string/media_access_service_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <!-- Re-enables the wheel-button service after boot / wake / update — see BootReceiver. Exported
              because QUICKBOOT_POWERON is sent by another app, not by the system. -->
         <receiver

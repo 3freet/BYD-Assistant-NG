@@ -108,7 +108,7 @@ one): the assistant speaks on the navigation stream, which the headrest sound's 
 alone, and the mode is set for the conversation and given back after. Its volume follows the cabin noise on a first fit
 of its own. To do: tune the fit in a loud cabin, on a drive.
 
-Still open: whether the car's own dip also handles the radio and Bluetooth music, the "pause" choice, the top of the
+Still open: AUX, which has a volume of its own and no media session to say it is playing, so it is not dipped (the radio and Bluetooth music are: they are seen through the media sessions, and the switch "Also when nothing is listed as playing" is the fallback for the media volume), whether the car's own dip handles them, the "pause" choice, the top of the
 volume curve in a very loud cabin, how the voice behaves in the headrest's Exclusive mode, and other models (it is
 offered only where the stream has the measured range).
 

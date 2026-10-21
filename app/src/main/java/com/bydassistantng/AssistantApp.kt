@@ -2,6 +2,7 @@ package com.bydassistantng
 
 import android.app.Application
 import android.content.Context
+import com.bydassistantng.audio.MediaSources
 import com.bydassistantng.audio.TextToSpeechEngine
 import com.bydassistantng.update.UpdateManager
 import com.bydassistantng.util.AppLanguage
@@ -15,6 +16,9 @@ import javax.inject.Inject
 class AssistantApp : Application() {
 
     @Inject lateinit var updateManager: UpdateManager
+
+    // Which apps are playing media (the radio is not an Android player); started with the app, see [MediaSources].
+    @Inject lateinit var mediaSources: MediaSources
 
     // Just injecting this triggers TextToSpeechEngine's constructor, which starts the (now
     // bounded, but still worth starting early) async engine-init wait during idle app startup
@@ -34,6 +38,7 @@ class AssistantApp : Application() {
         // Whatever started this process (the system binding the service, a boot broadcast, the user opening
         // the app), make sure the wheel button is actually live. Waits a few seconds, so off the main thread.
         Thread { WheelKeys.ensureServiceRunning(this) }.start()
+        Thread { mediaSources.start() }.start()
         updateManager.start()
     }
 }

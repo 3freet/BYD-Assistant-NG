@@ -64,6 +64,8 @@ data class VoiceChannelOptions(
     val gainSteps: Int,
     val dipPercent: Int = DEFAULT_DIP_PERCENT,
     val speaker: VoiceSpeaker = VoiceSpeaker.DEFAULT,
+    /** For [MusicDuck.LEVEL]: turn the media volume down even when nothing is reported as playing (a fallback). */
+    val dipAlways: Boolean = false,
 ) {
     companion object {
         val OFF = VoiceChannelOptions(enabled = false, music = MusicDuck.DEFAULT, adaptive = false, gainSteps = 0)
@@ -160,6 +162,9 @@ object VoiceChannel {
     const val NAVI_STREAM = 15
 
     /** The stream a reply is played on for [speaker]. */
+    /** The car's own volume for Bluetooth music: separate from the media volume (the radio follows that one); 0 to 39 on the car it was found on. */
+    const val BLUETOOTH_MUSIC_STREAM = 14
+
     fun streamFor(speaker: VoiceSpeaker): Int = if (speaker == VoiceSpeaker.HEADREST) NAVI_STREAM else STREAM
 
     /** The attributes that put a track on the stream for [speaker]: the car labels it with its own content type from there. */

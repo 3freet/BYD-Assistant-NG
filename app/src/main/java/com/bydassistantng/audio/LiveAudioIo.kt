@@ -33,6 +33,11 @@ import javax.inject.Inject
 private const val TAG = "LiveAudioIo"
 private const val KEY_LOWERED_FROM = "lowered_from"
 private const val KEY_LOWERED_TO = "lowered_to"
+private const val KEY_BT_LOWERED_FROM = "bt_lowered_from"
+private const val KEY_BT_LOWERED_TO = "bt_lowered_to"
+
+// The app whose media session is Bluetooth music.
+private const val BLUETOOTH_PACKAGE = "com.android.bluetooth"
 private const val KEY_NAVI_FROM = "navi_from"
 private const val KEY_NAVI_TO = "navi_to"
 
@@ -199,6 +204,8 @@ class LivePcmRecorder @Inject constructor() {
 class LivePcmPlayer @Inject constructor(
     exteriorSpeaker: Optional<ExteriorSpeaker>,
     @ApplicationContext context: Context,
+    // The radio and the other built-in sources are not Android players, so the list of players never has them.
+    private val mediaSources: MediaSources,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -213,14 +220,11 @@ class LivePcmPlayer @Inject constructor(
     private var voiceFocus: AudioFocusRequest? = null
     private var focusJob: Job? = null
 
-    // The media volume while it is turned down by a share (see [MusicDuck.LEVEL]): what it was and what it was set to.
-    // Guarded by [focusLock].
-    private var loweredFrom: Int? = null
-    private var loweredTo: Int? = null
-    private var restoreJob: Job? = null
-    private var restoringTo: Int? = null
-    private var rampDownJob: Job? = null
-    private var rampDownActive = false
+    // The volumes that are turned down by a share while a conversation lasts (see [MusicDuck.LEVEL]): the media volume, which the
+    // radio and most apps follow, and the Bluetooth music's own, while Bluetooth music is playing. Each keeps what its volume
+    // was and what it was set to, guarded by [focusLock].
+    private val mediaDip = StreamDip(AudioManager.STREAM_MUSIC, KEY_LOWERED_FROM, KEY_LOWERED_TO, "Music volume")
+    private val bluetoothDip = StreamDip(VoiceChannel.BLUETOOTH_MUSIC_STREAM, KEY_BT_LOWERED_FROM, KEY_BT_LOWERED_TO, "Bluetooth music volume")
 
     // The navigation volume while the headrest's reply follows the cabin noise: what it was and what it was set to.
     // Guarded by [focusLock].
@@ -414,7 +418,7 @@ class LivePcmPlayer @Inject constructor(
     }
 
     /** Whether music is playing now (see [MusicPlayback]). */
-    fun musicIsPlaying(): Boolean = MusicPlayback.isPlaying(audioManager)
+    fun musicIsPlaying(): Boolean = MusicPlayback.isPlaying(audioManager) || mediaSources.anyPlaying()
 
     /**
      * How much of a cabin-noise reading taken just now is the music, which the conversation is about to turn down (see
@@ -422,7 +426,7 @@ class LivePcmPlayer @Inject constructor(
      */
     fun musicAllowanceDb(): Double {
         val options = voiceChannel
-        if (!options.enabled || !MusicPlayback.isPlaying(audioManager)) return 0.0
+        if (!options.enabled || !musicIsPlaying()) return 0.0
         return VoiceVolume.musicAllowanceDb(options.music, options.dipPercent)
     }
 
@@ -567,7 +571,7 @@ class LivePcmPlayer @Inject constructor(
             MusicDuck.KEEP -> Unit
             MusicDuck.LOWER -> requestVoiceFocus(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK, options.music)
             MusicDuck.PAUSE -> requestVoiceFocus(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT, options.music)
-            MusicDuck.LEVEL -> lowerMusicVolume(options.dipPercent)
+            MusicDuck.LEVEL -> lowerMusicVolume(options.dipPercent, options.dipAlways)
         }
     }
 
@@ -586,86 +590,30 @@ class LivePcmPlayer @Inject constructor(
     }
 
     /**
-     * Turns the media volume down by [percent], in a few quick steps, to be put back when the conversation ends. Only
-     * while music is playing: with nothing to turn down the volume is left alone.
+     * Turns the media volume down by [percent], in a few quick steps, to be put back when the conversation ends; and the
+     * Bluetooth music's own volume too while Bluetooth music is playing (it is a volume of its own, and lowering it did not
+     * move the phone's volume). Only while something is playing (a listed player or a playing media session, see
+     * [MediaSources]), unless [always]: with nothing to turn down the volume is left alone, as a dip with nothing playing was
+     * reported as a bug. [always] is the fallback for when what is playing cannot be seen; the car's volume bar then moves
+     * at every conversation.
      */
-    private fun lowerMusicVolume(percent: Int) {
-        synchronized(focusLock) {
-            // A reply that follows closely on another: what the last one was still bringing back is back at once, so
-            // the volume to return to is the user's, not a step on the way up.
-            restoreJob?.cancel()
-            restoringTo?.let { runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, it, 0) } }
-            restoringTo = null
-            if (loweredFrom != null) return
-            if (!MusicPlayback.isPlaying(audioManager)) {
-                AppLogger.log(TAG, "No music is playing — nothing to turn down")
-                return
-            }
-            val now = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-            val target = MusicDip.target(now, percent)
-            if (target >= now) {
-                AppLogger.log(TAG, "The music is at $now: too low to turn down")
-                return
-            }
-            runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, now - 1, 0) }
-                .onFailure {
-                    AppLogger.log(TAG, "Could not turn the music down: $it")
-                    return
-                }
-            loweredFrom = now
-            loweredTo = target
-            // Kept on disk too: if the app dies before the conversation is over, the next one puts it back.
-            voicePrefs.edit().putInt(KEY_LOWERED_FROM, now).putInt(KEY_LOWERED_TO, target).apply()
-            AppLogger.log(TAG, "Music volume $now -> $target ($percent% down)")
-            // The rest of the way in quick steps, so it is a short fade and not a drop.
-            rampDownActive = true
-            rampDownJob = scope.launch {
-                val stepMs = MusicDip.rampStepMs(now - target)
-                var level = now - 1
-                while (isActive && level > target) {
-                    delay(stepMs)
-                    level--
-                    runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, level, 0) }
-                }
-                synchronized(focusLock) { rampDownActive = false }
-            }
-        }
-    }
-
-    /** Puts the media volume back one step at a time, unless the user has changed it meanwhile. */
-    private fun restoreMusicVolume() {
-        val (from, to, rampingDown) = synchronized(focusLock) {
-            val from = loweredFrom ?: return
-            val to = loweredTo ?: return
-            loweredFrom = null
-            loweredTo = null
-            voicePrefs.edit().remove(KEY_LOWERED_FROM).remove(KEY_LOWERED_TO).apply()
-            // Cut short, a fade down is somewhere between the two.
-            rampDownJob?.cancel()
-            Triple(from, to, rampDownActive.also { rampDownActive = false })
-        }
-        val current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-        if (if (rampingDown) current !in to..from else current != to) {
-            AppLogger.log(TAG, "The music volume is $current, not $to: it was changed meanwhile, so it stays")
+    private fun lowerMusicVolume(percent: Int, always: Boolean) {
+        val listed = musicIsPlaying()
+        val bluetooth = mediaSources.isPlaying(BLUETOOTH_PACKAGE)
+        if (!listed && !always) {
+            // A dip that is already down stays down (a later reply in the same conversation); nothing new is started.
+            mediaDip.lower(percent, onlyIfAlreadyLowered = true)
+            if (!mediaDip.isLowered) AppLogger.log(TAG, "No music is playing — nothing to turn down")
             return
         }
-        synchronized(focusLock) {
-            restoreJob?.cancel()
-            restoringTo = from
-            val stepMs = MusicDip.rampStepMs(from - current)
-            restoreJob = scope.launch {
-                var level = current
-                while (isActive && level < from) {
-                    level++
-                    runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, level, 0) }
-                    delay(stepMs)
-                }
-                if (isActive) {
-                    synchronized(focusLock) { if (restoringTo == from) restoringTo = null }
-                    AppLogger.log(TAG, "Music volume back to $from")
-                }
-            }
-        }
+        mediaDip.lower(percent, note = if (listed) "" else ", nothing is reported as playing; turned down anyway, as set")
+        if (bluetooth) bluetoothDip.lower(percent) else bluetoothDip.lower(percent, onlyIfAlreadyLowered = true)
+    }
+
+    /** Puts the volumes back one step at a time, unless the user has changed them meanwhile. */
+    private fun restoreMusicVolume() {
+        mediaDip.restore()
+        bluetoothDip.restore()
     }
 
     /**
@@ -674,13 +622,126 @@ class LivePcmPlayer @Inject constructor(
      */
     fun recoverMusicVolume() {
         recoverNaviVolume()
-        val from = voicePrefs.getInt(KEY_LOWERED_FROM, -1)
-        val to = voicePrefs.getInt(KEY_LOWERED_TO, -1)
-        if (from < 0 || to < 0) return
-        voicePrefs.edit().remove(KEY_LOWERED_FROM).remove(KEY_LOWERED_TO).apply()
-        if (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == to) {
-            runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, from, 0) }
-            AppLogger.log(TAG, "The music was still turned down from an earlier conversation — put back to $from")
+        mediaDip.recover()
+        bluetoothDip.recover()
+    }
+
+    /**
+     * One volume that is turned down for a conversation and put back after: what it was, what it was set to, the fade down
+     * and the fade back up. The values are also kept on disk while it is down, so that a stopped app puts it back at the
+     * next conversation.
+     */
+    private inner class StreamDip(
+        private val stream: Int,
+        private val keyFrom: String,
+        private val keyTo: String,
+        private val name: String,
+    ) {
+        // Guarded by [focusLock].
+        var loweredFrom: Int? = null
+        private var loweredTo: Int? = null
+
+        val isLowered: Boolean get() = synchronized(focusLock) { loweredFrom != null }
+        private var restoreJob: Job? = null
+        private var restoringTo: Int? = null
+        private var rampDownJob: Job? = null
+        private var rampDownActive = false
+
+        /**
+         * Turns it down by [percent]; with [onlyIfAlreadyLowered] it only sees to a fade back up that is still going, so that
+         * the volume to return to is the user's and not a step on the way up, and starts nothing.
+         */
+        fun lower(percent: Int, note: String = "", onlyIfAlreadyLowered: Boolean = false) {
+            synchronized(focusLock) {
+                // A reply that follows closely on another: what the last one was still bringing back is back at once, so
+                // the volume to return to is the user's, not a step on the way up.
+                restoreJob?.cancel()
+                restoringTo?.let { runCatching { audioManager.setStreamVolume(stream, it, 0) } }
+                restoringTo = null
+                if (loweredFrom != null || onlyIfAlreadyLowered) return
+                val now = try {
+                    audioManager.getStreamVolume(stream)
+                } catch (e: Exception) {
+                    AppLogger.log(TAG, "$name cannot be read on this unit: $e")
+                    return
+                }
+                val target = MusicDip.target(now, percent)
+                if (target >= now) {
+                    AppLogger.log(TAG, "$name is at $now: too low to turn down")
+                    return
+                }
+                runCatching { audioManager.setStreamVolume(stream, now - 1, 0) }
+                    .onFailure {
+                        AppLogger.log(TAG, "Could not turn $name down: $it")
+                        return
+                    }
+                loweredFrom = now
+                loweredTo = target
+                // Kept on disk too: if the app dies before the conversation is over, the next one puts it back.
+                voicePrefs.edit().putInt(keyFrom, now).putInt(keyTo, target).apply()
+                AppLogger.log(TAG, "$name $now -> $target ($percent% down)$note")
+                // The rest of the way in quick steps, so it is a short fade and not a drop.
+                rampDownActive = true
+                rampDownJob = scope.launch {
+                    val stepMs = MusicDip.rampStepMs(now - target)
+                    var level = now - 1
+                    while (isActive && level > target) {
+                        delay(stepMs)
+                        level--
+                        runCatching { audioManager.setStreamVolume(stream, level, 0) }
+                    }
+                    synchronized(focusLock) { rampDownActive = false }
+                }
+            }
+        }
+
+        /** Puts it back one step at a time, unless the user has changed it meanwhile. */
+        fun restore() {
+            val (from, to, rampingDown) = synchronized(focusLock) {
+                val from = loweredFrom ?: return
+                val to = loweredTo ?: return
+                loweredFrom = null
+                loweredTo = null
+                voicePrefs.edit().remove(keyFrom).remove(keyTo).apply()
+                // Cut short, a fade down is somewhere between the two.
+                rampDownJob?.cancel()
+                Triple(from, to, rampDownActive.also { rampDownActive = false })
+            }
+            val current = audioManager.getStreamVolume(stream)
+            if (if (rampingDown) current !in to..from else current != to) {
+                AppLogger.log(TAG, "$name is $current, not $to: it was changed meanwhile, so it stays")
+                return
+            }
+            synchronized(focusLock) {
+                restoreJob?.cancel()
+                restoringTo = from
+                val stepMs = MusicDip.rampStepMs(from - current)
+                restoreJob = scope.launch {
+                    var level = current
+                    while (isActive && level < from) {
+                        level++
+                        runCatching { audioManager.setStreamVolume(stream, level, 0) }
+                        delay(stepMs)
+                    }
+                    if (isActive) {
+                        synchronized(focusLock) { if (restoringTo == from) restoringTo = null }
+                        AppLogger.log(TAG, "$name back to $from")
+                    }
+                }
+            }
+        }
+
+        /** After a conversation cut short: puts it back if it is still where the app left it. */
+        fun recover() {
+            val from = voicePrefs.getInt(keyFrom, -1)
+            val to = voicePrefs.getInt(keyTo, -1)
+            if (from < 0 || to < 0) return
+            voicePrefs.edit().remove(keyFrom).remove(keyTo).apply()
+            val current = runCatching { audioManager.getStreamVolume(stream) }.getOrNull()
+            if (current == to) {
+                runCatching { audioManager.setStreamVolume(stream, from, 0) }
+                AppLogger.log(TAG, "$name was still turned down from an earlier conversation — put back to $from")
+            }
         }
     }
 
@@ -755,7 +816,7 @@ class LivePcmPlayer @Inject constructor(
     @RequiresApi(Build.VERSION_CODES.O)
     private fun holdMusicAfterCutOff() {
         synchronized(focusLock) {
-            if (!voiceChannel.enabled || (voiceFocus == null && loweredFrom == null)) return
+            if (!voiceChannel.enabled || (voiceFocus == null && mediaDip.loweredFrom == null && bluetoothDip.loweredFrom == null)) return
             focusJob?.cancel()
             val generation = holdGeneration
             focusJob = scope.launch {

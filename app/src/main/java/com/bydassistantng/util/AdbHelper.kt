@@ -27,6 +27,9 @@ object AdbHelper {
         adbShell(context, "pm grant ${context.packageName} $permission", timeoutMs)
     }
 
+    /** Runs one shell command over the loopback ADB connection; true when it ran, false when the connection could not be made in time. */
+    suspend fun shell(context: Context, command: String, timeoutMs: Long = 20_000L): Boolean = adbShell(context, command, timeoutMs)
+
     /** Opens a loopback ADB connection, retrying until [timeoutMs]; null if none could be made. The
      * caller owns it and must close it. [socketTimeoutMs] of 0 means reads never time out — required
      * for a connection that stays open and idle between commands, which a timeout would tear down. */
@@ -46,8 +49,8 @@ object AdbHelper {
         }
     }
 
-    private suspend fun adbShell(context: Context, cmd: String, timeoutMs: Long = 20_000L) {
-        withContext(Dispatchers.IO) {
+    private suspend fun adbShell(context: Context, cmd: String, timeoutMs: Long = 20_000L): Boolean {
+        return withContext(Dispatchers.IO) {
             setupUserHome(context)
             val result = withTimeoutOrNull(timeoutMs.milliseconds) {
                 while (isActive) {
@@ -70,6 +73,7 @@ object AdbHelper {
             if (result != true) {
                 Log.w(TAG, "ADB connection failed for command: $cmd")
             }
+            result == true
         }
     }
 

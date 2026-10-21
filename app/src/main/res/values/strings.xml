@@ -148,6 +148,7 @@
     <string name="sensitivity_desc">How firm a sound has to be for the assistant to take it for you speaking, both when it starts listening to you and when you talk over it. Higher picks up a softer voice but is easier to fool with noise; lower needs a firmer voice. If it answers sounds you did not make, or stops talking by itself, lower it; if it misses you, raise it.</string>
     <string name="sensitivity_value">%1$+d</string>
     <string name="sensitivity_reset">Back to 0</string>
+    <string name="media_access_service_name">Media playing (reads no notifications)</string>
     <string name="group_music_in_background">Music in the background</string>
     <string name="level_gate_title">Ignore music in the background</string>
     <string name="level_gate_desc">While music is playing, the assistant learns how loud the music and the cabin are just before you speak, and sends only what is clearly louder, so the words of a song are not taken for you. It does nothing when no music is playing.</string>
@@ -269,6 +270,9 @@
     <string name="voice_music_lower_desc">The car turns the music down for the conversation with its own dip, which is deep and cannot be changed, and back up afterwards. The music can stop for a moment as it comes back.</string>
     <string name="voice_music_level">Turn it down</string>
     <string name="voice_music_level_desc">The music volume is turned down by the share you choose while the assistant listens and speaks, and put back when the conversation ends. Only while music is playing.</string>
+    <string name="voice_channel_dip_always_title">Also when nothing is listed as playing</string>
+    <string name="voice_channel_dip_always_desc">Turns the media volume down at every conversation, even when the car does not report that anything is playing. A fallback for when the app cannot see what is playing.</string>
+    <string name="voice_channel_dip_always_note">The car\'s volume bar moves at the start and end of every conversation, also when nothing is playing. Off by default.</string>
     <string name="voice_channel_dip_title">How much to turn the music down</string>
     <string name="voice_channel_dip_desc">The share of the music volume taken off while the assistant is active.</string>
     <string name="voice_channel_dip_value">%1$d%%</string>

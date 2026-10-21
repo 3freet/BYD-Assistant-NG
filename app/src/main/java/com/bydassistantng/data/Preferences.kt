@@ -77,6 +77,7 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val VOICE_CHANNEL_ADAPTIVE = booleanPreferencesKey("voice_channel_adaptive")
         val VOICE_CHANNEL_GAIN = intPreferencesKey("voice_channel_gain")
         val VOICE_CHANNEL_DIP = intPreferencesKey("voice_channel_dip")
+        val VOICE_CHANNEL_DIP_ALWAYS = booleanPreferencesKey("voice_channel_dip_always")
         val VOICE_CHANNEL_SPEAKER = stringPreferencesKey("voice_channel_speaker")
         val HEADREST_SPEAKER_PRESENT = booleanPreferencesKey("headrest_speaker_present")
         val GREETING_ENABLED = booleanPreferencesKey("greeting_enabled")
@@ -276,6 +277,16 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.data.map { VoiceChannelOptions.clampDip(it[Keys.VOICE_CHANNEL_DIP] ?: VoiceChannelOptions.DEFAULT_DIP_PERCENT) }
     suspend fun setVoiceChannelDip(percent: Int) {
         dataStore.edit { it[Keys.VOICE_CHANNEL_DIP] = VoiceChannelOptions.clampDip(percent) }
+    }
+
+    /**
+     * Whether the media volume is also turned down when nothing is reported as playing. Off by default (as since 16 Oct, when a
+     * dip with nothing playing was reported as a bug); a fallback for when the app cannot see what is playing (see
+     * [com.bydassistantng.audio.MediaSources]).
+     */
+    val voiceChannelDipAlways: Flow<Boolean> = dataStore.data.map { it[Keys.VOICE_CHANNEL_DIP_ALWAYS] ?: false }
+    suspend fun setVoiceChannelDipAlways(always: Boolean) {
+        dataStore.edit { it[Keys.VOICE_CHANNEL_DIP_ALWAYS] = always }
     }
 
     /** Which speakers the assistant's voice comes out of (the headrest one only works with the voice channel). */

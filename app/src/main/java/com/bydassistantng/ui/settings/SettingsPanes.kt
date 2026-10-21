@@ -387,6 +387,7 @@ internal fun SoundPane(viewModel: SettingsViewModel) {
     val adaptive by viewModel.voiceChannelAdaptive.collectAsState()
     val gain by viewModel.voiceChannelGain.collectAsState()
     val dip by viewModel.voiceChannelDip.collectAsState()
+    val dipAlways by viewModel.voiceChannelDipAlways.collectAsState()
     val speaker by viewModel.voiceChannelSpeaker.collectAsState()
     val hasHeadrest by viewModel.headrestSpeakerPresent.collectAsState()
     LaunchedEffect(Unit) { viewModel.findHeadrestSpeaker() }
@@ -457,6 +458,15 @@ internal fun SoundPane(viewModel: SettingsViewModel) {
                             step = VoiceChannelOptions.DIP_STEP,
                             valueText = { stringResource(R.string.voice_channel_dip_value, it) },
                             onValueChange = { viewModel.setVoiceChannelDip(it) },
+                        )
+                    }
+                    row(nested = true) {
+                        SwitchSetting(
+                            title = stringResource(R.string.voice_channel_dip_always_title),
+                            subtitle = stringResource(R.string.voice_channel_dip_always_desc),
+                            note = stringResource(R.string.voice_channel_dip_always_note),
+                            checked = dipAlways,
+                            onCheckedChange = { viewModel.setVoiceChannelDipAlways(it) },
                         )
                     }
                 }

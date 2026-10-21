@@ -447,6 +447,7 @@ class LiveConversationController @Inject constructor(
                 adaptive = preferencesRepository.voiceChannelAdaptive.first(),
                 gainSteps = preferencesRepository.voiceChannelGain.first(),
                 dipPercent = preferencesRepository.voiceChannelDip.first(),
+                dipAlways = preferencesRepository.voiceChannelDipAlways.first(),
                 speaker = speaker ?: preferencesRepository.voiceChannelSpeaker.first(),
             )
         } else {

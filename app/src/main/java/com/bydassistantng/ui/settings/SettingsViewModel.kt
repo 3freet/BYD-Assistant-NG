@@ -228,6 +228,13 @@ class SettingsViewModel @Inject constructor(
     val voiceChannelDip: StateFlow<Int> = preferencesRepository.voiceChannelDip
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VoiceChannelOptions.DEFAULT_DIP_PERCENT)
 
+    val voiceChannelDipAlways: StateFlow<Boolean> = preferencesRepository.voiceChannelDipAlways
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setVoiceChannelDipAlways(always: Boolean) {
+        viewModelScope.launch { preferencesRepository.setVoiceChannelDipAlways(always) }
+    }
+
     val voiceChannelSpeaker: StateFlow<VoiceSpeaker> = preferencesRepository.voiceChannelSpeaker
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VoiceSpeaker.DEFAULT)
 
