@@ -11,6 +11,8 @@ exterior speaker or change the drive mode.
 > supported by BYD or Google. "BYD", "DiLink" and "Gemini" are trademarks of their respective owners.
 > You use it entirely at your own responsibility — see [Safety](#safety).
 
+> Began as a fork of [Assistant](https://github.com/kangrio/Assistant) by [@kangrio](https://github.com/kangrio) — thank you!
+
 | English | العربية (right-to-left) |
 | --- | --- |
 | ![Home, English](docs/images/home-en.png) | ![Home, Arabic](docs/images/home-ar.png) |
@@ -228,8 +230,18 @@ Optional build settings:
 | `cluster/` | Experimental: putting an app on the instrument cluster |
 | `res/values`, `res/values-ar`, `res/values-ru` | English, Arabic and Russian strings — a unit test keeps them in step |
 
+## Acknowledgements
+
+BYD Assistant NG began as a fork of **[Assistant](https://github.com/kangrio/Assistant)** by
+**[@kangrio](https://github.com/kangrio)**, an Android utility for BYD DiLink head units. Most of it has been rewritten
+since — the Gemini Live conversation, vehicle control, memory and the rest are new — but a few foundations still
+trace back to it: the local-ADB helper that grants the app its permissions, the way the head unit's auto-start
+screen is opened, and the Gradle build setup. Huge thanks to @kangrio for the groundwork, and for sharing it under
+the MIT licence. The original licence notice is kept in [NOTICE.md](NOTICE.md).
+
 ## License
 
 BYD Assistant NG is free software, licensed under the **GNU General Public License, version 3** ([LICENSE](LICENSE)).
 You may use, study, change and share it under those terms; changes you distribute must stay under the same licence.
 It comes with no warranty — see [Safety](#safety).
+It is based on Assistant by @kangrio, which is MIT-licensed; its notice is in [NOTICE.md](NOTICE.md).
