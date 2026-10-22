@@ -142,8 +142,9 @@ started, so the activity and the banner also set their direction explicitly; wit
 in place changes the text but leaves the layout mirrored. The back button stays on the left in right-to-left
 languages on purpose (the driver's side).
 
-Strings live in `res/values` and `res/values-ar`; a unit test fails if the two drift apart. Vehicle command names
-shown on the banner are in the registry (`label`, `labelAr`).
+Strings live in `res/values`, `res/values-ar` and `res/values-ru`; a unit test fails if they drift apart. Vehicle
+command names shown on the banner are in the registry (`label`, `labelAr`, `labelRu`). Arabic is the only right-to-left
+language; Russian needs nothing beyond its strings, its labels and the assistant's instruction to answer in it.
 
 ## The look
 

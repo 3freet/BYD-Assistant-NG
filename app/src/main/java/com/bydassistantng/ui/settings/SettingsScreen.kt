@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -272,7 +273,8 @@ private fun CategoryItem(category: SettingsCategory, status: String, selected: B
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(stringResource(category.title), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = colors.onSurface)
-            Text(status, fontSize = 14.sp, color = colors.onSurfaceVariant, maxLines = 1)
+            // Two lines, as a longer language (Russian) needs them; anything past that ends in an ellipsis, not a clipped word.
+            Text(status, fontSize = 14.sp, color = colors.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         if (attention) {
             Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(AttentionColor))

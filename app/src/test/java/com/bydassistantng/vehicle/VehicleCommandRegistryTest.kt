@@ -266,14 +266,26 @@ class VehicleCommandRegistryTest {
     }
 
     @Test
-    fun everyCommandHasABannerLabelInBothLanguages() {
+    fun everyCommandHasABannerLabelInEveryLanguage() {
         for (c in VehicleCommandRegistry.known) {
             assertTrue("${c.id} needs an English label", !c.label.isNullOrBlank())
             val arabic = c.labelAr
             assertTrue("${c.id} needs an Arabic label", !arabic.isNullOrBlank() && arabic.any { it in '\u0600'..'\u06FF' })
-            assertEquals(c.label, c.labelFor(arabic = false))
-            assertEquals(arabic, c.labelFor(arabic = true))
+            val russian = c.labelRu
+            assertTrue("${c.id} needs a Russian label", !russian.isNullOrBlank() && russian.any { it in '\u0400'..'\u04FF' })
+            assertEquals(c.label, c.labelFor("en"))
+            assertEquals(arabic, c.labelFor("ar"))
+            assertEquals(russian, c.labelFor("ru"))
+            // Any other language gets the English name.
+            assertEquals(c.label, c.labelFor("de"))
         }
+    }
+
+    @Test
+    fun aMissingTranslationFallsBackToTheEnglishDisplayName() {
+        val bare = command("audio.volume").copy(label = null, labelAr = null, labelRu = null)
+        assertEquals(bare.displayName, bare.labelFor("ru"))
+        assertEquals(bare.displayName, bare.labelFor("ar"))
     }
 
     @Test

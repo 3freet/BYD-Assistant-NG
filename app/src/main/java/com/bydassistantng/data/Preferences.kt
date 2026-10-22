@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class AssistantLanguage(val bcp47: String) { AUTO(""), ENGLISH("en"), ARABIC("ar") }
+enum class AssistantLanguage(val bcp47: String) { AUTO(""), ENGLISH("en"), ARABIC("ar"), RUSSIAN("ru") }
 
 /** Which Arabic the assistant should speak. [MATCH] says nothing, so the model follows the user. */
 enum class ArabicDialect(val promptName: String?) {

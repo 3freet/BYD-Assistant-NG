@@ -5,6 +5,7 @@
     "displayName": "A/C power",
     "label": "A/C power",
     "labelAr": "تشغيل المكيف",
+    "labelRu": "Включение кондиционера",
     "deviceType": 1000,
     "featureId": 501219364,
     "invocation": {
@@ -28,6 +29,7 @@
     "displayName": "A/C temperature",
     "label": "A/C temperature",
     "labelAr": "درجة حرارة المكيف",
+    "labelRu": "Температура кондиционера",
     "deviceType": 1000,
     "featureId": 501219368,
     "invocation": {
@@ -50,6 +52,7 @@
     "displayName": "A/C fan level",
     "label": "A/C fan speed",
     "labelAr": "سرعة مروحة المكيف",
+    "labelRu": "Скорость вентилятора",
     "deviceType": 1000,
     "featureId": 501219340,
     "invocation": {
@@ -71,6 +74,7 @@
     "displayName": "A/C air direction",
     "label": "Air direction",
     "labelAr": "اتجاه الهواء",
+    "labelRu": "Направление воздуха",
     "deviceType": 1000,
     "featureId": 501219336,
     "invocation": {
@@ -97,6 +101,7 @@
     "displayName": "Driver window",
     "label": "Driver window",
     "labelAr": "نافذة السائق",
+    "labelRu": "Окно водителя",
     "deviceType": 1001,
     "featureId": 1125122104,
     "invocation": {
@@ -119,6 +124,7 @@
     "displayName": "Passenger window",
     "label": "Passenger window",
     "labelAr": "نافذة الراكب",
+    "labelRu": "Окно пассажира",
     "deviceType": 1001,
     "featureId": 1125122107,
     "invocation": {
@@ -141,6 +147,7 @@
     "displayName": "Rear-left window",
     "label": "Rear-left window",
     "labelAr": "النافذة الخلفية اليسرى",
+    "labelRu": "Заднее левое окно",
     "deviceType": 1001,
     "featureId": 1125122112,
     "invocation": {
@@ -163,6 +170,7 @@
     "displayName": "Rear-right window",
     "label": "Rear-right window",
     "labelAr": "النافذة الخلفية اليمنى",
+    "labelRu": "Заднее правое окно",
     "deviceType": 1001,
     "featureId": 1125122115,
     "invocation": {
@@ -185,6 +193,7 @@
     "displayName": "Sunroof",
     "label": "Sunroof",
     "labelAr": "فتحة السقف",
+    "labelRu": "Люк",
     "deviceType": 1001,
     "featureId": 1125122056,
     "invocation": {
@@ -205,6 +214,7 @@
     "displayName": "Sunroof open percent",
     "label": "Sunroof position",
     "labelAr": "وضع فتحة السقف",
+    "labelRu": "Положение люка",
     "deviceType": 1001,
     "featureId": 1330642976,
     "invocation": {
@@ -223,6 +233,7 @@
     "displayName": "Sunshade",
     "label": "Sunshade",
     "labelAr": "الستارة الشمسية",
+    "labelRu": "Солнцезащитная шторка",
     "deviceType": 1001,
     "featureId": 1330642984,
     "invocation": {
@@ -241,6 +252,7 @@
     "displayName": "Volume of the car's sound (the media volume), 0 (silent) to 39 (loudest)",
     "label": "Volume",
     "labelAr": "مستوى الصوت",
+    "labelRu": "Громкость",
     "invocation": {
       "type": "streamVolume",
       "stream": 3
@@ -257,6 +269,7 @@
     "displayName": "Mute or unmute the media sound (music, radio, video). The car's own sounds and the assistant are not touched",
     "label": "Media sound",
     "labelAr": "صوت الوسائط",
+    "labelRu": "Звук мультимедиа",
     "deviceType": 1002,
     "featureId": 470810680,
     "invocation": {
@@ -277,6 +290,7 @@
     "displayName": "Navigation voice volume, 0 to 10",
     "label": "Navigation volume",
     "labelAr": "صوت الملاحة",
+    "labelRu": "Громкость навигации",
     "deviceType": 1002,
     "featureId": 1309081616,
     "invocation": {
@@ -295,6 +309,7 @@
     "displayName": "Where the sound system focuses the sound: whole car, front seats or back seats",
     "label": "Sound focus",
     "labelAr": "تركيز الصوت",
+    "labelRu": "Фокус звука",
     "deviceType": 1002,
     "featureId": 470810653,
     "invocation": {
@@ -316,6 +331,7 @@
     "displayName": "Devialet Space sound (the added vertical immersive sound) on or off",
     "label": "Space sound",
     "labelAr": "الصوت المحيطي",
+    "labelRu": "Объёмный звук",
     "deviceType": 1002,
     "featureId": 372244496,
     "invocation": {
@@ -336,6 +352,7 @@
     "displayName": "Devialet Space sound strength: soft, standard or strong",
     "label": "Space sound strength",
     "labelAr": "قوة الصوت المحيطي",
+    "labelRu": "Сила объёмного звука",
     "deviceType": 1002,
     "featureId": 372244498,
     "invocation": {
@@ -357,6 +374,7 @@
     "displayName": "Devialet Headrest Sound of the driver's headrest speaker: off, surround (car speakers plus headrest), interactive (calls and navigation in the headrest) or exclusive (music in the headrest only)",
     "label": "Headrest sound",
     "labelAr": "صوت مسند الرأس",
+    "labelRu": "Звук в подголовнике",
     "deviceType": 1002,
     "featureId": -1676672971,
     "invocation": {
@@ -379,6 +397,7 @@
     "displayName": "Devialet Sound Features, the sound style of the car speakers: fidelity, soft, dynamic, heavy, speech or custom",
     "label": "Sound style",
     "labelAr": "نمط الصوت",
+    "labelRu": "Стиль звука",
     "deviceType": 1002,
     "featureId": -1693450216,
     "invocation": {
@@ -403,6 +422,7 @@
     "displayName": "Trunk",
     "label": "Trunk",
     "labelAr": "صندوق السيارة",
+    "labelRu": "Багажник",
     "deviceType": 1023,
     "featureId": 1125122080,
     "invocation": {
@@ -423,6 +443,7 @@
     "displayName": "Screen rotation",
     "label": "Screen rotation",
     "labelAr": "تدوير الشاشة",
+    "labelRu": "Поворот экрана",
     "invocation": {
       "type": "namedMethod",
       "deviceClass": "setting",
@@ -448,6 +469,7 @@
     "displayName": "Fold the side mirrors automatically when the car is locked (setting)",
     "label": "Mirror auto fold",
     "labelAr": "طي المرايا تلقائيا",
+    "labelRu": "Автоскладывание зеркал",
     "deviceType": 1023,
     "featureId": 1312817178,
     "invocation": {
@@ -468,6 +490,7 @@
     "displayName": "Tilt the side mirrors down when reversing (setting)",
     "label": "Mirror tilt in reverse",
     "labelAr": "إمالة المرايا عند الرجوع",
+    "labelRu": "Наклон зеркал при заднем ходе",
     "deviceType": 1023,
     "featureId": 1312817180,
     "invocation": {
@@ -495,6 +518,7 @@
     "displayName": "Ambient light colour for the whole cabin. If the lights keep changing colour by themselves, switch the dynamic setting off first",
     "label": "Ambient colour",
     "labelAr": "لون الإضاءة المحيطة",
+    "labelRu": "Цвет подсветки салона",
     "deviceType": 1023,
     "invocation": {
       "type": "namedMethod",
@@ -546,6 +570,7 @@
     "displayName": "Ambient light brightness for the whole cabin, 1 (dimmest) to 6 (brightest)",
     "label": "Ambient brightness",
     "labelAr": "سطوع الإضاءة المحيطة",
+    "labelRu": "Яркость подсветки салона",
     "deviceType": 1023,
     "invocation": {
       "type": "namedMethod",
@@ -576,6 +601,7 @@
     "displayName": "Dynamic multi-colour effect of the ambient lights (the 'Dynamic Colors' scene)",
     "label": "Dynamic colours",
     "labelAr": "الألوان الديناميكية",
+    "labelRu": "Динамические цвета",
     "deviceType": 1004,
     "featureId": 1276153886,
     "invocation": {
@@ -596,6 +622,7 @@
     "displayName": "Fridge mode: off, cooling or heating",
     "label": "Fridge",
     "labelAr": "الثلاجة",
+    "labelRu": "Холодильник",
     "deviceType": 1023,
     "featureId": 850427920,
     "invocation": {
@@ -617,6 +644,7 @@
     "displayName": "Fridge cooling temperature (only while the fridge is cooling; switch it to cooling first)",
     "label": "Fridge cooling temperature",
     "labelAr": "درجة تبريد الثلاجة",
+    "labelRu": "Охлаждение холодильника",
     "deviceType": 1023,
     "featureId": 850427928,
     "invocation": {
@@ -642,6 +670,7 @@
     "displayName": "Driver seat heating",
     "label": "Driver seat heating",
     "labelAr": "تدفئة مقعد السائق",
+    "labelRu": "Подогрев сиденья водителя",
     "deviceType": 1023,
     "featureId": 1125122068,
     "invocation": {
@@ -663,6 +692,7 @@
     "displayName": "Driver seat ventilation",
     "label": "Driver seat ventilation",
     "labelAr": "تهوية مقعد السائق",
+    "labelRu": "Вентиляция сиденья водителя",
     "deviceType": 1023,
     "featureId": 1125122064,
     "invocation": {
@@ -684,6 +714,7 @@
     "displayName": "Front passenger seat heating",
     "label": "Passenger seat heating",
     "labelAr": "تدفئة مقعد الراكب",
+    "labelRu": "Подогрев сиденья пассажира",
     "deviceType": 1023,
     "featureId": 1125122076,
     "invocation": {
@@ -705,6 +736,7 @@
     "displayName": "Front passenger seat ventilation",
     "label": "Passenger seat ventilation",
     "labelAr": "تهوية مقعد الراكب",
+    "labelRu": "Вентиляция сиденья пассажира",
     "deviceType": 1023,
     "featureId": 1125122072,
     "invocation": {
@@ -726,6 +758,7 @@
     "displayName": "Rear-left seat heating",
     "label": "Rear-left seat heating",
     "labelAr": "تدفئة المقعد الخلفي الأيسر",
+    "labelRu": "Подогрев заднего левого сиденья",
     "deviceType": 1023,
     "featureId": 1125122091,
     "invocation": {
@@ -747,6 +780,7 @@
     "displayName": "Rear-left seat ventilation",
     "label": "Rear-left seat ventilation",
     "labelAr": "تهوية المقعد الخلفي الأيسر",
+    "labelRu": "Вентиляция заднего левого сиденья",
     "deviceType": 1023,
     "featureId": 1125122088,
     "invocation": {
@@ -768,6 +802,7 @@
     "displayName": "Rear-right seat heating",
     "label": "Rear-right seat heating",
     "labelAr": "تدفئة المقعد الخلفي الأيمن",
+    "labelRu": "Подогрев заднего правого сиденья",
     "deviceType": 1023,
     "featureId": 1125122099,
     "invocation": {
@@ -789,6 +824,7 @@
     "displayName": "Rear-right seat ventilation",
     "label": "Rear-right seat ventilation",
     "labelAr": "تهوية المقعد الخلفي الأيمن",
+    "labelRu": "Вентиляция заднего правого сиденья",
     "deviceType": 1023,
     "featureId": 1125122096,
     "invocation": {
@@ -810,6 +846,7 @@
     "displayName": "Steering wheel heating",
     "label": "Steering wheel heating",
     "labelAr": "تدفئة المقود",
+    "labelRu": "Подогрев руля",
     "deviceType": 1023,
     "featureId": 944767029,
     "invocation": {
@@ -830,6 +867,7 @@
     "displayName": "Fridge heating temperature (only while the fridge is heating; switch it to heating first)",
     "label": "Fridge heating temperature",
     "labelAr": "درجة تسخين الثلاجة",
+    "labelRu": "Нагрев холодильника",
     "deviceType": 1023,
     "featureId": 850427928,
     "invocation": {
@@ -854,6 +892,7 @@
     "displayName": "Start or stop the dashcam recording (it normally records all the time while the car is on)",
     "label": "Dashcam recording",
     "labelAr": "تسجيل الكاميرا",
+    "labelRu": "Запись видеорегистратора",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -896,6 +935,7 @@
     "displayName": "Take a still photo with the dashcam",
     "label": "Dashcam photo",
     "labelAr": "صورة من الكاميرا",
+    "labelRu": "Фото с видеорегистратора",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -937,6 +977,7 @@
     "displayName": "Save the current dashcam clip so it is not overwritten (an emergency or event clip)",
     "label": "Save dashcam clip",
     "labelAr": "حفظ مقطع الكاميرا",
+    "labelRu": "Сохранение клипа регистратора",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -979,6 +1020,7 @@
     "displayName": "Record sound inside the car with the dashcam video, on or off",
     "label": "Dashcam audio",
     "labelAr": "صوت الكاميرا",
+    "labelRu": "Звук видеорегистратора",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -1021,6 +1063,7 @@
     "displayName": "How sensitive the dashcam is to bumps when it saves an event clip: low, middle or high",
     "label": "Dashcam sensitivity",
     "labelAr": "حساسية الكاميرا",
+    "labelRu": "Чувствительность регистратора",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -1064,6 +1107,7 @@
     "displayName": "Driver window as a percent closed: 100 = fully closed (raised all the way), 0 = fully open (lowered all the way), 50 = half",
     "label": "Driver window position",
     "labelAr": "وضع نافذة السائق",
+    "labelRu": "Положение окна водителя",
     "deviceType": 1001,
     "featureId": 1276219408,
     "invocation": {
@@ -1087,6 +1131,7 @@
     "displayName": "Passenger window as a percent closed: 100 = fully closed (raised all the way), 0 = fully open (lowered all the way), 50 = half",
     "label": "Passenger window position",
     "labelAr": "وضع نافذة الراكب",
+    "labelRu": "Положение окна пассажира",
     "deviceType": 1001,
     "featureId": 1276219424,
     "invocation": {
@@ -1110,6 +1155,7 @@
     "displayName": "Rear-left window as a percent closed: 100 = fully closed (raised all the way), 0 = fully open (lowered all the way), 50 = half",
     "label": "Rear-left window position",
     "labelAr": "وضع النافذة الخلفية اليسرى",
+    "labelRu": "Положение заднего левого окна",
     "deviceType": 1001,
     "featureId": 1276219416,
     "invocation": {
@@ -1133,6 +1179,7 @@
     "displayName": "Rear-right window as a percent closed: 100 = fully closed (raised all the way), 0 = fully open (lowered all the way), 50 = half",
     "label": "Rear-right window position",
     "labelAr": "وضع النافذة الخلفية اليمنى",
+    "labelRu": "Положение заднего правого окна",
     "deviceType": 1001,
     "featureId": 1276219432,
     "invocation": {
@@ -1156,6 +1203,7 @@
     "displayName": "Driver seat massage",
     "label": "Driver seat massage",
     "labelAr": "تدليك مقعد السائق",
+    "labelRu": "Массаж сиденья водителя",
     "deviceType": 1023,
     "featureId": 1276190736,
     "invocation": {
@@ -1185,6 +1233,7 @@
     "displayName": "Front passenger seat massage",
     "label": "Passenger seat massage",
     "labelAr": "تدليك مقعد الراكب",
+    "labelRu": "Массаж сиденья пассажира",
     "deviceType": 1023,
     "featureId": 1276190739,
     "invocation": {
@@ -1214,6 +1263,7 @@
     "displayName": "Cabin ceiling light",
     "label": "Cabin light",
     "labelAr": "إضاءة المقصورة",
+    "labelRu": "Освещение салона",
     "deviceType": 1023,
     "featureId": 1330643002,
     "invocation": {
@@ -1234,6 +1284,7 @@
     "displayName": "A/C air source: outside (fresh) air or inside (recirculated) air",
     "label": "Air source",
     "labelAr": "مصدر الهواء",
+    "labelRu": "Источник воздуха",
     "deviceType": 1000,
     "featureId": 1077936148,
     "invocation": {
@@ -1257,6 +1308,7 @@
     "displayName": "A/C ventilation mode (fan only with outside air, no cooling)",
     "label": "A/C ventilation",
     "labelAr": "تهوية المكيف",
+    "labelRu": "Вентиляция кондиционера",
     "deviceType": 1000,
     "featureId": 1314914314,
     "invocation": {
@@ -1280,6 +1332,7 @@
     "displayName": "A/C cooling (the A/C compressor button)",
     "label": "A/C cooling",
     "labelAr": "تبريد المكيف",
+    "labelRu": "Охлаждение кондиционера",
     "deviceType": 1000,
     "featureId": 1077936137,
     "invocation": {
@@ -1303,6 +1356,7 @@
     "displayName": "A/C automatic mode",
     "label": "A/C auto mode",
     "labelAr": "الوضع التلقائي للمكيف",
+    "labelRu": "Автоматический режим климата",
     "deviceType": 1000,
     "featureId": 1077936146,
     "invocation": {
@@ -1325,6 +1379,7 @@
     "displayName": "Windshield defrost",
     "label": "Windshield defrost",
     "labelAr": "إزالة الضباب عن الزجاج الأمامي",
+    "labelRu": "Обогрев лобового стекла",
     "deviceType": 1000,
     "featureId": 1077936150,
     "invocation": {
@@ -1348,6 +1403,7 @@
     "displayName": "Rear window defrost",
     "label": "Rear window defrost",
     "labelAr": "إزالة الضباب عن الزجاج الخلفي",
+    "labelRu": "Обогрев заднего стекла",
     "deviceType": 1000,
     "featureId": 1128267825,
     "invocation": {

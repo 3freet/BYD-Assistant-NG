@@ -80,7 +80,7 @@ class TextToSpeechEngine @Inject constructor(@ApplicationContext context: Contex
     }
 
     /** Speaks [text], picking a locale from [language] — for [AssistantLanguage.AUTO], guesses
-     * from whether the reply text itself contains Arabic-script characters, since the reply's
+     * from whether the reply text itself contains Arabic-script or Cyrillic characters, since the reply's
      * language is only known once Gemini has already answered. */
     suspend fun speak(text: String, language: AssistantLanguage) {
         val resolvedInTime = withTimeoutOrNull(INIT_TIMEOUT_MS) { awaitReady() } != null
@@ -121,7 +121,12 @@ class TextToSpeechEngine @Inject constructor(@ApplicationContext context: Contex
     private fun localeFor(text: String, language: AssistantLanguage): Locale = when (language) {
         AssistantLanguage.ARABIC -> Locale.forLanguageTag("ar")
         AssistantLanguage.ENGLISH -> Locale.US
-        AssistantLanguage.AUTO -> if (text.any { it in ARABIC_UNICODE_RANGE }) Locale.forLanguageTag("ar") else Locale.US
+        AssistantLanguage.RUSSIAN -> Locale.forLanguageTag("ru")
+        AssistantLanguage.AUTO -> when {
+            text.any { it in ARABIC_UNICODE_RANGE } -> Locale.forLanguageTag("ar")
+            text.any { it in CYRILLIC_UNICODE_RANGE } -> Locale.forLanguageTag("ru")
+            else -> Locale.US
+        }
     }
 
     private suspend fun awaitReady() {
@@ -140,5 +145,6 @@ class TextToSpeechEngine @Inject constructor(@ApplicationContext context: Contex
 
     private companion object {
         val ARABIC_UNICODE_RANGE = '؀'..'ۿ'
+        val CYRILLIC_UNICODE_RANGE = '\u0400'..'\u04FF'
     }
 }

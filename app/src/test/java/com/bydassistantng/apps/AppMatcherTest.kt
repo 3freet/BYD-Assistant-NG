@@ -36,6 +36,21 @@ class AppMatcherTest {
     }
 
     @Test
+    fun russianNamesMatchWhetherOrNotYoIsWritten() {
+        val russian = listOf(InstalledApp("Яндекс Навигатор", "ru.yandex.yandexnavi"), InstalledApp("Календарь", "com.byd.calendar"), InstalledApp("Всё о машине", "com.byd.info"))
+        assertEquals("Яндекс Навигатор", label(AppMatcher.find("яндекс навигатор", russian)))
+        assertEquals("Всё о машине", label(AppMatcher.find("все о машине", russian)))
+        assertEquals("Всё о машине", label(AppMatcher.find("Всё о машине", russian)))
+    }
+
+    @Test
+    fun russianFillerWordsAreIgnored() {
+        val russian = listOf(InstalledApp("Камера", "com.byd.camera"), InstalledApp("Календарь", "com.byd.calendar"))
+        assertEquals("Камера", label(AppMatcher.find("открой приложение камера", russian)))
+        assertEquals("Календарь", label(AppMatcher.find("запусти календарь", russian)))
+    }
+
+    @Test
     fun thePackageNameCoversALocalizedLabel() {
         val localized = listOf(InstalledApp("سبوتيفاي", "com.spotify.music"), InstalledApp("Camera", "com.byd.camera"))
         assertEquals("سبوتيفاي", label(AppMatcher.find("spotify", localized)))

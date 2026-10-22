@@ -194,7 +194,7 @@ object VehicleFunctionDispatcher {
             }
         }
 
-        onDispatching(command.labelFor(AppLanguage.isArabic(context)))
+        onDispatching(command.labelFor(AppLanguage.locale(context).language))
 
         val rawValue = (functionCall.args["value"] as? JsonPrimitive)?.content
         val resolvedValue = VehicleCommandRegistry.resolveValue(command, rawValue)
@@ -295,7 +295,7 @@ const val END_CONVERSATION_FUNCTION = "end_conversation"
 private val endConversationDeclaration = GeminiFunctionDeclaration(
     name = END_CONVERSATION_FUNCTION,
     description = "End the voice conversation: stop listening. Call this when the user says they are finished — " +
-        "e.g. stop, that's all, thanks, goodbye, cancel — in English or Arabic.",
+        "e.g. stop, that's all, thanks, goodbye, cancel — in English, Arabic or Russian.",
 )
 
 /** Shared system prompt for both the classic and Live conversation paths. [conversation] is the Live
@@ -312,13 +312,16 @@ fun voiceAssistantSystemPrompt(
     // A fixed language is a firm rule and is said twice (here and again at the very end): a model that listens in many
     // languages, and was told only once, tends to answer in whichever it heard, which an unclear word can make the wrong one.
     val languageInstruction = when (language) {
-        AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English or Arabic."
+        AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English, Arabic or Russian."
         AssistantLanguage.ENGLISH ->
             "Always reply in English. This is a firm rule: whatever language the user speaks, or seems to speak " +
-                "(Arabic, Spanish, anything else), your reply is in English."
+                "(Arabic, Russian, Spanish, anything else), your reply is in English."
         AssistantLanguage.ARABIC ->
             "Always reply in Arabic. This is a firm rule: whatever language the user speaks, or seems to speak " +
-                "(English, Spanish, anything else), your reply is in Arabic."
+                "(English, Russian, Spanish, anything else), your reply is in Arabic."
+        AssistantLanguage.RUSSIAN ->
+            "Always reply in Russian. This is a firm rule: whatever language the user speaks, or seems to speak " +
+                "(English, Arabic, Spanish, anything else), your reply is in Russian."
     }
     val languageReminder = when (language) {
         AssistantLanguage.AUTO -> ""
@@ -328,17 +331,20 @@ fun voiceAssistantSystemPrompt(
         AssistantLanguage.ARABIC ->
             " Remember: every reply is in Arabic, whatever language you think you heard. If you could not make out " +
                 "what was said, ask the user in Arabic to say it again."
+        AssistantLanguage.RUSSIAN ->
+            " Remember: every reply is in Russian, whatever language you think you heard. If you could not make out " +
+                "what was said, ask the user in Russian to say it again."
     }
-    // Only said when it can matter: a fixed English assistant never speaks Arabic.
+    // Only said when it can matter: an assistant fixed to English or Russian never speaks Arabic.
     val dialectInstruction = dialect.promptName
-        ?.takeIf { language != AssistantLanguage.ENGLISH }
+        ?.takeIf { language == AssistantLanguage.AUTO || language == AssistantLanguage.ARABIC }
         ?.let { " When you reply in Arabic, speak $it — not another dialect." }
         .orEmpty()
     // The speech recognizer behind the Live API can't be told which language to expect (the native-audio
     // models choose it themselves), so say it here: what this user speaks, and what they mostly ask about,
     // so an unclear word is heard as the car command it most likely was.
-    val listeningHint = " The user speaks Arabic (in any dialect) and English, and sometimes mixes " +
-        "both in one sentence. Most requests are about the car — windows, seats (heating, ventilation, massage), " +
+    val listeningHint = " The user speaks Arabic (in any dialect), Russian and English, and sometimes mixes " +
+        "them in one sentence. Most requests are about the car — windows, seats (heating, ventilation, massage), " +
         "the fridge, the A/C, lights, tyre pressure, navigation, music — so when a word is unclear, prefer the reading that is a " +
         "car or assistant request over an unrelated phrase."
     val searchInstruction = if (webSearch) {
@@ -391,12 +397,15 @@ object ReplyLanguage {
         val letters = reply.filter { it.isLetter() }
         if (letters.isEmpty()) return null
         val arabic = letters.count { it in '\u0600'..'\u06FF' || it in '\u0750'..'\u077F' || it in '\uFB50'..'\uFDFF' || it in '\uFE70'..'\uFEFF' }
+        val cyrillic = letters.count { it in '\u0400'..'\u052F' }
         return when (language) {
             AssistantLanguage.AUTO -> null
             // Names and a few English words inside an Arabic reply are fine; a reply with no Arabic at all is not.
             AssistantLanguage.ARABIC -> arabic > 0
             // Any Arabic, other scripts, or accented letters (Spanish, French...) are not English.
             AssistantLanguage.ENGLISH -> letters.all { it.code < 0x80 }
+            // Names and a few English words inside a Russian reply are fine; a reply with no Cyrillic at all is not.
+            AssistantLanguage.RUSSIAN -> cyrillic > 0
         }
     }
 }

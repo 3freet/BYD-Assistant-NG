@@ -103,11 +103,13 @@
     <string name="app_language_system">System default</string>
     <string name="app_language_english">English</string>
     <string name="app_language_arabic">العربية</string>
+    <string name="app_language_russian">Русский</string>
     <string name="assistant_language_title">Reply language</string>
     <string name="assistant_language_hint">The language the assistant answers in. Auto follows the language you speak.</string>
     <string name="language_auto">Auto</string>
     <string name="language_english">English</string>
     <string name="language_arabic">Arabic</string>
+    <string name="language_russian">Russian</string>
     <string name="dialect_title">Arabic dialect</string>
     <string name="dialect_hint">Which Arabic it speaks when it answers in Arabic. “Match me” follows how you talk. Takes effect on the next conversation.</string>
     <string name="dialect_match">Match me</string>

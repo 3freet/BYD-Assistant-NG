@@ -109,8 +109,7 @@ class GreetingCoordinator internal constructor(
         // With no language fixed in the settings the assistant follows what the driver says, and the driver has said
         // nothing yet: use the language of the app.
         languageToGreetIn = {
-            if (preferences.assistantLanguage.first() != AssistantLanguage.AUTO) null
-            else if (AppLanguage.isArabic(context)) "Arabic" else "English"
+            if (preferences.assistantLanguage.first() != AssistantLanguage.AUTO) null else AppLanguage.spokenName(context)
         },
         now = { System.currentTimeMillis() },
         timeOfDay = { Calendar.getInstance().let { GreetingPrompt.TimeOfDay(it.get(Calendar.HOUR_OF_DAY), it.get(Calendar.MINUTE)) } },

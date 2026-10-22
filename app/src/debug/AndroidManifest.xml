@@ -11,6 +11,13 @@
             </intent-filter>
         </receiver>
         <receiver
+            android:name="com.bydassistantng.debug.DebugAdbPromptReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.ADB_PROMPT" />
+            </intent-filter>
+        </receiver>
+        <receiver
             android:name="com.bydassistantng.debug.DebugRebindReceiver"
             android:exported="true">
             <intent-filter>

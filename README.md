@@ -1,9 +1,9 @@
 # BYD Assistant NG
 
-**English** · [العربية](README.ar.md)
+**English** · [العربية](README.ar.md) · [Русский](README.ru.md)
 
 A hands-free voice assistant for **BYD DiLink head units**, built on Google's **Gemini Live** API. Press the
-microphone button on the steering wheel, talk naturally in Arabic or English, and it can answer, navigate,
+microphone button on the steering wheel, talk naturally in Arabic, Russian or English, and it can answer, navigate,
 open apps, control the media player, operate the car's comfort controls and — on request — speak through the
 exterior speaker or change the drive mode.
 
@@ -58,19 +58,34 @@ exterior speaker or change the drive mode.
   vehicle-control switch; the tools that reach the car's own systems are the ones that need it.
 - **Air quality** ("how's the air in the car?"): the car's PM2.5 sensors, inside and outside, with the car's own
   rating. Read-only; same switch as vehicle control.
-- **Outside temperature** ("how hot is it outside?"), read from the instrument cluster; same switch as vehicle control.
+- **Outside and inside temperature** ("how hot is it outside?", "how warm is it in the car?"): the outside one is read from
+  the instrument cluster, the inside one from the A/C's cabin sensor (see
+  [cabin-and-dashcam.md](docs/byd-internals/cabin-and-dashcam.md)); same switch as vehicle control.
 - **Tyre pressure** ("how are my tyres?"): reads each wheel's pressure, the car's own low/high and leak warnings
   and the temperature, and answers in the unit you ask for. Read-only, but it uses the same switch as vehicle
   control. See [tyres.md](docs/byd-internals/tyres.md).
+- **Greeting when you get in** (off by default; *Settings → Assistant → Greet me when I get in*): when the car wakes up,
+  you sit in the driver's seat and the driver's door shuts, the assistant says a warm good morning, afternoon or
+  evening, tells you the time and the outside temperature, and stops. It asks nothing, and it never speaks unprompted
+  for any other reason. It has its own speaker setting (the driver's headrest by default), a button that plays it on
+  demand, and with long-term memory on you can tell the assistant how you want to be greeted. It reads the seat and the
+  door over ADB, and needs this app's toggle switched **off** on the head unit's auto-start screen. A driver who
+  arrives late is still greeted, for up to 30 minutes after the car wakes. How and why:
+  [driver-presence.md](docs/byd-internals/driver-presence.md).
 - **Memory**: *short-term* memory carries the last few exchanges into the next conversation for ten minutes, so a
   follow-up such as "do the same for the passenger" works; *long-term* memory keeps what you ask it to
   remember ("remember that I like the cabin at 21 degrees") or add by hand, and you can read, delete or clear
   the list in Settings. Each can be switched off. It is stored on the device only (see [Privacy](#privacy)).
 - **Wait after you stop speaking**: a slider (0.4–1.5 s, 0.8 s by default) for how long the assistant waits in
   silence before it decides you have finished — shorter answers sooner, longer lets you pause mid-sentence.
-- **English and Arabic**: the whole app is translated, including full right-to-left layout. *App language*
-  (screens and messages) and *Reply language* (what the assistant answers in) are separate settings, as are the
-  assistant's voice and, for Arabic, its dialect.
+- **How easily it hears you**: a slider (*Settings → Conversation*, three steps either side of the middle) for how firm
+  a sound has to be before the assistant takes it for you speaking, both when it starts listening and when you talk
+  over it. For music with singing in the background there are two optional switches, both **off by default**:
+  one learns how loud the music and the cabin are just before you speak and sends only what is clearly louder, the
+  other tells the assistant that music may be playing and that sung words are not you.
+- **English, Arabic and Russian**: the whole app is translated, including full right-to-left layout for Arabic.
+  *App language* (screens and messages) and *Reply language* (what the assistant answers in) are separate settings,
+  as are the assistant's voice and, for Arabic, its dialect.
 
 ### Experimental features (off by default)
 
@@ -211,7 +226,7 @@ Optional build settings:
 | `apps/`, `media/`, `navigation/` | The open-app, close-app, media and navigation tools |
 | `passenger/` | The passenger screen: its tool, helper command and parsing (apps, backlight, brightness) |
 | `cluster/` | Experimental: putting an app on the instrument cluster |
-| `res/values`, `res/values-ar` | English and Arabic strings — a unit test keeps the two in step |
+| `res/values`, `res/values-ar`, `res/values-ru` | English, Arabic and Russian strings — a unit test keeps them in step |
 
 ## License
 

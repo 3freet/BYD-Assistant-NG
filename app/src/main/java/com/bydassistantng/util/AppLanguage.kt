@@ -7,7 +7,7 @@ import androidx.annotation.StringRes
 import java.util.Locale
 
 /** What the user picked for the app's own screens and messages. [SYSTEM] follows the device. */
-enum class AppLanguageChoice(val tag: String?) { SYSTEM(null), ENGLISH("en"), ARABIC("ar") }
+enum class AppLanguageChoice(val tag: String?) { SYSTEM(null), ENGLISH("en"), ARABIC("ar"), RUSSIAN("ru") }
 
 /**
  * The language of the app's UI (screens, banner, notifications) — separate from the language the
@@ -40,6 +40,17 @@ object AppLanguage {
         choice(context).tag?.let { Locale(it) } ?: systemLocale()
 
     fun isArabic(context: Context): Boolean = locale(context).language == "ar"
+
+    /**
+     * The language the assistant should speak when nothing fixes it, as a name the model understands: that of the app,
+     * if it is one the assistant speaks, else English. The driver has said nothing yet (the greeting), so the screens'
+     * language is the best guess.
+     */
+    fun spokenName(context: Context): String = when (locale(context).language) {
+        "ar" -> "Arabic"
+        "ru" -> "Russian"
+        else -> "English"
+    }
 
     /** [base] with the app language applied, including its layout direction (right-to-left for Arabic). */
     fun wrap(base: Context): Context {

@@ -153,7 +153,7 @@ class AssistantSetupTest {
 
     @Test
     fun aFixedReplyLanguageIsSaidAsAFirmRuleAtTheStartAndAgainAtTheEnd() {
-        for ((language, name) in listOf(AssistantLanguage.ARABIC to "Arabic", AssistantLanguage.ENGLISH to "English")) {
+        for ((language, name) in listOf(AssistantLanguage.ARABIC to "Arabic", AssistantLanguage.ENGLISH to "English", AssistantLanguage.RUSSIAN to "Russian")) {
             val prompt = voiceAssistantSystemPrompt(language, conversation = true)
             assertTrue(prompt.contains("Always reply in $name."))
             assertTrue(prompt.endsWith("ask the user in $name to say it again."))
@@ -174,6 +174,30 @@ class AssistantSetupTest {
         assertEquals(false, ReplyLanguage.matches(AssistantLanguage.ENGLISH, "Son las nueve, cielo ¿sí?"))
         assertNull(ReplyLanguage.matches(AssistantLanguage.AUTO, "anything at all"))
         assertNull(ReplyLanguage.matches(AssistantLanguage.ARABIC, "..."))
+    }
+
+    @Test
+    fun aRussianReplyIsRecognisedByItsLetters() {
+        assertEquals(true, ReplyLanguage.matches(AssistantLanguage.RUSSIAN, "Хорошо, окно открыто. BYD"))
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.RUSSIAN, "Okay, the window is open."))
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.RUSSIAN, "تمام، فتحت النافذة"))
+        // Russian is not English, and not Arabic.
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.ENGLISH, "Сейчас час дня"))
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.ARABIC, "Сейчас час дня"))
+        assertNull(ReplyLanguage.matches(AssistantLanguage.RUSSIAN, "..."))
+    }
+
+    @Test
+    fun theAutomaticLanguageNamesRussianAmongTheOnesItFollows() {
+        val auto = voiceAssistantSystemPrompt(AssistantLanguage.AUTO)
+        assertTrue(auto, auto.contains("English, Arabic or Russian"))
+        assertTrue(auto, auto.contains("speaks Arabic (in any dialect), Russian and English"))
+    }
+
+    @Test
+    fun aFixedRussianAssistantIsNotToldWhichArabicToSpeak() {
+        val russian = voiceAssistantSystemPrompt(AssistantLanguage.RUSSIAN, dialect = ArabicDialect.GULF)
+        assertFalse(russian.contains("Gulf Arabic"))
     }
 
     @Test

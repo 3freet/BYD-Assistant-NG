@@ -18,6 +18,7 @@ data class VehicleCommand(
     /** Short names for the status banner (the long [displayName] is written for the model). */
     val label: String? = null,
     val labelAr: String? = null,
+    val labelRu: String? = null,
     val invocation: VehicleInvocation,
     val parameter: VehicleParameter,
     /** For [VehicleInvocation.GenericFeatureSet]: the *state* id that reports what [featureId] (a
@@ -64,8 +65,15 @@ val VehicleCommand.needsCarLink: Boolean get() = invocation !is VehicleInvocatio
 /** When the command's value is [whenValue], send [sendValue] to [featureId] rather than the usual. */
 data class ValueOverride(val whenValue: Int, val featureId: Int, val sendValue: Int)
 
-/** The name to show for this command in the given language, falling back to [VehicleCommand.displayName]. */
-fun VehicleCommand.labelFor(arabic: Boolean): String = (if (arabic) labelAr else label) ?: displayName
+/**
+ * The name to show for this command in the language with this tag ("ar", "ru"; any other is English), falling back to
+ * [VehicleCommand.displayName].
+ */
+fun VehicleCommand.labelFor(languageTag: String): String = when (languageTag) {
+    "ar" -> labelAr
+    "ru" -> labelRu
+    else -> label
+} ?: displayName
 
 /** [featureId] (a state id on the command's device) must currently read [equals]. [message] is what
  * the user hears when it doesn't. */

@@ -12,6 +12,8 @@ class SettingsCategoryTest {
         assertTrue(matchesQuery("CABIN", "Volume follows the cabin noise"))
         assertTrue(matchesQuery("  noise ", "Volume follows the cabin noise"))
         assertTrue(matchesQuery("مفتاح", "مفتاح Gemini API"))
+        assertTrue(matchesQuery("громк", "Громкость следует за шумом в салоне"))
+        assertTrue(matchesQuery("ШУМОМ", "Громкость следует за шумом в салоне"))
     }
 
     @Test

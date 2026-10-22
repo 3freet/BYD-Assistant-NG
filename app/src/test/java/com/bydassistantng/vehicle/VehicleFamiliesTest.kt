@@ -165,6 +165,6 @@ class VehicleFamiliesTest {
     @Test
     fun everyCommandStillHasItsBannerLabelAndNothingIsBlocked() {
         assertTrue(all.none { it.domain.isBlocked })
-        assertNotNull(command("audio.volume").labelFor(arabic = false))
+        assertNotNull(command("audio.volume").labelFor("en"))
     }
 }
