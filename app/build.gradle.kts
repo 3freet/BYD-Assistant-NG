@@ -18,7 +18,7 @@ val sourceUrl: String = if (updateRepo.isBlank()) "" else "https://github.com/$u
 
 // The version of the next release: raise it (major.minor.patch, each 0-99) before publishing a new stable build.
 // Betas of that version are numbered automatically (1.1.0-beta.1, 1.1.0-beta.2, ...) and sort below it.
-val appVersionName = "1.1.0"
+val appVersionName = "1.2.0"
 
 // versionCode is computed from the version, so a newer version always has a higher code and Android never
 // refuses an update as a downgrade. AppVersion.code in the app uses the same formula (a unit test guards it).
