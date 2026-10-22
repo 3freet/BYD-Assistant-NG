@@ -7,6 +7,7 @@ import com.bydassistantng.audio.TextToSpeechEngine
 import com.bydassistantng.update.UpdateManager
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
+import com.bydassistantng.util.AppUser
 import com.bydassistantng.util.CrashLogger
 import com.bydassistantng.util.WheelKeys
 import dagger.hilt.android.HiltAndroidApp
@@ -35,6 +36,11 @@ class AssistantApp : Application() {
         // Installed first, before anything else can throw during startup.
         CrashLogger.install(this)
         AppLogger.install(this)
+        // The car's second user gets a copy of the app too, which must not start anything (see [AppUser]).
+        if (!AppUser.isMain()) {
+            AppLogger.log("AssistantApp", "Running as another Android user (not the main one) — no background work")
+            return
+        }
         // Whatever started this process (the system binding the service, a boot broadcast, the user opening
         // the app), make sure the wheel button is actually live. Waits a few seconds, so off the main thread.
         Thread { WheelKeys.ensureServiceRunning(this) }.start()

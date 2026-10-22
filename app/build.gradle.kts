@@ -117,6 +117,11 @@ android {
         compose = true
         buildConfig = true
     }
+    installation {
+        // A plain install over ADB also puts the app into the car's second Android user (999), where its copy asks the car
+        // to allow a new ADB key at every boot (see AppUser). Install for the main user only.
+        installOptions += listOf("--user", "0")
+    }
 }
 
 androidComponents {

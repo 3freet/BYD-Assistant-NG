@@ -112,7 +112,10 @@ a car whose framework names the feature the way it was confirmed on the developm
 ## Installing
 
 1. Download the APK from the project's **Releases** page and install it on the head unit (a file manager, or
-   `adb install`). Allow installs from unknown sources if asked.
+   `adb install -r --user 0`). Allow installs from unknown sources if asked. Install it for the main user only: a plain
+   `adb install` also puts a copy into the car's second Android user (the passenger screen's), which the car then asks
+   to allow as a new ADB computer at every boot. If that has happened, remove the copy with
+   `adb shell pm uninstall --user 999 com.bydassistantng` (the main user's app is not touched).
 2. Open the app and follow the setup: grant the microphone, enter your Gemini API key, and turn on the
    steering-wheel button.
 3. On BYD firmware, open the head unit's **auto-start** screen (Settings → Car → *Open auto-start settings*) and

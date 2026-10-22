@@ -87,11 +87,16 @@ JDK 21 and the Android SDK are required.
 
 ```bash
 ./gradlew testDebugUnitTest lintRelease    # what CI runs
-./gradlew assembleDebug                    # installs as com.bydassistantng.dev
+./gradlew installDebug                     # installs as com.bydassistantng.dev, for the main user only (see below)
 ./gradlew assembleRelease                  # minified (R8) — also test this one on a vehicle
 ```
 
 Pass `-Passistant.updateRepo=owner/repo` to enable the in-app update check and the project link in *About*.
+
+Install for the main user only (`installDebug` does; by hand, `adb install -r --user 0`). On the car a plain
+`adb install` also puts a copy of the app into its second Android user (999, the passenger screen's), whose copy has
+an ADB key of its own and makes the car ask "Allow USB debugging?" at every boot. The app does nothing in another user
+(`AppUser`), but remove an existing copy with `adb shell pm uninstall --user 999 <package>`; `--user 0` alone does not.
 
 ## Experimental car features
 

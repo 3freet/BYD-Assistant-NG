@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.bydassistantng.greeting.GreetingCoordinator
 import com.bydassistantng.util.AppLogger
+import com.bydassistantng.util.AppUser
 import com.bydassistantng.util.WheelKeys
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -38,6 +39,11 @@ interface BootEntryPoint {
  */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        // The car's second user gets the boot broadcast too, for a copy of the app that must stay idle (see [AppUser]).
+        if (!AppUser.isMain()) {
+            AppLogger.log(TAG, "Received ${intent.action} as another Android user — ignored")
+            return
+        }
         AppLogger.log(TAG, "Received ${intent.action}")
         if (intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) {
             runCatching { EntryPointAccessors.fromApplication(context.applicationContext, BootEntryPoint::class.java).greeting().onWake() }

@@ -56,6 +56,7 @@ object AdbHelper {
      * caller owns it and must close it. [socketTimeoutMs] of 0 means reads never time out — required
      * for a connection that stays open and idle between commands, which a timeout would tear down. */
     suspend fun connect(context: Context, timeoutMs: Long, socketTimeoutMs: Int = 10_000): Dadb? = withContext(Dispatchers.IO) {
+        if (!AppUser.isMain()) return@withContext null
         setupUserHome(context)
         if (!access.await(timeoutMs)) return@withContext null
         val connection = withTimeoutOrNull(timeoutMs.milliseconds) {
@@ -76,6 +77,8 @@ object AdbHelper {
 
     private suspend fun adbShell(context: Context, cmd: String, timeoutMs: Long = 20_000L): Boolean {
         return withContext(Dispatchers.IO) {
+            // Another Android user's copy of the app has a key the car never allowed, and must not ask for it (see [AppUser]).
+            if (!AppUser.isMain()) return@withContext false
             setupUserHome(context)
             if (!access.await(timeoutMs)) {
                 Log.w(TAG, "ADB is not allowed for command: $cmd")

@@ -123,6 +123,17 @@ the exception or the close code. No-network and key problems are shown with a di
 the app language instead of falling back to the slower classic pipeline. If the server refuses a session that
 asked for web search or a custom voice, the app retries without them, search first.
 
+## The car's second Android user
+
+The head unit runs a second Android user (999, the passenger screen's) next to the main one, and a plain `adb install`
+adds a copy of the app to it. That copy has storage of its own, so its own ADB key (dadb makes one under `files/.android`),
+which the car's `adb_keys` has never seen: the head unit sends it the boot broadcast, it connects, and the car shows an
+"Allow USB debugging?" prompt at every boot that nobody can usefully answer. Nothing the assistant does is meant for that
+user, so `AppUser.isMain()` (the uid's range) keeps it idle there: `AssistantApp` starts no background work, `BootReceiver`
+ignores the broadcast, and `AdbHelper` makes no connection. The in-app update installs for user 0 only
+(`pm install -r --user 0`) and first removes a copy already in 999 (`pm uninstall --user 999`), since a plain install
+would add it back and `--user 0` does not remove one.
+
 ## Language and layout direction
 
 `AppLanguage` wraps the context of the application, the activity and the accessibility service. A window takes

@@ -13,6 +13,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import com.bydassistantng.ui.MainActivity
 import com.bydassistantng.util.AdbHelper
 import com.bydassistantng.util.AppLogger
+import com.bydassistantng.util.AppUser
 import dadb.Dadb
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +43,16 @@ private const val RESTART_WAIT_MS = 25_000L
 private const val RELAUNCH_WATCH_SECONDS = 90
 private const val APK_MIME = "application/vnd.android.package-archive"
 private val SAFE_PATH = Regex("[A-Za-z0-9/._-]+")
+
+/**
+ * The shell command that streams the file at [path] ([length] bytes) into `pm` for the main user only. A plain install
+ * over ADB also puts the app into the car's second Android user (999), where its copy has an ADB key the car never
+ * allowed and prompts at every boot (see [AppUser]); an install that names the main user leaves that user alone, but
+ * does not remove a copy that is already there, so that one is taken out first (a failure to, because there is none, is
+ * of no interest).
+ */
+internal fun installCommand(packageName: String, path: String, length: Long): String =
+    "pm uninstall --user ${AppUser.SECOND_USER} $packageName > /dev/null 2>&1; cat $path | pm install -r --user 0 -S $length"
 
 /** What happened to an install that didn't end with this process being replaced. */
 enum class InstallHandoff {
@@ -180,7 +191,7 @@ class UpdateInstaller @Inject constructor(@ApplicationContext private val contex
         val response = try {
             withContext(Dispatchers.IO) {
                 adb.shell(relaunchWatcher(component, expectedVersionCode))
-                adb.shell("cat $path | pm install -r -S ${file.length()}")
+                adb.shell(installCommand(context.packageName, path, file.length()))
             }
         } catch (e: IOException) {
             // The connection dropping is what a successful install looks like from here: the system has just
