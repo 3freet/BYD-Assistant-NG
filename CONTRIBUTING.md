@@ -117,7 +117,7 @@ in step with [exterior-speaker.md](docs/byd-internals/exterior-speaker.md) and
    | --- | --- |
    | `id`, `domain` | e.g. `seat.driver.heating`, `SETTING`. The part before the first dot is the **family** (the function the model calls, here `seat`) and the rest its **setting** (`driver.heating`); keep to the existing families unless there really is a new part of the car. A blocked domain is dropped at load time |
    | `displayName` | A description for the model (long is fine) |
-   | `label`, `labelAr`, `labelRu` | Short names for the status banner, in English, Arabic and Russian |
+   | `label`, `labelAr`, `labelRu`, `labelPl` | Short names for the status banner, in English, Arabic, Russian and Polish |
    | `deviceType`, `featureId` | The device and the **control** id (generic route), or the A/C `propertyId` and `area` |
    | `stateFeatureId` | The **state** id to read back. Required for anything you can read |
    | `parameter` | `fixedEnum` (`options`) or `range` (`min`, `max`, `unit`) in the units a user speaks |
@@ -133,16 +133,17 @@ in step with [exterior-speaker.md](docs/byd-internals/exterior-speaker.md) and
 
 ## Translations
 
-All text is in `app/src/main/res/values/strings.xml`; Arabic (`values-ar`) and Russian (`values-ru`) are there already.
+All text is in `app/src/main/res/values/strings.xml`; Arabic (`values-ar`), Russian (`values-ru`) and Polish (`values-pl`) are there already.
 Add `values-<code>/strings.xml` with the **same keys and placeholders** (a test checks this), and add the command
 labels to the registry (`label<Code>` in `vehicle_commands.json`, `labelFor` in `VehicleCommand.kt`). A new language
 the assistant is to speak also goes into `AssistantLanguage`, the prompt in `ConversationShared.kt` and the app language
 choices (`AppLanguageChoice`). Brand names such as the app
 name are not translated.
 
-The README exists in English ([README.md](README.md)), Arabic ([README.ar.md](README.ar.md)) and Russian
-([README.ru.md](README.ru.md)); each links to the others at the top. When you change a feature description in one,
-change the others too — the Arabic and Russian ones name the settings exactly as the app's own strings do.
+The README exists in English ([README.md](README.md)), Arabic ([README.ar.md](README.ar.md)), Russian
+([README.ru.md](README.ru.md)) and Polish ([README.pl.md](README.pl.md)); each links to the others at the top. When you
+change a feature description in one, change the others too — the translated ones name the settings exactly as the app's
+own strings do.
 
 ## Code style
 

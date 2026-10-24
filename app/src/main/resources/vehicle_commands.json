@@ -6,6 +6,7 @@
     "label": "A/C power",
     "labelAr": "تشغيل المكيف",
     "labelRu": "Включение кондиционера",
+    "labelPl": "Klimatyzacja: włączanie",
     "deviceType": 1000,
     "featureId": 501219364,
     "invocation": {
@@ -30,6 +31,7 @@
     "label": "A/C temperature",
     "labelAr": "درجة حرارة المكيف",
     "labelRu": "Температура кондиционера",
+    "labelPl": "Temperatura klimatyzacji",
     "deviceType": 1000,
     "featureId": 501219368,
     "invocation": {
@@ -53,6 +55,7 @@
     "label": "A/C fan speed",
     "labelAr": "سرعة مروحة المكيف",
     "labelRu": "Скорость вентилятора",
+    "labelPl": "Prędkość nawiewu",
     "deviceType": 1000,
     "featureId": 501219340,
     "invocation": {
@@ -75,6 +78,7 @@
     "label": "Air direction",
     "labelAr": "اتجاه الهواء",
     "labelRu": "Направление воздуха",
+    "labelPl": "Kierunek nawiewu",
     "deviceType": 1000,
     "featureId": 501219336,
     "invocation": {
@@ -102,6 +106,7 @@
     "label": "Driver window",
     "labelAr": "نافذة السائق",
     "labelRu": "Окно водителя",
+    "labelPl": "Szyba kierowcy",
     "deviceType": 1001,
     "featureId": 1125122104,
     "invocation": {
@@ -125,6 +130,7 @@
     "label": "Passenger window",
     "labelAr": "نافذة الراكب",
     "labelRu": "Окно пассажира",
+    "labelPl": "Szyba pasażera",
     "deviceType": 1001,
     "featureId": 1125122107,
     "invocation": {
@@ -148,6 +154,7 @@
     "label": "Rear-left window",
     "labelAr": "النافذة الخلفية اليسرى",
     "labelRu": "Заднее левое окно",
+    "labelPl": "Tylna lewa szyba",
     "deviceType": 1001,
     "featureId": 1125122112,
     "invocation": {
@@ -171,6 +178,7 @@
     "label": "Rear-right window",
     "labelAr": "النافذة الخلفية اليمنى",
     "labelRu": "Заднее правое окно",
+    "labelPl": "Tylna prawa szyba",
     "deviceType": 1001,
     "featureId": 1125122115,
     "invocation": {
@@ -194,6 +202,7 @@
     "label": "Sunroof",
     "labelAr": "فتحة السقف",
     "labelRu": "Люк",
+    "labelPl": "Szyberdach",
     "deviceType": 1001,
     "featureId": 1125122056,
     "invocation": {
@@ -215,6 +224,7 @@
     "label": "Sunroof position",
     "labelAr": "وضع فتحة السقف",
     "labelRu": "Положение люка",
+    "labelPl": "Położenie szyberdachu",
     "deviceType": 1001,
     "featureId": 1330642976,
     "invocation": {
@@ -234,6 +244,7 @@
     "label": "Sunshade",
     "labelAr": "الستارة الشمسية",
     "labelRu": "Солнцезащитная шторка",
+    "labelPl": "Roleta przeciwsłoneczna",
     "deviceType": 1001,
     "featureId": 1330642984,
     "invocation": {
@@ -253,6 +264,7 @@
     "label": "Volume",
     "labelAr": "مستوى الصوت",
     "labelRu": "Громкость",
+    "labelPl": "Głośność",
     "invocation": {
       "type": "streamVolume",
       "stream": 3
@@ -270,6 +282,7 @@
     "label": "Media sound",
     "labelAr": "صوت الوسائط",
     "labelRu": "Звук мультимедиа",
+    "labelPl": "Dźwięk multimediów",
     "deviceType": 1002,
     "featureId": 470810680,
     "invocation": {
@@ -291,6 +304,7 @@
     "label": "Navigation volume",
     "labelAr": "صوت الملاحة",
     "labelRu": "Громкость навигации",
+    "labelPl": "Głośność nawigacji",
     "deviceType": 1002,
     "featureId": 1309081616,
     "invocation": {
@@ -310,6 +324,7 @@
     "label": "Sound focus",
     "labelAr": "تركيز الصوت",
     "labelRu": "Фокус звука",
+    "labelPl": "Ognisko dźwięku",
     "deviceType": 1002,
     "featureId": 470810653,
     "invocation": {
@@ -332,6 +347,7 @@
     "label": "Space sound",
     "labelAr": "الصوت المحيطي",
     "labelRu": "Объёмный звук",
+    "labelPl": "Dźwięk przestrzenny",
     "deviceType": 1002,
     "featureId": 372244496,
     "invocation": {
@@ -353,6 +369,7 @@
     "label": "Space sound strength",
     "labelAr": "قوة الصوت المحيطي",
     "labelRu": "Сила объёмного звука",
+    "labelPl": "Siła dźwięku przestrzennego",
     "deviceType": 1002,
     "featureId": 372244498,
     "invocation": {
@@ -375,6 +392,7 @@
     "label": "Headrest sound",
     "labelAr": "صوت مسند الرأس",
     "labelRu": "Звук в подголовнике",
+    "labelPl": "Dźwięk w zagłówku",
     "deviceType": 1002,
     "featureId": -1676672971,
     "invocation": {
@@ -398,6 +416,7 @@
     "label": "Sound style",
     "labelAr": "نمط الصوت",
     "labelRu": "Стиль звука",
+    "labelPl": "Styl dźwięku",
     "deviceType": 1002,
     "featureId": -1693450216,
     "invocation": {
@@ -423,6 +442,7 @@
     "label": "Trunk",
     "labelAr": "صندوق السيارة",
     "labelRu": "Багажник",
+    "labelPl": "Bagażnik",
     "deviceType": 1023,
     "featureId": 1125122080,
     "invocation": {
@@ -444,6 +464,7 @@
     "label": "Screen rotation",
     "labelAr": "تدوير الشاشة",
     "labelRu": "Поворот экрана",
+    "labelPl": "Obrót ekranu",
     "invocation": {
       "type": "namedMethod",
       "deviceClass": "setting",
@@ -470,6 +491,7 @@
     "label": "Mirror auto fold",
     "labelAr": "طي المرايا تلقائيا",
     "labelRu": "Автоскладывание зеркал",
+    "labelPl": "Automatyczne składanie lusterek",
     "deviceType": 1023,
     "featureId": 1312817178,
     "invocation": {
@@ -491,6 +513,7 @@
     "label": "Mirror tilt in reverse",
     "labelAr": "إمالة المرايا عند الرجوع",
     "labelRu": "Наклон зеркал при заднем ходе",
+    "labelPl": "Pochylanie lusterek na biegu wstecznym",
     "deviceType": 1023,
     "featureId": 1312817180,
     "invocation": {
@@ -519,6 +542,7 @@
     "label": "Ambient colour",
     "labelAr": "لون الإضاءة المحيطة",
     "labelRu": "Цвет подсветки салона",
+    "labelPl": "Kolor oświetlenia nastrojowego",
     "deviceType": 1023,
     "invocation": {
       "type": "namedMethod",
@@ -571,6 +595,7 @@
     "label": "Ambient brightness",
     "labelAr": "سطوع الإضاءة المحيطة",
     "labelRu": "Яркость подсветки салона",
+    "labelPl": "Jasność oświetlenia nastrojowego",
     "deviceType": 1023,
     "invocation": {
       "type": "namedMethod",
@@ -602,6 +627,7 @@
     "label": "Dynamic colours",
     "labelAr": "الألوان الديناميكية",
     "labelRu": "Динамические цвета",
+    "labelPl": "Kolory dynamiczne",
     "deviceType": 1004,
     "featureId": 1276153886,
     "invocation": {
@@ -623,6 +649,7 @@
     "label": "Fridge",
     "labelAr": "الثلاجة",
     "labelRu": "Холодильник",
+    "labelPl": "Lodówka",
     "deviceType": 1023,
     "featureId": 850427920,
     "invocation": {
@@ -645,6 +672,7 @@
     "label": "Fridge cooling temperature",
     "labelAr": "درجة تبريد الثلاجة",
     "labelRu": "Охлаждение холодильника",
+    "labelPl": "Chłodzenie lodówki",
     "deviceType": 1023,
     "featureId": 850427928,
     "invocation": {
@@ -671,6 +699,7 @@
     "label": "Driver seat heating",
     "labelAr": "تدفئة مقعد السائق",
     "labelRu": "Подогрев сиденья водителя",
+    "labelPl": "Podgrzewanie fotela kierowcy",
     "deviceType": 1023,
     "featureId": 1125122068,
     "invocation": {
@@ -693,6 +722,7 @@
     "label": "Driver seat ventilation",
     "labelAr": "تهوية مقعد السائق",
     "labelRu": "Вентиляция сиденья водителя",
+    "labelPl": "Wentylacja fotela kierowcy",
     "deviceType": 1023,
     "featureId": 1125122064,
     "invocation": {
@@ -715,6 +745,7 @@
     "label": "Passenger seat heating",
     "labelAr": "تدفئة مقعد الراكب",
     "labelRu": "Подогрев сиденья пассажира",
+    "labelPl": "Podgrzewanie fotela pasażera",
     "deviceType": 1023,
     "featureId": 1125122076,
     "invocation": {
@@ -737,6 +768,7 @@
     "label": "Passenger seat ventilation",
     "labelAr": "تهوية مقعد الراكب",
     "labelRu": "Вентиляция сиденья пассажира",
+    "labelPl": "Wentylacja fotela pasażera",
     "deviceType": 1023,
     "featureId": 1125122072,
     "invocation": {
@@ -759,6 +791,7 @@
     "label": "Rear-left seat heating",
     "labelAr": "تدفئة المقعد الخلفي الأيسر",
     "labelRu": "Подогрев заднего левого сиденья",
+    "labelPl": "Podgrzewanie tylnego lewego fotela",
     "deviceType": 1023,
     "featureId": 1125122091,
     "invocation": {
@@ -781,6 +814,7 @@
     "label": "Rear-left seat ventilation",
     "labelAr": "تهوية المقعد الخلفي الأيسر",
     "labelRu": "Вентиляция заднего левого сиденья",
+    "labelPl": "Wentylacja tylnego lewego fotela",
     "deviceType": 1023,
     "featureId": 1125122088,
     "invocation": {
@@ -803,6 +837,7 @@
     "label": "Rear-right seat heating",
     "labelAr": "تدفئة المقعد الخلفي الأيمن",
     "labelRu": "Подогрев заднего правого сиденья",
+    "labelPl": "Podgrzewanie tylnego prawego fotela",
     "deviceType": 1023,
     "featureId": 1125122099,
     "invocation": {
@@ -825,6 +860,7 @@
     "label": "Rear-right seat ventilation",
     "labelAr": "تهوية المقعد الخلفي الأيمن",
     "labelRu": "Вентиляция заднего правого сиденья",
+    "labelPl": "Wentylacja tylnego prawego fotela",
     "deviceType": 1023,
     "featureId": 1125122096,
     "invocation": {
@@ -847,6 +883,7 @@
     "label": "Steering wheel heating",
     "labelAr": "تدفئة المقود",
     "labelRu": "Подогрев руля",
+    "labelPl": "Podgrzewanie kierownicy",
     "deviceType": 1023,
     "featureId": 944767029,
     "invocation": {
@@ -868,6 +905,7 @@
     "label": "Fridge heating temperature",
     "labelAr": "درجة تسخين الثلاجة",
     "labelRu": "Нагрев холодильника",
+    "labelPl": "Podgrzewanie lodówki",
     "deviceType": 1023,
     "featureId": 850427928,
     "invocation": {
@@ -893,6 +931,7 @@
     "label": "Dashcam recording",
     "labelAr": "تسجيل الكاميرا",
     "labelRu": "Запись видеорегистратора",
+    "labelPl": "Nagrywanie wideorejestratora",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -936,6 +975,7 @@
     "label": "Dashcam photo",
     "labelAr": "صورة من الكاميرا",
     "labelRu": "Фото с видеорегистратора",
+    "labelPl": "Zdjęcie z wideorejestratora",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -978,6 +1018,7 @@
     "label": "Save dashcam clip",
     "labelAr": "حفظ مقطع الكاميرا",
     "labelRu": "Сохранение клипа регистратора",
+    "labelPl": "Zapis nagrania wideorejestratora",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -1021,6 +1062,7 @@
     "label": "Dashcam audio",
     "labelAr": "صوت الكاميرا",
     "labelRu": "Звук видеорегистратора",
+    "labelPl": "Dźwięk wideorejestratora",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -1064,6 +1106,7 @@
     "label": "Dashcam sensitivity",
     "labelAr": "حساسية الكاميرا",
     "labelRu": "Чувствительность регистратора",
+    "labelPl": "Czułość wideorejestratora",
     "invocation": {
       "type": "binderCommand",
       "serviceName": "IBYDCDRService",
@@ -1108,6 +1151,7 @@
     "label": "Driver window position",
     "labelAr": "وضع نافذة السائق",
     "labelRu": "Положение окна водителя",
+    "labelPl": "Położenie szyby kierowcy",
     "deviceType": 1001,
     "featureId": 1276219408,
     "invocation": {
@@ -1132,6 +1176,7 @@
     "label": "Passenger window position",
     "labelAr": "وضع نافذة الراكب",
     "labelRu": "Положение окна пассажира",
+    "labelPl": "Położenie szyby pasażera",
     "deviceType": 1001,
     "featureId": 1276219424,
     "invocation": {
@@ -1156,6 +1201,7 @@
     "label": "Rear-left window position",
     "labelAr": "وضع النافذة الخلفية اليسرى",
     "labelRu": "Положение заднего левого окна",
+    "labelPl": "Położenie tylnej lewej szyby",
     "deviceType": 1001,
     "featureId": 1276219416,
     "invocation": {
@@ -1180,6 +1226,7 @@
     "label": "Rear-right window position",
     "labelAr": "وضع النافذة الخلفية اليمنى",
     "labelRu": "Положение заднего правого окна",
+    "labelPl": "Położenie tylnej prawej szyby",
     "deviceType": 1001,
     "featureId": 1276219432,
     "invocation": {
@@ -1204,6 +1251,7 @@
     "label": "Driver seat massage",
     "labelAr": "تدليك مقعد السائق",
     "labelRu": "Массаж сиденья водителя",
+    "labelPl": "Masaż fotela kierowcy",
     "deviceType": 1023,
     "featureId": 1276190736,
     "invocation": {
@@ -1234,6 +1282,7 @@
     "label": "Passenger seat massage",
     "labelAr": "تدليك مقعد الراكب",
     "labelRu": "Массаж сиденья пассажира",
+    "labelPl": "Masaż fotela pasażera",
     "deviceType": 1023,
     "featureId": 1276190739,
     "invocation": {
@@ -1264,6 +1313,7 @@
     "label": "Cabin light",
     "labelAr": "إضاءة المقصورة",
     "labelRu": "Освещение салона",
+    "labelPl": "Oświetlenie kabiny",
     "deviceType": 1023,
     "featureId": 1330643002,
     "invocation": {
@@ -1285,6 +1335,7 @@
     "label": "Air source",
     "labelAr": "مصدر الهواء",
     "labelRu": "Источник воздуха",
+    "labelPl": "Źródło powietrza",
     "deviceType": 1000,
     "featureId": 1077936148,
     "invocation": {
@@ -1309,6 +1360,7 @@
     "label": "A/C ventilation",
     "labelAr": "تهوية المكيف",
     "labelRu": "Вентиляция кондиционера",
+    "labelPl": "Wentylacja klimatyzacji",
     "deviceType": 1000,
     "featureId": 1314914314,
     "invocation": {
@@ -1333,6 +1385,7 @@
     "label": "A/C cooling",
     "labelAr": "تبريد المكيف",
     "labelRu": "Охлаждение кондиционера",
+    "labelPl": "Chłodzenie klimatyzacji",
     "deviceType": 1000,
     "featureId": 1077936137,
     "invocation": {
@@ -1357,6 +1410,7 @@
     "label": "A/C auto mode",
     "labelAr": "الوضع التلقائي للمكيف",
     "labelRu": "Автоматический режим климата",
+    "labelPl": "Tryb automatyczny klimatyzacji",
     "deviceType": 1000,
     "featureId": 1077936146,
     "invocation": {
@@ -1380,6 +1434,7 @@
     "label": "Windshield defrost",
     "labelAr": "إزالة الضباب عن الزجاج الأمامي",
     "labelRu": "Обогрев лобового стекла",
+    "labelPl": "Odmrażanie szyby przedniej",
     "deviceType": 1000,
     "featureId": 1077936150,
     "invocation": {
@@ -1404,6 +1459,7 @@
     "label": "Rear window defrost",
     "labelAr": "إزالة الضباب عن الزجاج الخلفي",
     "labelRu": "Обогрев заднего стекла",
+    "labelPl": "Odmrażanie szyby tylnej",
     "deviceType": 1000,
     "featureId": 1128267825,
     "invocation": {

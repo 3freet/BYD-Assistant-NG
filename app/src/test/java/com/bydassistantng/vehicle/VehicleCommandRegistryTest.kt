@@ -276,6 +276,8 @@ class VehicleCommandRegistryTest {
             assertEquals(c.label, c.labelFor("en"))
             assertEquals(arabic, c.labelFor("ar"))
             assertEquals(russian, c.labelFor("ru"))
+            assertTrue("${c.id} needs a Polish label", !c.labelPl.isNullOrBlank())
+            assertEquals(c.labelPl, c.labelFor("pl"))
             // Any other language gets the English name.
             assertEquals(c.label, c.labelFor("de"))
         }
@@ -283,7 +285,7 @@ class VehicleCommandRegistryTest {
 
     @Test
     fun aMissingTranslationFallsBackToTheEnglishDisplayName() {
-        val bare = command("audio.volume").copy(label = null, labelAr = null, labelRu = null)
+        val bare = command("audio.volume").copy(label = null, labelAr = null, labelRu = null, labelPl = null)
         assertEquals(bare.displayName, bare.labelFor("ru"))
         assertEquals(bare.displayName, bare.labelFor("ar"))
     }

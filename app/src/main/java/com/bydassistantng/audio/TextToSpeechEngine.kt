@@ -122,6 +122,7 @@ class TextToSpeechEngine @Inject constructor(@ApplicationContext context: Contex
         AssistantLanguage.ARABIC -> Locale.forLanguageTag("ar")
         AssistantLanguage.ENGLISH -> Locale.US
         AssistantLanguage.RUSSIAN -> Locale.forLanguageTag("ru")
+        AssistantLanguage.POLISH -> Locale.forLanguageTag("pl")
         AssistantLanguage.AUTO -> when {
             text.any { it in ARABIC_UNICODE_RANGE } -> Locale.forLanguageTag("ar")
             text.any { it in CYRILLIC_UNICODE_RANGE } -> Locale.forLanguageTag("ru")

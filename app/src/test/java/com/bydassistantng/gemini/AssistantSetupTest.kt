@@ -153,7 +153,7 @@ class AssistantSetupTest {
 
     @Test
     fun aFixedReplyLanguageIsSaidAsAFirmRuleAtTheStartAndAgainAtTheEnd() {
-        for ((language, name) in listOf(AssistantLanguage.ARABIC to "Arabic", AssistantLanguage.ENGLISH to "English", AssistantLanguage.RUSSIAN to "Russian")) {
+        for ((language, name) in listOf(AssistantLanguage.ARABIC to "Arabic", AssistantLanguage.ENGLISH to "English", AssistantLanguage.RUSSIAN to "Russian", AssistantLanguage.POLISH to "Polish")) {
             val prompt = voiceAssistantSystemPrompt(language, conversation = true)
             assertTrue(prompt.contains("Always reply in $name."))
             assertTrue(prompt.endsWith("ask the user in $name to say it again."))
@@ -188,10 +188,22 @@ class AssistantSetupTest {
     }
 
     @Test
+    fun aPolishReplyIsOnlyRuledOutByAnotherScript() {
+        assertEquals(true, ReplyLanguage.matches(AssistantLanguage.POLISH, "Dobrze, okno jest otwarte. BYD"))
+        // A short Polish reply may have no accented letter at all, so Latin text is never proved wrong.
+        assertEquals(true, ReplyLanguage.matches(AssistantLanguage.POLISH, "Dobrze."))
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.POLISH, "Хорошо, окно открыто"))
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.POLISH, "تمام، فتحت النافذة"))
+        // Polish is not English: its accented letters show.
+        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.ENGLISH, "Zamknąłem okno"))
+        assertNull(ReplyLanguage.matches(AssistantLanguage.POLISH, "..."))
+    }
+
+    @Test
     fun theAutomaticLanguageNamesRussianAmongTheOnesItFollows() {
         val auto = voiceAssistantSystemPrompt(AssistantLanguage.AUTO)
-        assertTrue(auto, auto.contains("English, Arabic or Russian"))
-        assertTrue(auto, auto.contains("speaks Arabic (in any dialect), Russian and English"))
+        assertTrue(auto, auto.contains("English, Arabic, Russian or Polish"))
+        assertTrue(auto, auto.contains("speaks Arabic (in any dialect), Russian, Polish and English"))
     }
 
     @Test

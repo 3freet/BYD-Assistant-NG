@@ -1,5 +1,7 @@
 package com.bydassistantng.apps
 
+import com.bydassistantng.media.TextMatch
+
 data class InstalledApp(val label: String, val packageName: String)
 
 sealed interface AppMatch {
@@ -12,7 +14,7 @@ sealed interface AppMatch {
 /**
  * Finds the installed app a spoken name refers to. The name comes from the model, which has already turned
  * what was said (in Arabic, Russian or English) into its best guess at the app's label, so this is forgiving about
- * case, diacritics, Arabic letter variants, "ё" for "е" and extra words ("the camera app") but not about guesswork.
+ * case, diacritics, Arabic letter variants, "ё" for "е" and extra words ("the camera app") but not about guesswork. Polish accents are left off on both sides.
  */
 object AppMatcher {
     fun normalize(text: String): String = buildString {
@@ -23,7 +25,7 @@ object AppMatcher {
                 c == '\u0649' -> append('\u064A') // alef maksura -> yeh
                 c == '\u0629' -> append('\u0647') // teh marbuta -> heh
                 c == '\u0451' -> append('\u0435') // yo -> ye (a Russian label may be written either way)
-                c.isLetterOrDigit() -> append(c)
+                c.isLetterOrDigit() -> append(TextMatch.foldPolish(c))
                 else -> append(' ')
             }
         }
@@ -32,6 +34,7 @@ object AppMatcher {
     private val FILLER = setOf(
         "the", "app", "application", "open", "launch", "start", "تطبيق", "برنامج", "افتح", "شغل",
         "приложение", "приложения", "программа", "программу", "открой", "запусти", "включи",
+        "aplikacja", "aplikacje", "program", "otworz", "uruchom", "wlacz",
     )
 
     private fun words(normalized: String): List<String> = normalized.split(' ').filter { it.isNotEmpty() && it !in FILLER }

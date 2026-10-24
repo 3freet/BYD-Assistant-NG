@@ -7,7 +7,7 @@ import androidx.annotation.StringRes
 import java.util.Locale
 
 /** What the user picked for the app's own screens and messages. [SYSTEM] follows the device. */
-enum class AppLanguageChoice(val tag: String?) { SYSTEM(null), ENGLISH("en"), ARABIC("ar"), RUSSIAN("ru") }
+enum class AppLanguageChoice(val tag: String?) { SYSTEM(null), ENGLISH("en"), ARABIC("ar"), RUSSIAN("ru"), POLISH("pl") }
 
 /**
  * The language of the app's UI (screens, banner, notifications) — separate from the language the
@@ -49,6 +49,7 @@ object AppLanguage {
     fun spokenName(context: Context): String = when (locale(context).language) {
         "ar" -> "Arabic"
         "ru" -> "Russian"
+        "pl" -> "Polish"
         else -> "English"
     }
 

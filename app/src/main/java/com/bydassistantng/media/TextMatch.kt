@@ -5,6 +5,23 @@ import java.util.Locale
 
 /** Comparing what a person said with what an app shows: names, search phrases. */
 internal object TextMatch {
+    /**
+     * A Polish letter as the plain Latin one it is written with when the accents are left off. NFKC keeps these letters
+     * whole ("ł" has no decomposition at all), so "Łódź" and "lodz" would not match without it. Any other letter is
+     * returned as it is.
+     */
+    fun foldPolish(c: Char): Char = when (c) {
+        'ą' -> 'a'
+        'ć' -> 'c'
+        'ę' -> 'e'
+        'ł' -> 'l'
+        'ń' -> 'n'
+        'ó' -> 'o'
+        'ś' -> 's'
+        'ź', 'ż' -> 'z'
+        else -> c
+    }
+
     /** Lower case, letters and digits only, one space between words; marks that sit on letters (Arabic) are dropped. */
     fun normalize(text: String): String {
         val out = StringBuilder()
@@ -15,7 +32,7 @@ internal object TextMatch {
                 Character.isLetterOrDigit(ch) -> {
                     if (pendingSpace && out.isNotEmpty()) out.append(' ')
                     pendingSpace = false
-                    out.append(ch)
+                    out.append(foldPolish(ch))
                 }
                 else -> pendingSpace = true
             }

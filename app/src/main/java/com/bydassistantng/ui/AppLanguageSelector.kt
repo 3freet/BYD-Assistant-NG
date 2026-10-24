@@ -45,6 +45,7 @@ fun AppLanguageSelector(selected: AppLanguageChoice, onSelect: (AppLanguageChoic
                 AppLanguageChoice.ENGLISH to stringResource(R.string.app_language_english),
                 AppLanguageChoice.ARABIC to stringResource(R.string.app_language_arabic),
                 AppLanguageChoice.RUSSIAN to stringResource(R.string.app_language_russian),
+                AppLanguageChoice.POLISH to stringResource(R.string.app_language_polish),
             )
             options.forEachIndexed { index, (value, label) ->
                 SegmentedButton(
@@ -83,6 +84,7 @@ fun AssistantLanguage.label(): String = stringResource(
         AssistantLanguage.ENGLISH -> R.string.language_english
         AssistantLanguage.ARABIC -> R.string.language_arabic
         AssistantLanguage.RUSSIAN -> R.string.language_russian
+        AssistantLanguage.POLISH -> R.string.language_polish
     },
 )
 

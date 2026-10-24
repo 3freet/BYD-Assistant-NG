@@ -103,12 +103,14 @@
     <string name="app_language_english">English</string>
     <string name="app_language_arabic">العربية</string>
     <string name="app_language_russian">Русский</string>
+    <string name="app_language_polish">Polski</string>
     <string name="assistant_language_title">لغة الرد</string>
     <string name="assistant_language_hint">اللغة التي يجيب بها المساعد. «تلقائي» يتبع اللغة التي تتحدث بها.</string>
     <string name="language_auto">تلقائي</string>
     <string name="language_english">الإنجليزية</string>
     <string name="language_arabic">العربية</string>
     <string name="language_russian">الروسية</string>
+    <string name="language_polish">البولندية</string>
     <string name="dialect_title">اللهجة العربية</string>
     <string name="dialect_hint">اللهجة التي يتحدث بها عندما يرد بالعربية. «مثلي» يتبع طريقة كلامك. يسري التغيير في المحادثة التالية.</string>
     <string name="dialect_match">مثلي</string>

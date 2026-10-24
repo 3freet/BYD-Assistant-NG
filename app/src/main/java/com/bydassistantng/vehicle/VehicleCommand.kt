@@ -19,6 +19,7 @@ data class VehicleCommand(
     val label: String? = null,
     val labelAr: String? = null,
     val labelRu: String? = null,
+    val labelPl: String? = null,
     val invocation: VehicleInvocation,
     val parameter: VehicleParameter,
     /** For [VehicleInvocation.GenericFeatureSet]: the *state* id that reports what [featureId] (a
@@ -66,12 +67,13 @@ val VehicleCommand.needsCarLink: Boolean get() = invocation !is VehicleInvocatio
 data class ValueOverride(val whenValue: Int, val featureId: Int, val sendValue: Int)
 
 /**
- * The name to show for this command in the language with this tag ("ar", "ru"; any other is English), falling back to
+ * The name to show for this command in the language with this tag ("ar", "ru", "pl"; any other is English), falling back to
  * [VehicleCommand.displayName].
  */
 fun VehicleCommand.labelFor(languageTag: String): String = when (languageTag) {
     "ar" -> labelAr
     "ru" -> labelRu
+    "pl" -> labelPl
     else -> label
 } ?: displayName
 

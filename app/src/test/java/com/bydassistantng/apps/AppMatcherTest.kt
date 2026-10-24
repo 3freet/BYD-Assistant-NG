@@ -44,6 +44,16 @@ class AppMatcherTest {
     }
 
     @Test
+    fun polishNamesMatchWithOrWithoutTheirAccents() {
+        val polish = listOf(InstalledApp("Łódzka Kolej", "pl.lodz.kolej"), InstalledApp("Żabka", "pl.zabka"), InstalledApp("Kalendarz", "com.byd.calendar"))
+        assertEquals("Łódzka Kolej", label(AppMatcher.find("lodzka kolej", polish)))
+        assertEquals("Żabka", label(AppMatcher.find("żabka", polish)))
+        assertEquals("Żabka", label(AppMatcher.find("zabka", polish)))
+        assertEquals("Kalendarz", label(AppMatcher.find("otwórz aplikację kalendarz", polish)))
+        assertEquals("Kalendarz", label(AppMatcher.find("uruchom kalendarz", polish)))
+    }
+
+    @Test
     fun russianFillerWordsAreIgnored() {
         val russian = listOf(InstalledApp("Камера", "com.byd.camera"), InstalledApp("Календарь", "com.byd.calendar"))
         assertEquals("Камера", label(AppMatcher.find("открой приложение камера", russian)))

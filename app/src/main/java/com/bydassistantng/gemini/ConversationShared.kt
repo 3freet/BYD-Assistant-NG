@@ -295,7 +295,7 @@ const val END_CONVERSATION_FUNCTION = "end_conversation"
 private val endConversationDeclaration = GeminiFunctionDeclaration(
     name = END_CONVERSATION_FUNCTION,
     description = "End the voice conversation: stop listening. Call this when the user says they are finished — " +
-        "e.g. stop, that's all, thanks, goodbye, cancel — in English, Arabic or Russian.",
+        "e.g. stop, that's all, thanks, goodbye, cancel — in English, Arabic, Russian or Polish.",
 )
 
 /** Shared system prompt for both the classic and Live conversation paths. [conversation] is the Live
@@ -312,16 +312,19 @@ fun voiceAssistantSystemPrompt(
     // A fixed language is a firm rule and is said twice (here and again at the very end): a model that listens in many
     // languages, and was told only once, tends to answer in whichever it heard, which an unclear word can make the wrong one.
     val languageInstruction = when (language) {
-        AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English, Arabic or Russian."
+        AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English, Arabic, Russian or Polish."
         AssistantLanguage.ENGLISH ->
             "Always reply in English. This is a firm rule: whatever language the user speaks, or seems to speak " +
-                "(Arabic, Russian, Spanish, anything else), your reply is in English."
+                "(Arabic, Russian, Polish, Spanish, anything else), your reply is in English."
         AssistantLanguage.ARABIC ->
             "Always reply in Arabic. This is a firm rule: whatever language the user speaks, or seems to speak " +
-                "(English, Russian, Spanish, anything else), your reply is in Arabic."
+                "(English, Russian, Polish, Spanish, anything else), your reply is in Arabic."
         AssistantLanguage.RUSSIAN ->
             "Always reply in Russian. This is a firm rule: whatever language the user speaks, or seems to speak " +
-                "(English, Arabic, Spanish, anything else), your reply is in Russian."
+                "(English, Arabic, Polish, Spanish, anything else), your reply is in Russian."
+        AssistantLanguage.POLISH ->
+            "Always reply in Polish. This is a firm rule: whatever language the user speaks, or seems to speak " +
+                "(English, Arabic, Russian, Spanish, anything else), your reply is in Polish."
     }
     val languageReminder = when (language) {
         AssistantLanguage.AUTO -> ""
@@ -334,6 +337,9 @@ fun voiceAssistantSystemPrompt(
         AssistantLanguage.RUSSIAN ->
             " Remember: every reply is in Russian, whatever language you think you heard. If you could not make out " +
                 "what was said, ask the user in Russian to say it again."
+        AssistantLanguage.POLISH ->
+            " Remember: every reply is in Polish, whatever language you think you heard. If you could not make out " +
+                "what was said, ask the user in Polish to say it again."
     }
     // Only said when it can matter: an assistant fixed to English or Russian never speaks Arabic.
     val dialectInstruction = dialect.promptName
@@ -343,7 +349,7 @@ fun voiceAssistantSystemPrompt(
     // The speech recognizer behind the Live API can't be told which language to expect (the native-audio
     // models choose it themselves), so say it here: what this user speaks, and what they mostly ask about,
     // so an unclear word is heard as the car command it most likely was.
-    val listeningHint = " The user speaks Arabic (in any dialect), Russian and English, and sometimes mixes " +
+    val listeningHint = " The user speaks Arabic (in any dialect), Russian, Polish and English, and sometimes mixes " +
         "them in one sentence. Most requests are about the car — windows, seats (heating, ventilation, massage), " +
         "the fridge, the A/C, lights, tyre pressure, navigation, music — so when a word is unclear, prefer the reading that is a " +
         "car or assistant request over an unrelated phrase."
@@ -406,6 +412,9 @@ object ReplyLanguage {
             AssistantLanguage.ENGLISH -> letters.all { it.code < 0x80 }
             // Names and a few English words inside a Russian reply are fine; a reply with no Cyrillic at all is not.
             AssistantLanguage.RUSSIAN -> cyrillic > 0
+            // Polish is written in the Latin script, like English and Spanish, so its letters cannot prove it (a short
+            // reply may have no accented letter at all): only a reply in another script is certainly not Polish.
+            AssistantLanguage.POLISH -> arabic == 0 && cyrillic == 0
         }
     }
 }

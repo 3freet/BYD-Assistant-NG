@@ -1,9 +1,9 @@
 # BYD Assistant NG
 
-**English** · [العربية](README.ar.md) · [Русский](README.ru.md)
+**English** · [العربية](README.ar.md) · [Русский](README.ru.md) · [Polski](README.pl.md)
 
 A hands-free voice assistant for **BYD DiLink head units**, built on Google's **Gemini Live** API. Press the
-microphone button on the steering wheel, talk naturally in Arabic, Russian or English, and it can answer, navigate,
+microphone button on the steering wheel, talk naturally in Arabic, Russian, Polish or English, and it can answer, navigate,
 open apps, control the media player, operate the car's comfort controls and — on request — speak through the
 exterior speaker or change the drive mode.
 
@@ -85,7 +85,7 @@ exterior speaker or change the drive mode.
   over it. For music with singing in the background there are two optional switches, both **off by default**:
   one learns how loud the music and the cabin are just before you speak and sends only what is clearly louder, the
   other tells the assistant that music may be playing and that sung words are not you.
-- **English, Arabic and Russian**: the whole app is translated, including full right-to-left layout for Arabic.
+- **English, Arabic, Russian and Polish**: the whole app is translated, including full right-to-left layout for Arabic.
   *App language* (screens and messages) and *Reply language* (what the assistant answers in) are separate settings,
   as are the assistant's voice and, for Arabic, its dialect.
 
@@ -228,7 +228,7 @@ Optional build settings:
 | `apps/`, `media/`, `navigation/` | The open-app, close-app, media and navigation tools |
 | `passenger/` | The passenger screen: its tool, helper command and parsing (apps, backlight, brightness) |
 | `cluster/` | Experimental: putting an app on the instrument cluster |
-| `res/values`, `res/values-ar`, `res/values-ru` | English, Arabic and Russian strings — a unit test keeps them in step |
+| `res/values`, `res/values-ar`, `res/values-ru`, `res/values-pl` | English, Arabic, Russian and Polish strings — a unit test keeps them in step |
 
 ## Acknowledgements
 
