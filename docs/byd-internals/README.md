@@ -16,8 +16,10 @@ head unit — this project or another — does not have to rediscover them.
 
 All of it comes from the head unit itself: its framework classes, its system services, its own logs, and
 watching what the car's native screens do while they are operated. **Nothing is copied from another app's
-data or from leaked documents**, and contributions should keep it that way (see
-[CONTRIBUTING.md](../../CONTRIBUTING.md)).
+code or from leaked documents**, and contributions should keep it that way (see
+[CONTRIBUTING.md](../../CONTRIBUTING.md)). The exception is the DiLink 3 and DiLink 4 entries in
+[platforms.md](platforms.md) about what the app does on a car that is not the one these notes were made on: those were not
+observed by us and are marked there as unconfirmed.
 
 ## Contents
 
@@ -30,6 +32,7 @@ data or from leaked documents**, and contributions should keep it that way (see
 | [research-method.md](research-method.md) | How to find a control and learn what its values mean, with the read-only probes in [`tools/probes`](../../tools/probes) |
 | [findings-and-dead-ends.md](findings-and-dead-ends.md) | Quirks that cost time, and the things that could **not** be done (the horn, the security group) |
 | [vehicle-commands.md](vehicle-commands.md) | Every control the app can operate, generated from the registry the app uses |
+| [platforms.md](platforms.md) | DiLink 3, 4 and 5: why the Android version cannot tell them apart, where the numbers come from (the car's bus protocol), how the app reads the platform from the car's own numbers and the Android level, and how every command takes the car's own number by name from its table (a command the car has no name for is withheld) |
 | [exterior-speaker.md](exterior-speaker.md) | Sending sound to the speaker outside the car: the switch, the navi stream, how loudness really works, and why a process holds the switch |
 | [voice-channel.md](voice-channel.md) | The car's voice stream (17): what its own assistant does, what an app can do with it, how the music is dipped, and how the reply's volume follows the cabin noise (dev builds) |
 | [drive-modes.md](drive-modes.md) | How the car's own screen selects Snow, Sand, Mud…, the numbers it sends, the read-back, and what the app checks first |

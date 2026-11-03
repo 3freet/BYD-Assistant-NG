@@ -48,7 +48,7 @@ Sięgają do samochodu dalej niż funkcje komfortu, więc są **wyłączone, dop
 
 ## Wymagania
 
-- Jednostka główna BYD DiLink z systemem opartym na Androidzie 13 (arm64). Sterowanie samochodem było tworzone i testowane na jednym samochodzie i jednej wersji oprogramowania; inne modele mogą zachowywać się inaczej.
+- Jednostka główna BYD DiLink z systemem opartym na Androidzie 13 (arm64). Sterowanie samochodem było tworzone i testowane na jednym samochodzie i jednej wersji oprogramowania; inne modele mogą zachowywać się inaczej. Aplikacja wyszukuje każdą funkcję po nazwie w tabeli funkcji samego samochodu, używa numeru tego samochodu i oferuje tylko to, co samochód ma ([platformy](docs/byd-internals/platforms.md)). Sprawdzono to w jednym samochodzie z DiLink 5.1; DiLink 3 i 4 (Android 10) nie były jeszcze sprawdzane w samochodzie.
 - **Klucz API Gemini** z [Google AI Studio](https://aistudio.google.com/).
 - Połączenie jednostki głównej z internetem (na przykład przez hotspot w telefonie).
 - Włączone w jednostce głównej **debugowanie ADB**. Jest używane lokalnie, przez interfejs pętli zwrotnej, aby włączyć usługę przycisku na kierownicy i uruchomić proces pomocniczy, który rozmawia z usługami samochodu (uprawnienia samochodu są na poziomie podpisu, więc zwykły proces aplikacji nie może ich mieć). Jeśli urządzenie poprosi o zezwolenie na debugowanie, zezwól. Co to oznacza — zobacz [SECURITY.md](SECURITY.md).
@@ -70,7 +70,7 @@ Mniej więcej co sześć godzin aplikacja szuka na GitHubie nowszej wersji i, gd
 - Przy włączonym **wyszukiwaniu w internecie** Twoje pytania są wysyłane także do Wyszukiwarki Google.
 - Sprawdzanie aktualizacji prosi GitHub o listę wydań projektu (nic o Tobie ani o samochodzie nie jest wysyłane). Wyłączysz je w *Ustawienia → Aplikacja*.
 - Przy włączonej **głośności dopasowanej do hałasu w kabinie** w kanale głosowym drugi mikrofon nasłuchuje kabiny, dopóki trwa rozmowa. Aplikacja zachowuje w pamięci tylko poziom dźwięku z ostatnich kilku sekund: żaden dźwięk stamtąd nie jest nagrywany, zapisywany ani wysyłany.
-- Klucz API jest przechowywany na urządzeniu w postaci zaszyfrowanej. Dzienniki zostają na urządzeniu, dopóki sam nie zdecydujesz się ich udostępnić — i mogą zawierać to, co mówiłeś, więc przeczytaj dziennik, zanim go wyślesz.
+- Klucz API jest przechowywany na urządzeniu w postaci zaszyfrowanej. Dzienniki zostają na urządzeniu, dopóki sam nie zdecydujesz się któregoś udostępnić lub zapisać; wtedy to, co powiedziano i o co poproszono, miejsca, klucze, adresy e-mail, numery telefonów i adresy sieciowe są domyślnie ukrywane (przełącznik pokazuje cały dziennik), więc widzisz dokładnie to, co opuści urządzenie.
 - **Pamięć** jest przechowywana na urządzeniu (nie w kopii zapasowej w chmurze). To, co zawiera — zapamiętane fakty i, przez dziesięć minut, ostatnie wymiany — jest wysyłane do Gemini jako część instrukcji następnej rozmowy, żeby asystent mógł z tego korzystać. Wyłącz którąkolwiek pamięć albo ją wyczyść w Ustawieniach.
 
 ## Bezpieczeństwo

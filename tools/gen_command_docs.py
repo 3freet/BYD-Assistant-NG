@@ -71,6 +71,11 @@ def values(c):
     return shown + (f" (signal = value {c['valueOffset']:+d})" if c.get("valueOffset") else "")
 
 
+def named(name):
+    """The car's own name for a number, `Group.NAME` as in its BYDAutoFeatureIds."""
+    return f" (`{name}`)" if name else ""
+
+
 def route(c):
     inv = c["invocation"]
     if inv["type"] == "binderCommand":
@@ -82,7 +87,7 @@ def route(c):
     if inv["type"] == "namedMethod":
         return f"`{inv['deviceClass']}` method `{inv['methodName']}`"
     dev = DEVICES.get(c.get("deviceType"), str(c.get("deviceType")))
-    return f"{dev} device ({c.get('deviceType')}), control id {c['featureId']}"
+    return f"{dev} device ({c.get('deviceType')}), control id {c['featureId']}{named(c.get('featureName'))}"
 
 
 def state(c):
@@ -94,7 +99,7 @@ def state(c):
     if inv["type"] == "acBinderProperty":
         return "read back through the A/C service"
     if c.get("stateFeatureId"):
-        return f"state id {c['stateFeatureId']}"
+        return f"state id {c['stateFeatureId']}{named(c.get('stateFeatureName'))}"
     return "—"
 
 
@@ -124,13 +129,24 @@ lines = [
     "setting needs no name, and an id without a dot is that family's `state`) and one `value`. The *Call* column",
     "shows the pair; the ids and the car's own ids are unchanged.",
     "",
+    "A number is followed by the name the car's own table (`BYDAutoFeatureIds`, `Group.NAME`) gives it. The name is what",
+    "stays the same from car to car; the number may not (see [platforms.md](platforms.md)). The numbers here are the ones",
+    "verified on a DiLink 5.1 car. On any car the app looks each name up in that car's own table when its vehicle helper",
+    "starts and uses the car's number; a command whose control the car does not name is not offered.",
+    "",
     "| Command | Call | Reaches the car through | Values | Read-back | Notes |",
     "| --- | --- | --- | --- | --- | --- |",
 ]
 for c in rows:
     lines.append(f"| `{c['id']}` — {c.get('label', c['displayName'])} | {call(c)} | {route(c)} | {values(c)} | {state(c)} | {status(c)} |")
+
 lines += [
     "",
+    "The four window percent controls (`window.<door>.position`) are not sent on a car that is not a recognised DiLink 5 unless",
+    "the car reports the window's position first.",
+    "",
+]
+lines += [
     f"{len(rows)} commands. Domains that affect driving (engine, gearbox, motor, driver assistance, radar, security, power)",
     "are deliberately absent: the registry refuses to load an entry in one of them. See [safety](../../README.md#safety).",
     "",

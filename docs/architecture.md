@@ -59,6 +59,15 @@ a non-blocked domain are in the registry at all, so the model has no function it
 affects driving. The helper process re-checks every command, value and domain, and a dispatch refuses a
 blocked domain again. Every command that has a state id is confirmed by reading it back.
 
+The numbers in the registry are those of a DiLink 5 car, and each carries the name the car's own table of features gives it.
+When the vehicle helper starts it reads that table (`CarFeatureTable`) and the registry follows it (`NameResolution`): every
+command takes the car's number for each of its names, and a command whose control the car does not name is not offered and
+never sent. The helper tells the app which commands the car cannot do in its ready line, and the app keeps that for the next
+run (`PlatformState`). The platform the car runs (DiLink 3, 4 or 5, read from the car's own numbers and the Android level by
+`DiLinkPlatform`) only decides how careful to be: a window's percent control, for one, is not sent on a car that is not a
+recognised DiLink 5 unless the car reports the window's position. `FeatureNameCheck` writes what it found to the log, and
+`LogReport` copies that line into the header of every exported log. See [platforms.md](byd-internals/platforms.md).
+
 The registry is not offered as one function per command (that was about 3,400 tokens of declarations on every
 request). Commands are folded by **family**, the part of the id before the first dot, into one function each
 (`seat`, `window`, `dashcam`, … fourteen of them); a call carries a `setting` (the rest of the id) and a `value`.

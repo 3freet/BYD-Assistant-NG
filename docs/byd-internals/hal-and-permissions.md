@@ -72,6 +72,11 @@ Naming convention that held for everything we examined:
 | `…_hal_only`, `…_RCS_…`, `…_RSE_…` | internal or remote-control variants; not for direct use |
 | `…_CONFIG`, `…_FLAG`, `…_ONLINE` | whether an option is fitted or reporting |
 
+The numbers are **not the same on every car**: the class that holds them picks them when it loads, from the car's bus
+protocol (`sys.car.protocol`: CAN-FD, Toyota or classic CAN), so the same number can mean a different window on one car
+than on another. Only DiLink 5.1 (CAN-FD) has been observed. See [platforms.md](platforms.md) for where the numbers come
+from and how the app takes each car's own number by name.
+
 The control and its state are different numbers, and the **value written is not always the value read**
 (see [findings](findings-and-dead-ends.md): the fridge set-point and the massage "off" are the two clearest
 examples). Always read the state back.

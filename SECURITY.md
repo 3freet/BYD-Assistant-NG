@@ -78,9 +78,11 @@ differently, which is what that check is for.
   Keystore. Android backup is switched off for the app (`allowBackup="false"`), so neither the encrypted key nor
   the settings are copied to a cloud backup or to a new device. Cleartext network traffic is permitted only to
   the loopback addresses.
-- **Logs** stay on the device (`app_log.txt`, `crash_log.txt`) and leave it only when you press *Share*. The
-  application log currently records what the assistant heard and the places you asked to navigate to, so read a
-  log before you send it to anyone.
+- **Logs** stay on the device (`app_log.txt`, `crash_log.txt`) and leave it only when you press *Share* or
+  *Save to Downloads*. The application log currently records what the assistant heard and the places you asked to
+  navigate to. When a log is shown, shared or saved, what you said and asked for, places, keys, e-mail addresses,
+  phone numbers and network addresses are replaced by default (the log on the device is not changed); a switch on
+  that screen shows the whole log. The masking is rule-based, so read a log before you send it to anyone.
 - **No analytics, telemetry or advertising** of any kind.
 - **Updates** are only checked when the build was told which GitHub repository publishes them
   (`assistant.updateRepo`), and only ever downloaded from that repository's release assets. Before an update is

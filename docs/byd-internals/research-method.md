@@ -98,6 +98,24 @@ Two things are worth opening in a decompiler such as jadx:
   `android/hardware/bydauto/<name>/BYDAuto<Name>Device` class. Large vendor apps are mostly assets and
   often contain no useful ids — one such app's 467 MB package held nothing beyond its own screens.
 
+## 9. Another car, from its log
+
+Everything in these notes was observed on one car. To learn what a different car does without a cable, the owner can
+send the app's log (*Settings → App → View app log → Save to Downloads*; what was said and asked for, places, keys
+and addresses are hidden by default). The first time the vehicle helper starts in a run of the app, the log gets one
+`Vehicle helper found …` line, written by `CarDiagnostics`; it only looks, nothing is written to the car. The fields
+are listed in [platforms.md](platforms.md#the-log-line): the Android level, the head unit's identification properties,
+the car's numbers for the three features that tell the platforms apart, how many numbers its table holds, which
+device classes, generic calls and services exist, and the result of looking every number the app uses up by its name in the
+car's own table: how many agree (`names=76/76` on a car like ours), which the car numbers differently
+(`differ=Group.NAME=<car's number>/<ours>`; the car's is the one the app then uses), which it does not have at all
+(`absent=`) and the commands that costs (`withheld=`). A number the car does not have cannot be right on that car, and one it
+numbers differently would reach something else. When a window name does not agree, the car's window features are listed with
+their numbers. The same line is copied into the header of every saved or shared log.
+
+A number that agrees by name is the car's own number for that feature; whether the feature does what the registry says
+is settled the usual way (section 6, then section 7): operate the control and read the state back.
+
 ## Pitfalls
 
 - A control can accept a value and ignore it (massage intensity `0`), or accept it only in the right state (a

@@ -20,6 +20,22 @@ The other lead, `LIGHTS_FLASHING_LIGHT_AND_HORN` (the "find my car" flash and ho
 cloud and over a direct Bluetooth connection, show the command reaching the car without passing through the Android
 side; the head unit only sees the lights come on. See [findings-and-dead-ends.md](byd-internals/findings-and-dead-ends.md).
 
+## DiLink 3 and DiLink 4
+
+The app looks every number up by name in the car's own table of features (see [platforms.md](byd-internals/platforms.md)): a
+command takes the car's number for each of its names, and a command whose control the car does not name is not offered and
+never sent. That has been checked on one DiLink 5.1 car (the table agrees everywhere, so nothing changes there) and on
+simulated cars; none of it has been tried on a DiLink 3 or 4 car. What is still open:
+
+| Item | What it needs |
+| --- | --- |
+| **Confirm it on a car** | Someone with a DiLink 3 or DiLink 4 car, parked, to try the window open/close and position controls and send the app log (*Settings → App → View app log → Save to Downloads*, private details hidden). The header of the saved file and the helper's `Vehicle helper found …` line say what the car's own table holds and, by name, which of the registry's numbers it agrees with (`names=`), numbers differently (`differ=`, the car's number is the one used) or lacks (`absent=`, and `withheld=` for the commands that costs). |
+| **What the properties hold** | The log line shows `ro.vehicle.type` and the other identification properties of that car. On our DiLink 5.1 car `ro.vehicle.type` is `Di5.1_5.0UI` (`<platform>_<interface>`), so its first part names the platform. They are logged and do not decide, because the numbers are what the app sends; what DiLink 3 and 4 cars put there would show in their logs. |
+| **A DiLink 3 window that does not move** | A car may accept the open/close control without moving the glass while the percent control works; we have not seen one. The app does not notice an `open` that moved nothing; it would read the window's position before and after and fall back to the percent control. Needs a car that does this. |
+| **The generic call on DiLink 3** | If a DiLink 3 log shows the helper cannot find the generic `set` or the device classes (the `calls` and `classes` fields of that line), the commands would have to reach the car through the `autoservice` system service instead. Not built: it needs a car to confirm. |
+| **The features that write to the car and were verified on one car** | The drive mode, the exterior speaker and the instrument cluster stay off on a car whose table does not give their names the verified numbers (see `ExteriorSpeakerSwitch.isOnThisCar`). They could take the car's own number by name like the registry's commands, but each is guarded by a check of the exact id, which would have to follow; not done. |
+| **A Toyota-protocol car** | The car's own class numbers features from `sys.car.protocol` (CAN-FD, Toyota or classic CAN). A Toyota-protocol car matches neither of the two schemes the platform check knows, so it reads as not recognised, and the commands are looked up by name all the same. Whether the platform check should name that scheme is open; it only changes how careful the app is. |
+
 ## Features planned
 
 Ideas for the assistant itself, with a priority. None is built, and for each the first step is to check on the car what
