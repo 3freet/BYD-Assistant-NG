@@ -487,8 +487,8 @@ internal object ClusterScreenCommand {
         companion object {
             fun of(context: Context): MapType? = runCatching {
                 // Only written when the car's framework gives the names the ids this was found with.
-                if (CarFeatureIds.idOf("Instrument", "INSTRUMENT_NAVI_TYPE") != MAP_TYPE_STATE_ID) return null
-                if (CarFeatureIds.idOf("Instrument", "INSTRUMENT_NAVI_TYPE_SET") != MAP_TYPE_CONTROL_ID) return null
+                if (CarFeatureIds.idOf(ClusterScreenParsing.FEATURE_GROUP, ClusterScreenParsing.MAP_TYPE_STATE_NAME) != MAP_TYPE_STATE_ID) return null
+                if (CarFeatureIds.idOf(ClusterScreenParsing.FEATURE_GROUP, ClusterScreenParsing.MAP_TYPE_CONTROL_NAME) != MAP_TYPE_CONTROL_ID) return null
                 val deviceClass = Class.forName("android.hardware.bydauto.instrument.BYDAutoInstrumentDevice")
                 val device = deviceClass.getMethod("getInstance", Context::class.java).invoke(null, context) ?: return null
                 val base = Class.forName("android.hardware.bydauto.AbsBYDAutoDevice")

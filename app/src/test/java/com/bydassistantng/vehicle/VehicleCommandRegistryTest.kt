@@ -114,8 +114,8 @@ class VehicleCommandRegistryTest {
             assertNotNull(c.stateFeatureId)
         }
         // Off is a MODE write (the native screen set mode 5->1 as the level went to 0); intensity 0 is ignored.
-        assertEquals(listOf(ValueOverride(0, 1276190752, 1)), command("seat.driver.massage").overrides)
-        assertEquals(listOf(ValueOverride(0, 1276190756, 1)), command("seat.passenger.massage").overrides)
+        assertEquals(listOf(ValueOverride(0, 1276190752, 1, "Setting.SET_MAIN_DRIVER_SEAT_MASSAGE_WORKING_MODE_SET")), command("seat.driver.massage").overrides)
+        assertEquals(listOf(ValueOverride(0, 1276190756, 1, "Setting.SET_CO_DRIVER_SEAT_MASSAGE_WORKING_MODE_SET")), command("seat.passenger.massage").overrides)
         // Rear massage isn't fitted on this car (config flag 0, state unreadable) — nothing may claim it.
         assertTrue(VehicleCommandRegistry.known.none { it.id.startsWith("seat.rear") && it.id.endsWith("massage") })
     }
@@ -156,7 +156,7 @@ class VehicleCommandRegistryTest {
         assertEquals(1312817180, tilt.featureId)
         assertEquals(1228931096, tilt.stateFeatureId)
         // Off is written as 2 (writing 0 is not what the car's switch does) and the state then reads 0.
-        assertEquals(listOf(ValueOverride(0, 1312817180, 2)), tilt.overrides)
+        assertEquals(listOf(ValueOverride(0, 1312817180, 2, "Setting.SET_CAR_REAR_VIEW_SET")), tilt.overrides)
     }
 
     @Test

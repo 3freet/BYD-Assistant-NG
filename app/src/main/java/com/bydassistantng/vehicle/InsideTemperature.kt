@@ -21,7 +21,8 @@ data class RawInsideTemperature(val celsius: Int? = null, val unitCode: Int? = n
  */
 object InsideTemperatureTool {
     internal const val DEVICE_TYPE = 1000
-    internal const val STATE_ID = 0x4EB06010 // AC_TEMP_INSIDE_FILTERING
+    internal const val STATE_ID = 0x4EB06010
+    internal const val STATE_NAME = "Ac.AC_TEMP_INSIDE_FILTERING"
     private const val CELSIUS_UNIT_CODE = 1
 
     /** Zero is the climate system's own "no temperature" (`AC_TEMP_INVALID`); a real cabin is not at 0 or past 90. */

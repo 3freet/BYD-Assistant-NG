@@ -22,6 +22,10 @@ object HeadrestSound {
     internal const val MODE_STATE_ID = 1253048341
     internal const val SPEAKER_CONFIG_STATE_ID = 1253048344
 
+    /** What the car's own table of features calls those two states. */
+    internal const val MODE_STATE_NAME = "Audio.AUDIO_HEADREST_SOUND_EFFECT_STATUS_IVI"
+    internal const val SPEAKER_CONFIG_STATE_NAME = "Audio.AUDIO_HEADREST_SPEAKER_CONFIG"
+
     /** What the car reported: the mode (one of the `MODE_` numbers) and the speaker configuration, each null when unread. */
     data class State(val mode: Int?, val speakers: Int?) {
         /** The car has a headrest speaker, and reports a mode for it. */

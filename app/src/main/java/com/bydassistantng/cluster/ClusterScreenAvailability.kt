@@ -15,8 +15,8 @@ object ClusterScreenAvailability {
         namesMatch() && hasClusterDisplay(context) && hasNavigationApp(context)
 
     private fun namesMatch(): Boolean =
-        CarFeatureIds.idOf("Instrument", "INSTRUMENT_NAVI_TYPE") == ClusterScreenParsing.MAP_TYPE_STATE_ID &&
-            CarFeatureIds.idOf("Instrument", "INSTRUMENT_NAVI_TYPE_SET") == ClusterScreenParsing.MAP_TYPE_CONTROL_ID
+        CarFeatureIds.idOf(ClusterScreenParsing.FEATURE_GROUP, ClusterScreenParsing.MAP_TYPE_STATE_NAME) == ClusterScreenParsing.MAP_TYPE_STATE_ID &&
+            CarFeatureIds.idOf(ClusterScreenParsing.FEATURE_GROUP, ClusterScreenParsing.MAP_TYPE_CONTROL_NAME) == ClusterScreenParsing.MAP_TYPE_CONTROL_ID
 
     private fun hasClusterDisplay(context: Context): Boolean = runCatching {
         val manager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager

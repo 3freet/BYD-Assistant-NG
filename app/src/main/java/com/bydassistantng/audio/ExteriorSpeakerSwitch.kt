@@ -18,13 +18,14 @@ internal object ExteriorSpeakerSwitch {
 
     /** `AUDIO_MEDIA_SOUND_MUTE_STATE` (0x4FD0002D): read only, goes from 1 to 2 while the switch is on. */
     const val MUTE_STATE_ID = 0x4FD0002D
+    const val MUTE_STATE_NAME = "Audio.AUDIO_MEDIA_SOUND_MUTE_STATE"
 
     const val OFF = 0
     const val ON = 1
 
     /** The name and group the car's framework gives [FEATURE_ID]. */
-    private const val FEATURE_GROUP = "Adas"
-    private const val FEATURE_NAME = "ADAS_UE_BROADCAST_POSITION_SET"
+    internal const val FEATURE_GROUP = "Adas"
+    internal const val FEATURE_NAME = "ADAS_UE_BROADCAST_POSITION_SET"
 
     /** Whether this car's framework names the feature the way it was verified: only then is it used. */
     fun isOnThisCar(): Boolean = com.bydassistantng.vehicle.CarFeatureIds.idOf(FEATURE_GROUP, FEATURE_NAME) == FEATURE_ID

@@ -73,7 +73,7 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         if (instance == null) {
             VehicleDispatchResult.Failure(VehicleDispatchError.CLASS_NOT_FOUND, "No usable instance for $AC_DEVICE_CLASS")
         } else {
-            val celsius = InsideTemperatureTool.usable(readState(instance, InsideTemperatureTool.DEVICE_TYPE, InsideTemperatureTool.STATE_ID))
+            val celsius = InsideTemperatureTool.usable(readNamed(instance, InsideTemperatureTool.DEVICE_TYPE, InsideTemperatureTool.STATE_NAME, InsideTemperatureTool.STATE_ID))
             val unit = instance.javaClass.getMethod("getTemperatureUnit").invoke(instance) as? Int
             VehicleDispatchResult.Success(InsideTemperatureTool.encode(RawInsideTemperature(celsius, unit)))
         }
@@ -89,8 +89,8 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         if (seatDevice == null || doorDevice == null) {
             VehicleDispatchResult.Failure(VehicleDispatchError.CLASS_NOT_FOUND, "No usable instance for ${if (seatDevice == null) DriverPresence.SEAT_CLASS else bodywork}")
         } else {
-            val seat = readState(seatDevice, DriverPresence.SEAT_DEVICE_TYPE, DriverPresence.SEAT_STATE_ID)
-            val door = readState(doorDevice, DriverPresence.DOOR_DEVICE_TYPE, DriverPresence.DOOR_STATE_ID)
+            val seat = readNamed(seatDevice, DriverPresence.SEAT_DEVICE_TYPE, DriverPresence.SEAT_STATE_NAME, DriverPresence.SEAT_STATE_ID)
+            val door = readNamed(doorDevice, DriverPresence.DOOR_DEVICE_TYPE, DriverPresence.DOOR_STATE_NAME, DriverPresence.DOOR_STATE_ID)
             VehicleDispatchResult.Success(DriverPresence.encode(DriverPresence.State(seat, door)))
         }
     } catch (t: Throwable) {
@@ -104,8 +104,8 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         if (instance == null) {
             VehicleDispatchResult.Failure(VehicleDispatchError.CLASS_NOT_FOUND, "No usable instance for $className")
         } else {
-            val mode = readState(instance, HeadrestSound.DEVICE_TYPE, HeadrestSound.MODE_STATE_ID)
-            val speakers = readState(instance, HeadrestSound.DEVICE_TYPE, HeadrestSound.SPEAKER_CONFIG_STATE_ID)
+            val mode = readNamed(instance, HeadrestSound.DEVICE_TYPE, HeadrestSound.MODE_STATE_NAME, HeadrestSound.MODE_STATE_ID)
+            val speakers = readNamed(instance, HeadrestSound.DEVICE_TYPE, HeadrestSound.SPEAKER_CONFIG_STATE_NAME, HeadrestSound.SPEAKER_CONFIG_STATE_ID)
             VehicleDispatchResult.Success(HeadrestSound.encode(HeadrestSound.State(mode, speakers)))
         }
     } catch (t: Throwable) {
@@ -193,7 +193,11 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             val controlId = override?.featureId ?: featureId
             val sent = override?.sendValue ?: expectedState
             val stateId = command.stateFeatureId
-            val before = if (command.gradual && stateId != null) readState(instance, deviceType, stateId) else null
+            val before = if ((command.gradual || command.requiresReadback) && stateId != null) readState(instance, deviceType, stateId) else null
+            if (command.requiresReadback && stateId != null && before == null) {
+                Log.i(TAG, "${command.id} refused: state $stateId gives no reading, so the control is not wired on this car")
+                return VehicleDispatchResult.Failure(VehicleDispatchError.NOT_AVAILABLE_ON_THIS_CAR, NOT_REPORTED_NOTE)
+            }
             val method = findMethod(instance.javaClass, "set", Int::class.java, IntArray::class.java, IntArray::class.java)
             val accepted = toResult(method.invoke(instance, deviceType, intArrayOf(controlId), intArrayOf(sent)))
             if (accepted is VehicleDispatchResult.Success && stateId != null) {
@@ -258,6 +262,13 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             )
         }
     }
+
+    /**
+     * A state the app reads outside the command registry, by its name in the car's own table: the car's own number for it
+     * ([CarNumbers]). Null (no reading) where the car's table lacks the name, as where the car has no answer.
+     */
+    private fun readNamed(instance: Any, deviceType: Int, name: String, verified: Int): Int? =
+        CarNumbers.of(name, verified)?.let { readState(instance, deviceType, it) }
 
     /** `AbsBYDAutoDevice.get(deviceType, stateId)`; null when the car has no answer (an unsupported
      * state reads -10011, or 65535 for some) or the call fails. */
@@ -491,8 +502,8 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
     companion object {
         private const val TAG = "VehicleController"
 
-        private const val AC_SERVICE_NAME = "byd_airconditioning"
-        private const val AC_DEVICE_CLASS = "android.hardware.bydauto.ac.BYDAutoAcDevice"
+        internal const val AC_SERVICE_NAME = "byd_airconditioning"
+        internal const val AC_DEVICE_CLASS = "android.hardware.bydauto.ac.BYDAutoAcDevice"
 
         // Matches com.byd.ac.IBydAcService.DESCRIPTOR in the car's own /system/framework/com.byd.ac.jar.
         private const val AC_MASTER_INTERFACE_DESCRIPTOR = "com.byd.ac.IBydAcService"
@@ -509,7 +520,11 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         private const val STATE_VERIFY_INTERVAL_MS = 150L
         private const val NO_READING = 65535
 
-        private val GENERIC_ROUTE_CLASS_BY_DOMAIN = mapOf(
+        // What the user hears when the car cannot say where a control stands, so it is not sent blind (see [VehicleCommand.requiresReadback]).
+        private const val NOT_REPORTED_NOTE =
+            "This car does not report where that control is, so it cannot be set to a position here. Nothing was sent."
+
+        internal val GENERIC_ROUTE_CLASS_BY_DOMAIN = mapOf(
             VehicleDomain.BODYWORK to "android.hardware.bydauto.bodywork.BYDAutoBodyworkDevice",
             VehicleDomain.LIGHT to "android.hardware.bydauto.light.BYDAutoLightDevice",
             VehicleDomain.AUDIO to "android.hardware.bydauto.audio.BYDAutoAudioDevice",

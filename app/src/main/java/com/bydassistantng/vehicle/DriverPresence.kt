@@ -11,10 +11,12 @@ package com.bydassistantng.vehicle
 object DriverPresence {
     internal const val SEAT_DEVICE_TYPE = 1042
     internal const val SEAT_STATE_ID = 0x31200040
+    internal const val SEAT_STATE_NAME = "Safety.SAFETY_BELT_PASSENGER_COMMAND_FRONT_ROW_SEAT_LEFT"
     internal const val SEAT_CLASS = "android.hardware.bydauto.safetybelt.BYDAutoSafetyBeltDevice"
 
     internal const val DOOR_DEVICE_TYPE = 1001
     internal const val DOOR_STATE_ID = 0x29400008
+    internal const val DOOR_STATE_NAME = "Bodywork.BODYWORK_LEFT_HAND_FRONT_DOOR"
 
     const val SEAT_EMPTY = 1
     const val SEAT_OCCUPIED = 2

@@ -208,11 +208,14 @@ class ShellHelperVehicleController @Inject constructor(
             AppLogger.logError(TAG, "Could not start the helper", e)
             return null
         }
-        if (helper.readLineStartingWith(HelperProtocol.READY_LINE, START_TIMEOUT_MS) == null) {
+        val ready = helper.readLineStartingWith(HelperProtocol.READY_LINE, START_TIMEOUT_MS)
+        if (ready == null) {
             AppLogger.logError(TAG, "The helper never reported ready")
             helper.close()
             return null
         }
+        // The helper says which platform it found the car to run, and what it saw of the car (for the log).
+        HelperProtocol.parseReady(ready)?.let { PlatformState.helperReported(context, it) }
         AppLogger.log(TAG, "Helper ready in ${System.currentTimeMillis() - started}ms")
         session = helper
         return helper

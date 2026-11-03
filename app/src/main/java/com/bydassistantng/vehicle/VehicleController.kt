@@ -51,5 +51,7 @@ enum class VehicleDispatchError {
     HELPER_UNAVAILABLE,
     /** The car is in a state the command can't be applied in (see [StateRequirement]); nothing was sent. */
     PRECONDITION_NOT_MET,
+    /** This car's platform has no confirmed number for the control, or the car cannot report it; nothing was sent. */
+    NOT_AVAILABLE_ON_THIS_CAR,
     UNKNOWN,
 }

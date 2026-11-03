@@ -10,6 +10,7 @@ import com.bydassistantng.util.AppLogger
 import com.bydassistantng.util.AppUser
 import com.bydassistantng.util.CrashLogger
 import com.bydassistantng.util.WheelKeys
+import com.bydassistantng.vehicle.PlatformState
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -41,6 +42,8 @@ class AssistantApp : Application() {
             AppLogger.log("AssistantApp", "Running as another Android user (not the main one) — no background work")
             return
         }
+        // Which platform the car runs decides which vehicle commands are offered, so it is settled before anything asks.
+        PlatformState.start(this)
         // Whatever started this process (the system binding the service, a boot broadcast, the user opening
         // the app), make sure the wheel button is actually live. Waits a few seconds, so off the main thread.
         Thread { WheelKeys.ensureServiceRunning(this) }.start()

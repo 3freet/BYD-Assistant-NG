@@ -109,6 +109,7 @@
     "labelPl": "Szyba kierowcy",
     "deviceType": 1001,
     "featureId": 1125122104,
+    "featureName": "Bodywork.BODYWORK_LF_WINDOW_CTRL_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -133,6 +134,7 @@
     "labelPl": "Szyba pasażera",
     "deviceType": 1001,
     "featureId": 1125122107,
+    "featureName": "Bodywork.BODYWORK_RF_WINDOW_CTRL_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -157,6 +159,7 @@
     "labelPl": "Tylna lewa szyba",
     "deviceType": 1001,
     "featureId": 1125122112,
+    "featureName": "Bodywork.BODYWORK_LR_WINDOW_CTRL_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -181,6 +184,7 @@
     "labelPl": "Tylna prawa szyba",
     "deviceType": 1001,
     "featureId": 1125122115,
+    "featureName": "Bodywork.BODYWORK_RR_WINDOW_CTRL_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -205,6 +209,7 @@
     "labelPl": "Szyberdach",
     "deviceType": 1001,
     "featureId": 1125122056,
+    "featureName": "Bodywork.BODYWORK_MOON_ROOF_CTL_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -227,6 +232,7 @@
     "labelPl": "Położenie szyberdachu",
     "deviceType": 1001,
     "featureId": 1330642976,
+    "featureName": "Bodywork.BODYWORK_MOON_ROOF_OPEN_PERCENT_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -247,6 +253,7 @@
     "labelPl": "Roleta przeciwsłoneczna",
     "deviceType": 1001,
     "featureId": 1330642984,
+    "featureName": "Bodywork.BODYWORK_SUNSHADE_PANEL_PERCENT_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -285,6 +292,7 @@
     "labelPl": "Dźwięk multimediów",
     "deviceType": 1002,
     "featureId": 470810680,
+    "featureName": "Audio.AUDIO_MEDIA_SOUND_MUTE_SET_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -295,7 +303,8 @@
         "mute": 2
       }
     },
-    "stateFeatureId": 1339031597
+    "stateFeatureId": 1339031597,
+    "stateFeatureName": "Audio.AUDIO_MEDIA_SOUND_MUTE_STATE"
   },
   {
     "id": "audio.navigationVolume",
@@ -307,6 +316,7 @@
     "labelPl": "Głośność nawigacji",
     "deviceType": 1002,
     "featureId": 1309081616,
+    "featureName": "Audio.AUDIO_NAVI_VOLUME_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -315,7 +325,8 @@
       "min": 0,
       "max": 10
     },
-    "stateFeatureId": 1108344868
+    "stateFeatureId": 1108344868,
+    "stateFeatureName": "Audio.AUDIO_NAVI_VOLUME"
   },
   {
     "id": "audio.soundFocus",
@@ -327,6 +338,7 @@
     "labelPl": "Ognisko dźwięku",
     "deviceType": 1002,
     "featureId": 470810653,
+    "featureName": "Audio.AUDIO_LEFT_RIGHT_FIELD_SET_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -338,7 +350,8 @@
         "back_seats": 4
       }
     },
-    "stateFeatureId": 1339031565
+    "stateFeatureId": 1339031565,
+    "stateFeatureName": "Audio.AUDIO_SOUND_FIELD_FOCUS_STATE"
   },
   {
     "id": "audio.spaceSound",
@@ -350,6 +363,7 @@
     "labelPl": "Dźwięk przestrzenny",
     "deviceType": 1002,
     "featureId": 372244496,
+    "featureName": "Audio.AUDIO_SPACE_SOUND_EFFECT_STATUS_IVI_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -360,7 +374,8 @@
         "on": 2
       }
     },
-    "stateFeatureId": 1263534096
+    "stateFeatureId": 1263534096,
+    "stateFeatureName": "Audio.AUDIO_SPACE_SOUND_EFFECT_STATUS_IVI"
   },
   {
     "id": "audio.spaceSoundMode",
@@ -372,6 +387,7 @@
     "labelPl": "Siła dźwięku przestrzennego",
     "deviceType": 1002,
     "featureId": 372244498,
+    "featureName": "Audio.AUDIO_SPACE_SOUND_MODE_STATUS_IVI_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -383,7 +399,8 @@
         "strong": 3
       }
     },
-    "stateFeatureId": 1263534098
+    "stateFeatureId": 1263534098,
+    "stateFeatureName": "Audio.AUDIO_SPACE_SOUND_MODE_STATUS_IVI"
   },
   {
     "id": "audio.headrestSound",
@@ -395,6 +412,7 @@
     "labelPl": "Dźwięk w zagłówku",
     "deviceType": 1002,
     "featureId": -1676672971,
+    "featureName": "Audio.AUDIO_HEADREST_SOUND_EFFECT_STATUS_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -407,7 +425,8 @@
         "exclusive": 4
       }
     },
-    "stateFeatureId": 1253048341
+    "stateFeatureId": 1253048341,
+    "stateFeatureName": "Audio.AUDIO_HEADREST_SOUND_EFFECT_STATUS_IVI"
   },
   {
     "id": "audio.soundStyle",
@@ -419,6 +438,7 @@
     "labelPl": "Styl dźwięku",
     "deviceType": 1002,
     "featureId": -1693450216,
+    "featureName": "Audio.AUDIO_DYNAUDIO_SOUND_FEATURES_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -433,7 +453,8 @@
         "custom": 6
       }
     },
-    "stateFeatureId": 1281359880
+    "stateFeatureId": 1281359880,
+    "stateFeatureName": "Audio.AUDIO_DYNAUDIO_SOUND_FEATURES_IVI"
   },
   {
     "id": "trunk",
@@ -445,6 +466,7 @@
     "labelPl": "Bagażnik",
     "deviceType": 1023,
     "featureId": 1125122080,
+    "featureName": "Setting.SET_VOICE_CTRL_BACK_DOOR_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -494,6 +516,7 @@
     "labelPl": "Automatyczne składanie lusterek",
     "deviceType": 1023,
     "featureId": 1312817178,
+    "featureName": "Setting.SET_CAR_EXTREARMIR_FOLLOWUP_SWITCH_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -504,7 +527,8 @@
         "on": 1
       }
     },
-    "stateFeatureId": 1081081884
+    "stateFeatureId": 1081081884,
+    "stateFeatureName": "Setting.SET_CAR_EXTREARMIR_FOLLOWUP_SWITCH"
   },
   {
     "id": "mirrors.tiltInReverse",
@@ -516,6 +540,7 @@
     "labelPl": "Pochylanie lusterek na biegu wstecznym",
     "deviceType": 1023,
     "featureId": 1312817180,
+    "featureName": "Setting.SET_CAR_REAR_VIEW_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -527,10 +552,12 @@
       }
     },
     "stateFeatureId": 1228931096,
+    "stateFeatureName": "Setting.SET_CAR_REAR_VIEW",
     "overrides": [
       {
         "whenValue": 0,
         "featureId": 1312817180,
+        "featureName": "Setting.SET_CAR_REAR_VIEW_SET",
         "sendValue": 2
       }
     ]
@@ -586,7 +613,8 @@
         "ice_blue": 127
       }
     },
-    "stateFeatureId": 1121976336
+    "stateFeatureId": 1121976336,
+    "stateFeatureName": "Setting.SET_IAL_FRONT_COLOR"
   },
   {
     "id": "ambient.brightness",
@@ -618,7 +646,8 @@
       "max": 6
     },
     "valueOffset": -1,
-    "stateFeatureId": 1121976328
+    "stateFeatureId": 1121976328,
+    "stateFeatureName": "Setting.SET_IAL_FRONT_BRIGHTNESS"
   },
   {
     "id": "ambient.dynamic",
@@ -630,6 +659,7 @@
     "labelPl": "Kolory dynamiczne",
     "deviceType": 1004,
     "featureId": 1276153886,
+    "featureName": "Light.LIGHT_DYNAMIC_COLORFUL_SWITHCH_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -640,7 +670,8 @@
         "off": 2
       }
     },
-    "stateFeatureId": 679477578
+    "stateFeatureId": 679477578,
+    "stateFeatureName": "Light.LIGHT_DYNAMIC_COLORFUL_SWITHCH_STATE"
   },
   {
     "id": "fridge.mode",
@@ -652,6 +683,7 @@
     "labelPl": "Lodówka",
     "deviceType": 1023,
     "featureId": 850427920,
+    "featureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_WORKING_STATUS_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -663,7 +695,8 @@
         "heat": 2
       }
     },
-    "stateFeatureId": 1220542488
+    "stateFeatureId": 1220542488,
+    "stateFeatureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_WORKING_STATUS"
   },
   {
     "id": "fridge.cool.temperature",
@@ -675,6 +708,7 @@
     "labelPl": "Chłodzenie lodówki",
     "deviceType": 1023,
     "featureId": 850427928,
+    "featureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_TEMP_REGULATION_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -685,9 +719,11 @@
       "unit": "°C"
     },
     "stateFeatureId": 1220542480,
+    "stateFeatureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_TEMP_REGULATION",
     "valueOffset": 19,
     "requires": {
       "featureId": 1220542488,
+      "featureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_WORKING_STATUS",
       "equals": 1,
       "message": "The fridge isn't cooling. Switch it to cooling mode first."
     }
@@ -702,6 +738,7 @@
     "labelPl": "Podgrzewanie fotela kierowcy",
     "deviceType": 1023,
     "featureId": 1125122068,
+    "featureName": "Setting.SET_DRIVER_SEAT_HEATING_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -713,7 +750,8 @@
         "high": 3
       }
     },
-    "stateFeatureId": 1335885835
+    "stateFeatureId": 1335885835,
+    "stateFeatureName": "Setting.SET_DRIVER_SEAT_HEATING_STATE"
   },
   {
     "id": "seat.driver.ventilation",
@@ -725,6 +763,7 @@
     "labelPl": "Wentylacja fotela kierowcy",
     "deviceType": 1023,
     "featureId": 1125122064,
+    "featureName": "Setting.SET_DRIVER_SEAT_VENTILATING_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -736,7 +775,8 @@
         "high": 3
       }
     },
-    "stateFeatureId": 1335885832
+    "stateFeatureId": 1335885832,
+    "stateFeatureName": "Setting.SET_DRIVER_SEAT_VENTILATING_STATE"
   },
   {
     "id": "seat.passenger.heating",
@@ -748,6 +788,7 @@
     "labelPl": "Podgrzewanie fotela pasażera",
     "deviceType": 1023,
     "featureId": 1125122076,
+    "featureName": "Setting.SET_PASSENGER_SEAT_HEATING_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -759,7 +800,8 @@
         "high": 3
       }
     },
-    "stateFeatureId": 1335885843
+    "stateFeatureId": 1335885843,
+    "stateFeatureName": "Setting.SET_PASSENGER_SEAT_HEATING_STATE"
   },
   {
     "id": "seat.passenger.ventilation",
@@ -771,6 +813,7 @@
     "labelPl": "Wentylacja fotela pasażera",
     "deviceType": 1023,
     "featureId": 1125122072,
+    "featureName": "Setting.SET_PASSENGER_SEAT_VENTILATING_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -782,7 +825,8 @@
         "high": 3
       }
     },
-    "stateFeatureId": 1335885840
+    "stateFeatureId": 1335885840,
+    "stateFeatureName": "Setting.SET_PASSENGER_SEAT_VENTILATING_STATE"
   },
   {
     "id": "seat.rearLeft.heating",
@@ -794,6 +838,7 @@
     "labelPl": "Podgrzewanie tylnego lewego fotela",
     "deviceType": 1023,
     "featureId": 1125122091,
+    "featureName": "Setting.SET_REAR_LEFT_SEAT_HEATING_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -805,7 +850,8 @@
         "high": 3
       }
     },
-    "stateFeatureId": 1214251019
+    "stateFeatureId": 1214251019,
+    "stateFeatureName": "Setting.SET_REAR_LEFT_SEAT_HEATING_STATE"
   },
   {
     "id": "seat.rearLeft.ventilation",
@@ -817,6 +863,7 @@
     "labelPl": "Wentylacja tylnego lewego fotela",
     "deviceType": 1023,
     "featureId": 1125122088,
+    "featureName": "Setting.SET_REAR_LEFT_SEAT_VENTILATING_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -828,7 +875,8 @@
         "high": 3
       }
     },
-    "stateFeatureId": 1214251016
+    "stateFeatureId": 1214251016,
+    "stateFeatureName": "Setting.SET_REAR_LEFT_SEAT_VENTILATING_STATE"
   },
   {
     "id": "seat.rearRight.heating",
@@ -840,6 +888,7 @@
     "labelPl": "Podgrzewanie tylnego prawego fotela",
     "deviceType": 1023,
     "featureId": 1125122099,
+    "featureName": "Setting.SET_REAR_RIGHT_SEAT_HEATING_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -851,7 +900,8 @@
         "high": 3
       }
     },
-    "stateFeatureId": 1214251027
+    "stateFeatureId": 1214251027,
+    "stateFeatureName": "Setting.SET_REAR_RIGHT_SEAT_HEATING_STATE"
   },
   {
     "id": "seat.rearRight.ventilation",
@@ -863,6 +913,7 @@
     "labelPl": "Wentylacja tylnego prawego fotela",
     "deviceType": 1023,
     "featureId": 1125122096,
+    "featureName": "Setting.SET_REAR_RIGHT_SEAT_VENTILATING_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -874,7 +925,8 @@
         "high": 3
       }
     },
-    "stateFeatureId": 1214251024
+    "stateFeatureId": 1214251024,
+    "stateFeatureName": "Setting.SET_REAR_RIGHT_SEAT_VENTILATING_STATE"
   },
   {
     "id": "steeringWheel.heating",
@@ -886,6 +938,7 @@
     "labelPl": "Podgrzewanie kierownicy",
     "deviceType": 1023,
     "featureId": 944767029,
+    "featureName": "Setting.SET_STEERING_WHEEL_HEAT_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -896,7 +949,8 @@
         "on": 2
       }
     },
-    "stateFeatureId": 1116733454
+    "stateFeatureId": 1116733454,
+    "stateFeatureName": "Setting.SET_STEERING_WHEEL_HEAT_STATE"
   },
   {
     "id": "fridge.heat.temperature",
@@ -908,6 +962,7 @@
     "labelPl": "Podgrzewanie lodówki",
     "deviceType": 1023,
     "featureId": 850427928,
+    "featureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_TEMP_REGULATION_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -918,8 +973,10 @@
       "unit": "°C"
     },
     "stateFeatureId": 1220542480,
+    "stateFeatureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_TEMP_REGULATION",
     "requires": {
       "featureId": 1220542488,
+      "featureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_WORKING_STATUS",
       "equals": 2,
       "message": "The fridge isn't heating. Switch it to heating mode first."
     }
@@ -1154,6 +1211,7 @@
     "labelPl": "Położenie szyby kierowcy",
     "deviceType": 1001,
     "featureId": 1276219408,
+    "featureName": "Bodywork.BODYWORK_LF_WINDOW_TARGET_POSITION_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -1164,10 +1222,12 @@
       "unit": "%"
     },
     "stateFeatureId": 947912728,
+    "stateFeatureName": "Bodywork.BODYWORK_WINDOW_LEFT_FRONT_PERCENT",
     "stateTolerance": 3,
     "gradual": true,
     "valueOffset": 100,
-    "inverted": true
+    "inverted": true,
+    "requiresReadbackElsewhere": true
   },
   {
     "id": "window.passenger.position",
@@ -1179,6 +1239,7 @@
     "labelPl": "Położenie szyby pasażera",
     "deviceType": 1001,
     "featureId": 1276219424,
+    "featureName": "Bodywork.BODYWORK_RF_WINDOW_TARGET_POSITION_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -1189,10 +1250,12 @@
       "unit": "%"
     },
     "stateFeatureId": 1267728400,
+    "stateFeatureName": "Bodywork.BODYWORK_WINDOW_RIGHT_FRONT_PERCENT",
     "stateTolerance": 3,
     "gradual": true,
     "valueOffset": 100,
-    "inverted": true
+    "inverted": true,
+    "requiresReadbackElsewhere": true
   },
   {
     "id": "window.rearLeft.position",
@@ -1204,6 +1267,7 @@
     "labelPl": "Położenie tylnej lewej szyby",
     "deviceType": 1001,
     "featureId": 1276219416,
+    "featureName": "Bodywork.BODYWORK_LR_WINDOW_TARGET_POSITION_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -1214,10 +1278,12 @@
       "unit": "%"
     },
     "stateFeatureId": 947912736,
+    "stateFeatureName": "Bodywork.BODYWORK_WINDOW_LEFT_REAR_PERCENT",
     "stateTolerance": 3,
     "gradual": true,
     "valueOffset": 100,
-    "inverted": true
+    "inverted": true,
+    "requiresReadbackElsewhere": true
   },
   {
     "id": "window.rearRight.position",
@@ -1229,6 +1295,7 @@
     "labelPl": "Położenie tylnej prawej szyby",
     "deviceType": 1001,
     "featureId": 1276219432,
+    "featureName": "Bodywork.BODYWORK_RR_WINDOW_TARGET_POSITION_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -1239,10 +1306,12 @@
       "unit": "%"
     },
     "stateFeatureId": 947912752,
+    "stateFeatureName": "Bodywork.BODYWORK_WINDOW_RIGHT_REAR_PERCENT",
     "stateTolerance": 3,
     "gradual": true,
     "valueOffset": 100,
-    "inverted": true
+    "inverted": true,
+    "requiresReadbackElsewhere": true
   },
   {
     "id": "seat.driver.massage",
@@ -1254,6 +1323,7 @@
     "labelPl": "Masaż fotela kierowcy",
     "deviceType": 1023,
     "featureId": 1276190736,
+    "featureName": "Setting.SET_MAIN_DRIVING_SEAT_MASSAGE_WORK_INTENSUTY_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -1267,10 +1337,12 @@
       }
     },
     "stateFeatureId": 1335885876,
+    "stateFeatureName": "Setting.SET_FRONT_LEFT_SEAT_MASSAGE_LEVEL",
     "overrides": [
       {
         "whenValue": 0,
         "featureId": 1276190752,
+        "featureName": "Setting.SET_MAIN_DRIVER_SEAT_MASSAGE_WORKING_MODE_SET",
         "sendValue": 1
       }
     ]
@@ -1285,6 +1357,7 @@
     "labelPl": "Masaż fotela pasażera",
     "deviceType": 1023,
     "featureId": 1276190739,
+    "featureName": "Setting.SET_CO_DRIVING_SEAT_MASSAGE_WORK_INTENSUTY_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -1298,10 +1371,12 @@
       }
     },
     "stateFeatureId": 1335885884,
+    "stateFeatureName": "Setting.SET_FRONT_RIGHT_SEAT_MASSAGE_LEVEL",
     "overrides": [
       {
         "whenValue": 0,
         "featureId": 1276190756,
+        "featureName": "Setting.SET_CO_DRIVER_SEAT_MASSAGE_WORKING_MODE_SET",
         "sendValue": 1
       }
     ]
@@ -1316,6 +1391,7 @@
     "labelPl": "Oświetlenie kabiny",
     "deviceType": 1023,
     "featureId": 1330643002,
+    "featureName": "Setting.SET_INSIDE_LIGHT_STATE_SET",
     "invocation": {
       "type": "genericFeatureSet"
     },
@@ -1326,7 +1402,8 @@
         "on": 2
       }
     },
-    "stateFeatureId": 1121976365
+    "stateFeatureId": 1121976365,
+    "stateFeatureName": "Setting.SET_INSIDE_LIGHT_STATE"
   },
   {
     "id": "ac.airSource",

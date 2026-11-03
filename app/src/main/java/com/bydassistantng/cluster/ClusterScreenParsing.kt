@@ -31,6 +31,11 @@ internal object ClusterScreenParsing {
     const val MAP_TYPE_STATE_ID = 1086337074
     const val MAP_TYPE_CONTROL_ID = 1276157976
 
+    /** The group of the car's feature table the map type is in, and the names it gives the two ids above. */
+    const val FEATURE_GROUP = "Instrument"
+    const val MAP_TYPE_STATE_NAME = "INSTRUMENT_NAVI_TYPE"
+    const val MAP_TYPE_CONTROL_NAME = "INSTRUMENT_NAVI_TYPE_SET"
+
     /** BYD's navigation app. The cluster only takes another app's picture while this is enabled and has run. */
     const val MAPS_PACKAGE = "com.byd.naviauto"
 

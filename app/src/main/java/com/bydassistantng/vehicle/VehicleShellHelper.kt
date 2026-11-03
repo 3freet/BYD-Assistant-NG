@@ -1,6 +1,7 @@
 package com.bydassistantng.vehicle
 
 import android.content.Context
+import android.os.Build
 import android.os.Looper
 import androidx.annotation.Keep
 import com.bydassistantng.cluster.ClusterScreenCommand
@@ -40,6 +41,7 @@ object VehicleShellHelper {
 
     private fun runOnce(args: Array<String>) {
         val result = try {
+            detectPlatform()
             execute(args.toList()) { newController() }
         } catch (t: Throwable) {
             VehicleDispatchResult.Failure(VehicleDispatchError.UNKNOWN, t.toString())
@@ -50,7 +52,10 @@ object VehicleShellHelper {
     private fun serve() {
         try {
             val controller = newController()
-            emit(HelperProtocol.READY_LINE)
+            val seen = detectPlatform()
+            // What the helper saw is for the log: it must never be the reason the helper does not start.
+            val details = runCatching { CarDiagnostics.describe(seen.readings, seen.properties, seen.table) }.getOrElse { "diagnostics unavailable: $it" }
+            emit(HelperProtocol.ready(seen.platform, VehicleCommandRegistry.unavailable.keys, details))
             val input = System.`in`.bufferedReader()
             // Ends when the app closes its end of the ADB stream (or dies).
             while (true) {
@@ -66,6 +71,26 @@ object VehicleShellHelper {
         } catch (t: Throwable) {
             emit(HelperProtocol.encode(VehicleDispatchResult.Failure(VehicleDispatchError.UNKNOWN, "helper failed: $t")))
         }
+    }
+
+    /** What the helper read of the head unit: which platform it is, and the car's own table of features. */
+    private class Seen(val platform: DiLinkPlatform, val readings: List<Int?>, val properties: Map<String, String>, val table: Map<String, Int>?)
+
+    /**
+     * Reads which platform the car runs and the car's own table of features (this process can always read them), and makes
+     * the registry follow them, so that every command here is the one for this car: the car's numbers by name, or not
+     * offered at all where the car lacks a name it needs. The platform only decides how careful to be, and the head unit's
+     * properties are read for the log only.
+     */
+    private fun detectPlatform(): Seen {
+        // A car whose numbers cannot be read is a platform that is not recognised, which is how the app has always run.
+        val readings = runCatching { PlatformSignature.read() }.getOrElse { PlatformSignature.canaries.map { null } }
+        val properties = runCatching { HeadUnitProperties.readAll() }.getOrElse { emptyMap() }
+        val platform = PlatformDetector.classify(Build.VERSION.SDK_INT, readings)
+        val table = runCatching { CarFeatureTable.read() }.getOrNull()
+        VehicleCommandRegistry.platform = platform
+        VehicleCommandRegistry.useCarTable(table)
+        return Seen(platform, readings, properties, table)
     }
 
     private fun emit(line: String) {
@@ -92,7 +117,7 @@ object VehicleShellHelper {
             return runBlocking { controller().query(query) }
         }
         if (args.size != 2) return invalid("expected <commandId> <value>")
-        val command = VehicleCommandRegistry.byId(args[0]) ?: return invalid("unknown or blocked command '${args[0]}'")
+        val command = VehicleCommandRegistry.byId(args[0]) ?: return unavailable(args[0])
         val value = args[1].toIntOrNull() ?: return invalid("value '${args[1]}' is not an integer")
         if (!isAllowedValue(command, value)) return invalid("value $value is not allowed for ${command.id}")
 
@@ -105,6 +130,18 @@ object VehicleShellHelper {
     }
 
     private fun invalid(detail: String) = VehicleDispatchResult.Failure(VehicleDispatchError.INVALID_ARGUMENT, detail)
+
+    /** A command the registry does not have: one this car cannot do (its table lacks a name the command needs), or none at all. */
+    private fun unavailable(id: String): VehicleDispatchResult =
+        if (VehicleCommandRegistry.isCommand(id)) {
+            // The names the car lacks are in the log line (`absent=`, `withheld=`); the user hears no feature names.
+            VehicleDispatchResult.Failure(
+                VehicleDispatchError.NOT_AVAILABLE_ON_THIS_CAR,
+                "This car's software does not have a control for that. Nothing was sent.",
+            )
+        } else {
+            invalid("unknown or blocked command '$id'")
+        }
 
     private fun isAllowedValue(command: VehicleCommand, value: Int): Boolean = when (val parameter = command.parameter) {
         is VehicleParameter.FixedEnum -> value in parameter.options.values
