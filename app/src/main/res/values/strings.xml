@@ -452,4 +452,11 @@
     <string name="voice_speaker_headrest_note">While you talk to the assistant, the car\'s headrest sound is set to Interactive and the voice plays on the car\'s navigation channel, so it comes from the driver\'s headrest only. The headrest sound goes back as it was afterwards. Music stays on the car\'s speakers. The volume is set under Volume below. Needs ADB debugging, like the car controls.</string>
     <string name="log_share_failed">Couldn\'t share the log.</string>
     <string name="log_showing_newest">Showing the newest %1$d of %2$d characters; the older lines are left out.</string>
+    <string name="action_save_to_downloads">Save to Downloads</string>
+    <string name="log_saved_to">Saved to %1$s</string>
+    <string name="log_save_failed">Couldn\'t save the log.</string>
+    <string name="log_preparing">Preparing the log…</string>
+    <string name="log_hide_private">Hide private info</string>
+    <string name="log_hide_private_on">What you said and asked for, places, song names, keys, e-mail addresses, phone numbers and network addresses are replaced here, in what you share and in what you save.</string>
+    <string name="log_hide_private_off">The whole log is shown. It includes what you said and asked for. Share it only with people you trust.</string>
 </resources>

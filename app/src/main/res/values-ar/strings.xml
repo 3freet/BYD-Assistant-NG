@@ -451,4 +451,11 @@
     <string name="voice_speaker_headrest_note">أثناء حديثك مع المساعد يُضبط صوت مسند الرأس في السيارة على «تفاعلي» ويُشغَّل صوت المساعد على قناة الملاحة في السيارة، فيصدر من مسند رأس السائق فقط. ثم يعود صوت مسند الرأس إلى ما كان عليه. تبقى الموسيقى في مكبرات السيارة. يُضبط مستوى الصوت ضمن «مستوى الصوت» أدناه. يتطلب تفعيل تصحيح ADB كما في أوامر السيارة.</string>
     <string name="log_share_failed">تعذّرت مشاركة السجل.</string>
     <string name="log_showing_newest">يُعرض أحدث %1$d من %2$d حرفًا؛ وتُركت الأسطر الأقدم.</string>
+    <string name="action_save_to_downloads">حفظ في التنزيلات</string>
+    <string name="log_saved_to">تم الحفظ في %1$s</string>
+    <string name="log_save_failed">تعذّر حفظ السجل.</string>
+    <string name="log_preparing">جارٍ تجهيز السجل…</string>
+    <string name="log_hide_private">إخفاء المعلومات الخاصة</string>
+    <string name="log_hide_private_on">يتم هنا استبدال ما قلته وما طلبته والأماكن وأسماء الأغاني والمفاتيح وعناوين البريد الإلكتروني وأرقام الهاتف وعناوين الشبكة، وكذلك في ما تشاركه وما تحفظه.</string>
+    <string name="log_hide_private_off">يُعرض السجل كاملًا، وهو يتضمن ما قلته وما طلبته. شاركه فقط مع من تثق بهم.</string>
 </resources>

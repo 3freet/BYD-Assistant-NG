@@ -11,6 +11,7 @@ fun CrashLogScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     LogViewerScreen(
         title = stringResource(R.string.log_crash_title),
+        fileLabel = "crash-log",
         onBack = onBack,
         readLog = { CrashLogger.readLog(context) },
         onClear = { CrashLogger.clear(context) },

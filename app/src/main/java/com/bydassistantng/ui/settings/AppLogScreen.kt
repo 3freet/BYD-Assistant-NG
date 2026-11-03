@@ -14,6 +14,7 @@ fun AppLogScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     LogViewerScreen(
         title = stringResource(R.string.log_app_title),
+        fileLabel = "app-log",
         onBack = onBack,
         readLog = { AppLogger.readLog(context) },
         onClear = { AppLogger.clear(context) },

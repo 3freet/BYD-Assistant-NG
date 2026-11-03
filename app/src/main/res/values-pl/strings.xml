@@ -451,4 +451,11 @@
     <string name="voice_speaker_headrest_note">Gdy rozmawiasz z asystentem, dźwięk zagłówka w samochodzie jest ustawiany na Interaktywny, a głos gra kanałem nawigacji samochodu, więc słychać go tylko z zagłówka kierowcy. Potem dźwięk zagłówka wraca do poprzedniego ustawienia. Muzyka zostaje w głośnikach samochodu. Głośność ustawia się poniżej, w sekcji Głośność. Wymaga debugowania ADB, tak jak sterowanie samochodem.</string>
     <string name="log_share_failed">Nie udało się udostępnić dziennika.</string>
     <string name="log_showing_newest">Pokazano najnowsze %1$d z %2$d znaków; starsze wiersze pominięto.</string>
+    <string name="action_save_to_downloads">Zapisz w Pobranych</string>
+    <string name="log_saved_to">Zapisano: %1$s</string>
+    <string name="log_save_failed">Nie udało się zapisać dziennika.</string>
+    <string name="log_preparing">Przygotowuję dziennik…</string>
+    <string name="log_hide_private">Ukryj dane prywatne</string>
+    <string name="log_hide_private_on">To, co powiedziano i o co poproszono, miejsca, tytuły utworów, klucze, adresy e-mail, numery telefonów i adresy sieciowe są tu zastępowane – także w tym, co udostępniasz i zapisujesz.</string>
+    <string name="log_hide_private_off">Pokazany jest cały dziennik. Zawiera to, co mówiono i o co proszono. Udostępniaj go tylko osobom, którym ufasz.</string>
 </resources>
