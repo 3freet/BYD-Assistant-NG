@@ -15,7 +15,9 @@ import com.bydassistantng.passenger.PassengerScreenTool
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.gemini.VehicleFunctionDispatcher
 import com.bydassistantng.vehicle.AirQualityTool
+import com.bydassistantng.vehicle.CarDriveModeSwitch
 import com.bydassistantng.vehicle.ReadCarTool
+import com.bydassistantng.vehicle.SetDriveModeTool
 import com.bydassistantng.vehicle.VolumeTool
 import com.bydassistantng.vehicle.ShellHelperVehicleController
 import com.bydassistantng.vehicle.OutsideTemperatureTool
@@ -105,6 +107,17 @@ class DebugToolReceiver : BroadcastReceiver() {
                         runBlocking { ClusterScreenTool.handle(app, call, controller, true, options) { } }
                     }
                     VolumeTool.FUNCTION_NAME -> VolumeTool.read(app)
+                    SetDriveModeTool.FUNCTION_NAME -> {
+                        // What the model's call does once the conversation has checked the setting and vehicle control (so: parked,
+                        // someone in the car). The answer logged is the one the model would be given.
+                        val mode = SetDriveModeTool.mode(call)
+                        if (mode == null) {
+                            SetDriveModeTool.refused("that is not a mode the car can be asked for")
+                        } else {
+                            val controller = EntryPointAccessors.fromApplication(app, VehicleReadEntryPoint::class.java).vehicleController()
+                            SetDriveModeTool.answer(runBlocking { CarDriveModeSwitch(controller).switchTo(mode) })
+                        }
+                    }
                     ReadCarTool.FUNCTION_NAME -> {
                         val what = ReadCarTool.what(call)
                         if (what == null) {

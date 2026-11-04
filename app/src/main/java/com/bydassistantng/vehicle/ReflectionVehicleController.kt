@@ -377,27 +377,17 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         }
     }
 
-    /** The device classes whose first use the car's permission check refused this process: from then on the helper goes straight to the service. */
-    private val kitRefused = HashSet<String>()
-    private var nativeLooked = false
-    private var nativeService: NativeAutoservice? = null
-
-    private fun nativeOrNull(): NativeAutoservice? {
-        if (!nativeLooked) {
-            nativeLooked = true
-            nativeService = NativeAutoservice.connect()
-        }
-        return nativeService
-    }
+    private fun nativeOrNull(): NativeAutoservice? = NativeRoute.service()
 
     /**
      * Runs [work] against the car's device class [className] (the kit) or, where the car's own permission check refuses this
      * process that class, straight against its native service. The refusal means nothing was carried out, so doing the same
-     * the other way cannot do it twice. [NativeMode] can prefer the service from the start, or forbid it, for a test.
+     * the other way cannot do it twice. A class the car has refused once (here, in the start-up check or by the drive mode) is
+     * not tried again: [NativeRoute] remembers it. [NativeMode] can prefer the service from the start, or forbid it, for a test.
      */
     private suspend fun <T> linked(className: String, work: suspend (FeatureLink) -> T): T {
         val mode = NativeMode.current()
-        if (NativeRoute.preferNative(mode, className in kitRefused)) {
+        if (NativeRoute.preferNative(mode, NativeRoute.isRefused(className))) {
             nativeOrNull()?.let { return work(NativeLink(it)) }
         }
         try {
@@ -407,18 +397,23 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             val refused = PermissionRefusal.missingPermission(e)
             val service = if (refused != null && NativeRoute.fallBack(mode)) nativeOrNull() else null
             if (service == null) throw e
-            kitRefused += className
+            NativeRoute.markRefused(className)
             Log.i(TAG, "$className refuses this process ($refused): going straight to the car's service")
             return work(NativeLink(service))
         }
     }
 
     /**
-     * For the log: whether the car's native service can be spoken to, how many of the states the commands read it answered, and
-     * how many of those agree with what the device classes say (where the car lets the helper use them).
+     * For the log: whether the car's native service can be spoken to, how many of the states the commands read it answered, how
+     * many of those agree with what the device classes say (where the car lets the helper use them), and how long the check took
+     * in milliseconds (it runs once, as the helper starts).
+     *
+     * A device class the car's permission check refuses here is remembered ([NativeRoute]), so that the commands that follow go
+     * straight to the service and do not try the class first.
      */
     internal fun nativeReport(): String {
         val service = nativeOrNull() ?: return "-"
+        val started = System.nanoTime()
         val link = NativeLink(service)
         val samples = stateSamples()
         var read = 0
@@ -428,18 +423,27 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         for (sample in samples) {
             val viaService = link.read(sample.deviceType, sample.stateId)
             if (viaService != null) read++
-            val viaClass = try {
-                getOrCreateInstance(sample.className)?.let { readState(it, sample.deviceType, sample.stateId) }
-            } catch (_: Throwable) {
-                null
-            }
+            val viaClass = readThroughClass(sample)
             if (viaService != null && viaClass != null) {
                 compared++
                 if (viaService == viaClass) same++ else if (differ.size < 3) differ += "${sample.deviceType}:${sample.stateId}=$viaService/$viaClass"
             }
         }
+        val milliseconds = (System.nanoTime() - started) / 1_000_000L
         // A state that moved between the two reads (a window) differs too; every one differing would mean the answers are read wrongly.
-        return "reads:$read/${samples.size},agree:$same/$compared" + if (differ.isEmpty()) "" else ",differ:" + differ.joinToString("+")
+        return "reads:$read/${samples.size},agree:$same/$compared" +
+            (if (differ.isEmpty()) "" else ",differ:" + differ.joinToString("+")) + ",ms:$milliseconds"
+    }
+
+    /** What the device class says of [sample]; null when it does not answer, or when the car's permission check refuses this process the class. */
+    private fun readThroughClass(sample: StateSample): Int? {
+        if (NativeRoute.isRefused(sample.className)) return null
+        return try {
+            getOrCreateInstance(sample.className)?.let { readState(it, sample.deviceType, sample.stateId) }
+        } catch (e: Throwable) {
+            if (PermissionRefusal.missingPermission(e) != null) NativeRoute.markRefused(sample.className)
+            null
+        }
     }
 
     private class StateSample(val className: String, val deviceType: Int, val stateId: Int)

@@ -66,6 +66,17 @@ internal object DriveModeControl {
     /** Whether the car is below the speed limit for a change: an unknown speed is not. */
     fun mayChangeAt(speedKmh: Double?): Boolean = speedKmh != null && !speedKmh.isNaN() && speedKmh >= 0 && speedKmh < MAX_SPEED_KMH
 
+    /** What the person hears when [mayChangeAt] says no: that the car is going too fast, or that it did not say how fast. */
+    fun speedRefusal(speedKmh: Double?): String =
+        if (speedKmh == null || speedKmh.isNaN() || speedKmh < 0) {
+            "the car did not report its speed, so a drive mode change was not sent"
+        } else {
+            "the car is going too fast for a drive mode change (${"%.0f".format(java.util.Locale.ROOT, speedKmh)} km/h; the limit is ${MAX_SPEED_KMH.toInt()})"
+        }
+
+    /** What the person hears when the car's own permission check refuses the helper and the car's service cannot be used instead. */
+    const val REFUSED_REASON = "this car's software does not let this app do that, so nothing was sent"
+
     /** The car's own name for a mode number. */
     fun nameOf(value: Int): String = when (value) {
         1 -> "Normal"

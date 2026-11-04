@@ -14,7 +14,8 @@ import android.util.Log
  * of such a caller: its own check lets every caller with a uid below 10,000 (root, system, the shell) through and asks apps
  * for the device's signature-level permission. So where the class refuses the helper, the helper can still make the call
  * itself. That is all this is: the same request, one layer lower. The caller is still the shell, the service is still the
- * authority on who may use it, and what the helper may ask for is still only what the command registry lists.
+ * authority on who may use it, and what the helper may ask for is still only what the command registry lists, and the one
+ * drive mode request ([DriveModeCommand]) with the checks of its own (the listed values, the speed limit) made first.
  *
  * The layout of a call is the one the car's own client library uses (read from the binder stub in `libbydauto.so`):
  *  - `5` reads an int: the interface token, then the device type and the feature id (ints); the reply is the service's status
@@ -23,13 +24,13 @@ import android.util.Log
  *    the status (1 or more when the request took, 0 when it was accepted and ignored, negative when it was refused).
  * The interface token is the descriptor the service's own binder gives, so it is asked for, not written down here.
  */
-internal class NativeAutoservice private constructor(private val binder: IBinder, val descriptor: String) {
+internal class NativeAutoservice private constructor(private val binder: IBinder, val descriptor: String) : NativeCalls {
     /** One answer: [status] is the service's own return code and [value] what a read returned (0 after a write). */
     data class Reply(val status: Int, val value: Int)
 
-    fun getInt(deviceType: Int, featureId: Int): Reply? = call(TX_GET_INT, deviceType, featureId, null)
+    override fun getInt(deviceType: Int, featureId: Int): Reply? = call(TX_GET_INT, deviceType, featureId, null)
 
-    fun setInt(deviceType: Int, featureId: Int, value: Int): Reply? = call(TX_SET_INT, deviceType, featureId, value)
+    override fun setInt(deviceType: Int, featureId: Int, value: Int): Reply? = call(TX_SET_INT, deviceType, featureId, value)
 
     private fun call(code: Int, deviceType: Int, featureId: Int, value: Int?): Reply? {
         val data = Parcel.obtain()
@@ -74,6 +75,13 @@ internal class NativeAutoservice private constructor(private val binder: IBinder
             else -> null
         }
     }
+}
+
+/** The two calls the helper makes of the car's native service: the seam that lets what uses them be checked without a car. */
+internal interface NativeCalls {
+    fun getInt(deviceType: Int, featureId: Int): NativeAutoservice.Reply?
+
+    fun setInt(deviceType: Int, featureId: Int, value: Int): NativeAutoservice.Reply?
 }
 
 /** What the answers of the native service mean, as the rest of the helper deals in them. */
@@ -131,6 +139,36 @@ internal enum class NativeMode {
 }
 
 internal object NativeRoute {
+    /**
+     * The device classes whose use the car's permission check has refused this process, seen by anything that asked (a command,
+     * the drive mode, the helper's own check at start-up): from then on the helper goes straight to the service for them, and a
+     * refusal costs one attempt per class and not one per call. The check is made by the car's software on the process, so a
+     * refusal seen once holds for the life of the helper.
+     */
+    private val refused: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+    fun isRefused(className: String): Boolean = className in refused
+
+    fun markRefused(className: String) {
+        refused += className
+    }
+
+    /** For a test: the helper has seen no refusal yet. */
+    internal fun forgetRefusals() = refused.clear()
+
+    private var looked = false
+    private var connected: NativeAutoservice? = null
+
+    /** The car's native service, found once for the life of the helper; null where the car has none to speak to. */
+    @Synchronized
+    fun service(): NativeAutoservice? {
+        if (!looked) {
+            looked = true
+            connected = NativeAutoservice.connect()
+        }
+        return connected
+    }
+
     /** Whether a device class is left alone and the native service used from the first call. */
     fun preferNative(mode: NativeMode, kitRefusedBefore: Boolean): Boolean = when (mode) {
         NativeMode.ALWAYS -> true
