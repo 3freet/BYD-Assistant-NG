@@ -223,7 +223,7 @@ Optional build settings:
 ## Branches
 
 `main` is development; adding the release notes of the next beta to it (a file in `release-notes/`) publishes a pre-release,
-and pushing to `stable` publishes a release. See [CONTRIBUTING.md](CONTRIBUTING.md).
+and pushing to `stable` prepares a release, which is published after a last look. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project layout
 

@@ -1,23 +1,76 @@
 name: Build Stable
 
-# Pushing to the `stable` branch builds, signs and publishes the release for appVersionName in app/build.gradle.kts.
-# A version can be published once: raise appVersionName for the next one (the version code follows from it).
+# Pushing to the `stable` branch builds and signs the release for appVersionName in app/build.gradle.kts and puts it on GitHub as a
+# DRAFT, which nobody can see until it is published after a last look at the page and the APK:
+#
+#     gh release edit v<version> --draft=false --latest
+#
+# The page of the release is release-notes/v<version>.md, as it is written (tools/new_release_notes.sh stable starts it from the
+# commits since the last release and the notes of the betas), with a link to everything that changed under it. A release is the
+# build of a beta that was tested: the run stops within seconds when the app changed since the newest beta of this version, or when
+# there is none. A version can be published once: raise appVersionName for the next one (the version code follows from it).
+#
+# From the Actions tab ("Run workflow") a run can also be started by hand, with these options:
+#   dry_run        build and show the page, create no release
+#   allow_changes  release although the app changed since the newest beta, or there is no beta of this version
 on:
   push:
     branches:
       - stable
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build, show the release notes and create no release'
+        type: boolean
+        default: false
+      allow_changes:
+        description: 'Release although the app changed since the newest beta, or there is no beta of this version'
+        type: boolean
+        default: false
 
 concurrency:
-  group: stable-build
+  # Real releases wait for each other. A dry run, or a run on any branch but stable, has a group of its own.
+  group: ${{ github.ref == 'refs/heads/stable' && inputs.dry_run != true && 'stable-build' || format('stable-dry-run-{0}', github.ref) }}
   cancel-in-progress: false
 
 jobs:
+  # Decides in seconds what this run does, and fails at once when it cannot: no notes file for this version, a file that fails the
+  # check, a version that is released already, an app that is not the one of the newest beta. See tools/plan_release.sh.
+  plan:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+      tag: ${{ steps.plan.outputs.tag }}
+      notes: ${{ steps.plan.outputs.notes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Plan
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          ALLOW_CHANGES: ${{ inputs.allow_changes }}
+        run: tools/plan_release.sh stable
+
   build:
+    needs: plan
+    if: needs.plan.outputs.mode == 'release' || needs.plan.outputs.mode == 'dry-run'
     runs-on: ubuntu-24.04
 
     permissions:
       contents: write
+
+    env:
+      MODE: ${{ needs.plan.outputs.mode }}
+      TAG: ${{ needs.plan.outputs.tag }}
+      NOTES: ${{ needs.plan.outputs.notes }}
 
     steps:
       - name: Checkout
@@ -86,13 +139,29 @@ jobs:
         with:
           apk-path: ${{ steps.apk-path.outputs.path }}
 
-      - name: Generate tag
+      # The notes were written for one version and Gradle names the build itself: they must be the same.
+      - name: Check the tag
         id: tag
-        run: echo "tag=v${{ steps.apk-info.outputs.version-name }}" >> "$GITHUB_OUTPUT"
+        env:
+          VERSION_NAME: ${{ steps.apk-info.outputs.version-name }}
+        run: |
+          if [ "v${VERSION_NAME}" != "$TAG" ]; then
+            echo "::error::This build is v${VERSION_NAME}, but the release notes are for ${TAG}."
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       # The app shows these lines under "What's new" when it offers this build as an update.
-      - name: Write release notes
-        run: tools/release_notes.sh stable "${{ github.repository }}" "${{ steps.tag.outputs.tag }}" > release-notes.md
+      - name: Put the release notes together
+        run: tools/compose_release_body.sh stable "${{ github.repository }}" "$TAG" "$NOTES" > release-notes.md
+
+      - name: Show the release notes
+        run: |
+          {
+            echo "### ${TAG} (${MODE})"
+            echo
+            cat release-notes.md
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
@@ -109,13 +178,42 @@ jobs:
           path: app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: warn
 
-      - name: Create release
+      - name: Upload release notes
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
+      # A draft: it is on GitHub with its page and its APK, but nobody can see it, and the app cannot offer it, until it is published.
+      # Only a run that the plan made a real release, on stable, creates it. A dry run ends before this.
+      - name: Create release (a draft)
+        id: release
+        if: needs.plan.outputs.mode == 'release' && github.ref == 'refs/heads/stable'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}
           target_commitish: ${{ github.sha }}
+          draft: true
           prerelease: false
-          make_latest: true
+          make_latest: false
           body_path: release-notes.md
           files: ${{ steps.apk-path.outputs.path }}
+
+      - name: Say how to publish the draft
+        if: needs.plan.outputs.mode == 'release' && github.ref == 'refs/heads/stable'
+        env:
+          URL: ${{ steps.release.outputs.url }}
+        run: |
+          {
+            echo "### ${TAG} is a draft"
+            echo
+            echo "Nobody can see it yet. Look at the page and the APK first: ${URL}"
+            echo
+            echo "Publish it, and make it the latest release, with:"
+            echo
+            echo '```'
+            echo "gh release edit ${TAG} --draft=false --latest"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

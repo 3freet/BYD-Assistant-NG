@@ -27,7 +27,7 @@ Two branches:
 | Branch | Purpose | What happens |
 | --- | --- | --- |
 | `main` | Development. Open pull requests against it | Every push runs unit tests and lint ([ci.yml](.github/workflows/ci.yml)); adding the release notes of the next beta also builds that beta (below) |
-| `stable` | What has been released | Pushing to it runs the tests and lint, builds and signs the app, and publishes a GitHub **release** `v<version>` ([stable.yml](.github/workflows/stable.yml)) |
+| `stable` | What has been released | Pushing to it runs the tests and lint, builds and signs the app, and puts a GitHub **release** `v<version>` on GitHub as a draft, to be published after a last look ([stable.yml](.github/workflows/stable.yml)) |
 
 **Pre-releases** are built from `main` when the release notes of the next beta are pushed
 ([beta.yml](.github/workflows/beta.yml)). The notes are a file that is read and approved before anything is published, and
@@ -46,11 +46,28 @@ To see a build and its page without publishing, push the file to another branch,
 the Actions tab with `dry_run`. To change the text of a beta that is out, change its file on `main` and run the workflow with
 `notes_only` and the tag: the notes go onto the release, nothing is built.
 
-**To release:** test a beta on a vehicle, then fast-forward `stable` to the commit you tested:
+**To release:** test a beta on a vehicle, then:
+
+1. `tools/new_release_notes.sh stable` writes `release-notes/v<version>.md` from the commits since the previous release and
+   the notes of the betas. Make it the page of the release (a longer list of what is new, if you want one), show it to the
+   maintainer, delete the comment, and push it to `main`.
+2. Fast-forward `stable` to the commit you tested:
 
 ```bash
 git push origin main:stable
 ```
+
+The workflow ([stable.yml](.github/workflows/stable.yml)) first checks, within seconds, that the notes exist and that **the app
+is the one of the newest beta** (nothing under `app/` or in the Gradle files changed since it): a release is the build of what was
+tested. It then tests, builds and signs, and puts the release on GitHub as a **draft** with the notes file as its page.
+Nobody can see a draft and the app cannot offer it. Look at the page and the APK, then publish it:
+
+```bash
+gh release edit v<version> --draft=false --latest
+```
+
+A run by hand (*Run workflow* for "Build Stable") can be a `dry_run`, which does everything but create the draft; in the rare
+case of a release with no tested beta, or with changes since it, it can use `allow_changes`.
 
 A version can be published once: raise `appVersionName` in `app/build.gradle.kts` first (`major.minor.patch`, each
 0-99), or the workflow stops at once with a message saying so. The Android `versionCode` is computed from the name, so
@@ -65,9 +82,8 @@ build on the **channel** the user follows (Settings → Advanced): *Stable* sees
 releases alike, whichever is newer. It never offers a build that is not newer than the installed one, so switching
 channel cannot downgrade.
 
-- The release notes shown under *What's new* are the page of the release: for a beta the file
-  `release-notes/<tag>.md` (see above); for a stable release, for now, the commit subjects since the previous stable release,
-  written by [`tools/release_notes.sh`](tools/release_notes.sh) — so write commit subjects a user could read.
+- The release notes shown under *What's new* are the page of the release, which is the file `release-notes/<tag>.md` of
+  that beta or stable release (see above) with the *Full Changelog* link the app leaves out.
 - An update is downloaded only from the repository's own release assets, checked against the size and SHA-256 GitHub
   recorded for the file, and checked to be the same package signed by the same key as the installed app, before it is
   handed to the installer.

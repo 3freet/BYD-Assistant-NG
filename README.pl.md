@@ -111,7 +111,7 @@ Opcjonalne ustawienia budowania:
 
 ## Gałęzie
 
-`main` to rozwój; dodanie do niej notatek o wydaniu następnej wersji wstępnej (plik w `release-notes/`) publikuje wersję wstępną, a wypchnięcie do `stable` publikuje wydanie. Zobacz [CONTRIBUTING.md](CONTRIBUTING.md).
+`main` to rozwój; dodanie do niej notatek o wydaniu następnej wersji wstępnej (plik w `release-notes/`) publikuje wersję wstępną, a wypchnięcie do `stable` przygotowuje wydanie, które jest publikowane po ostatnim przeglądzie. Zobacz [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Struktura projektu
 
