@@ -122,9 +122,10 @@ a car whose framework names the feature the way it was confirmed on the developm
   up by name in the car's own table of features, uses that car's number for it and offers only what the car has
   ([platforms](docs/byd-internals/platforms.md)). Where each generation stands: **DiLink 5.1** (Android 13) has
   been checked on a car. **DiLink 5.0** (Android 12) is known from one owner's log, from a BYD Song Plus: the assistant,
-  apps, navigation, media and tyre pressure work there, but the car's controls (windows, seats, A/C, drive mode) do not
-  yet, because that car's software refuses the vehicle helper (it asks for a runtime permission that the ADB shell
-  cannot hold; [details](docs/byd-internals/platforms.md#status)). **DiLink 3 and 4** (Android 10) have not been tried
+  apps, navigation, media and tyre pressure work there, but the car's controls (windows, seats, A/C, drive mode) did not
+  in its first logs, because that car's software refuses the vehicle helper (it asks for a runtime permission that the ADB
+  shell cannot hold). A way round it, calling the car's own service directly, is built and being checked; it is not
+  confirmed on a car yet ([details](docs/byd-internals/platforms.md#status)). **DiLink 3 and 4** (Android 10) have not been tried
   on a car yet.
 - A **Gemini API key** from [Google AI Studio](https://aistudio.google.com/).
 - An internet connection for the head unit (for example a phone hotspot).

@@ -151,6 +151,8 @@ nothing is written to the car:
 | `acroute` | How the A/C is reached: `service` (the `byd_airconditioning` service, as on DiLink 5.1), `device` (the car has no such service but has the climate device class, and the A/C commands call its methods) or `none` (neither: the A/C commands are not offered). See [ac-service.md](ac-service.md#a-car-without-the-service). |
 | `acabsent=<name>,…` | Only with `acroute=device`: the names the device route reads back that the car's table lacks. The command is still sent and answers "sent" without a confirmation. |
 | `perms=<name>:<level>/<helper>/<app>,…` | For each of the `BYDAUTO_<DEVICE>_COMMON`, `_GET` and `_SET` permissions of seven devices: how the system defines it (`n` normal, `d` dangerous, `s` signature, `S` signature or system, then `p` privileged and `v` development; `-` not defined), whether the helper (the ADB shell) holds it (`y`/`n`) and whether the app does. Shows whether a car refuses the helper for want of a permission. |
+| `native=reads:<read>/<tried>,agree:<same>/<compared>,ms:<n>` | Whether the car's native service can be spoken to directly, how many of about a dozen states the commands read back it answered, how many of those it answers like the device class (where the car lets the helper use it), and how long this check took in milliseconds (it runs once, as the helper starts). `-` where the car has no such service. See [the native route](hal-and-permissions.md#the-native-route). |
+| `acalias=<descriptor>`, `acservice=<name>` | The climate service under its other name, `airconditioning`, with the interface its binder says it speaks (the commands use it only if that is `com.byd.ac.IBydAcService`); `acservice=` appears when that name is the one in use. |
 | `others=<service>,…` | Only with `acroute=device` or `none`: the car's other services whose names look like the climate or the vehicle's own systems, to find where a climate system without the usual service lives. Names only; `?` where the service manager could not be asked. |
 | `names=<agree>/<checked>` | How many of the distinct names the app uses (the registry's and the few outside it, in `OtherFeatures`) have, in the car's table, the number the app has for them. A name used by several commands counts once. `names=?` when the car's table could not be read (the registry's own numbers are then in use). On our car: `names=76/76`. |
 | `differ=<name>=<car's>/<ours>(<command>)` | The car's table has the name under **another number** (the car's first, ours second). The car's is the one used. |
@@ -182,20 +184,22 @@ allowed on the head unit.
   lookup by name reads `names=76/76` on it, so every command keeps the number it always had; its table holds 13,823
   numbers, all five device classes the app uses exist, the generic `get` and `set` are found on `AbsBYDAutoDevice`, and both
   the `autoservice` and `byd_airconditioning` services answer.
-- **DiLink 5.0:** known from one owner's log (a BYD Song Plus, Android 12, beta 1.2.0-beta.2), not observed by us. The helper
+- **DiLink 5.0:** known from one owner's logs (a BYD Song Plus, Android 12, betas 2 and 3), not observed by us. The helper
   starts and reads `DiLink 5` (the same CAN-FD numbers on the three signature features); `vehicle.type` is `Di5.0_5.0UI`; the
   table holds 14,851 numbers, all five device classes exist, the generic `get` and `set` are found on `AbsBYDAutoDevice` and
   the `autoservice` answers. `names=70/76`: the windows, seats and the other controls agree with our numbers; the car numbers the
-  headrest sound control differently (its number is used) and has no names for the Devialet space-sound controls
-  (`audio.spaceSound` and `audio.spaceSoundMode` are not offered) or for the headrest sound's state. **The car refuses the
-  helper, though**: its climate, bodywork, setting and instrument classes want a runtime permission
-  (`BYDAUTO_<DEVICE>_COMMON`) that the ADB shell cannot hold, so every window, seat, light, drive-mode and temperature command
-  failed with "Neither user 2000 nor current process has android.permission.BYDAUTO_BODYWORK_COMMON."
-  ([hal-and-permissions.md](hal-and-permissions.md#dilink-50-the-device-classes-ask-for-a-runtime-permission)). Reading the tyre
-  pressure, which has no such permission, worked. The car also has no `byd_airconditioning` service; where it is missing the
-  A/C commands now go through the climate device class
-  ([ac-service.md](ac-service.md#a-car-without-the-service)), which that car refuses for the same reason. So on that car the
-  assistant, apps, navigation, media and the tyre pressure work, and the car's controls do not yet.
+  headrest sound control differently (its number is used), and has no names for the Devialet space-sound controls
+  (`audio.spaceSound` and `audio.spaceSoundMode` are not offered) or for the headrest sound's state. **The car's device classes
+  refuse the helper**: the climate, bodywork, setting and instrument classes ask the process that makes one for a runtime
+  permission (`BYDAUTO_<DEVICE>_COMMON`) that the ADB shell cannot hold, so every window, seat, light, drive-mode and
+  temperature command failed with "Neither user 2000 nor current process has android.permission.BYDAUTO_BODYWORK_COMMON."
+  ([hal-and-permissions.md](hal-and-permissions.md#dilink-50-the-device-classes-ask-for-a-runtime-permission)). The tyre pressure,
+  whose class has no such permission, was read. The second log shows the permission is a *normal* one that the app already
+  holds, and that `…_GET` and `…_SET` are signature-level and held by nobody. The car has no `byd_airconditioning` service; its
+  `others=` list shows one called `airconditioning`. The car's own service lets the shell through by its uid, so the helper now goes
+  straight to it where a class refuses ([the native route](hal-and-permissions.md#the-native-route)), the A/C included
+  ([ac-service.md](ac-service.md#a-car-without-the-service)). That is built and has run in a simulator, **not on a car**: until the
+  owner's next log, what works on that car is the assistant, apps, navigation, media and the tyre pressure.
 - **Other cars:** not observed by us. The lookup by name was run in a simulator built from our car's own framework, with the
   class under the classic CAN and under the Toyota numbering: each time the commands were sent to the car's numbers. That a
   table without a name withholds the command is covered by unit tests. It has not been run on a DiLink 3 or DiLink 4 car.

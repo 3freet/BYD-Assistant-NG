@@ -22,24 +22,33 @@ side; the head unit only sees the lights come on. See [findings-and-dead-ends.md
 
 ## DiLink 5.0
 
-One owner's log (a BYD Song Plus, Android 12) shows what stops the app on that generation (see
+Two logs from one owner (a BYD Song Plus, Android 12) show what stopped the app on that generation (see
 [platforms.md](byd-internals/platforms.md#status)): the climate, bodywork, setting and instrument device classes refuse the
 vehicle helper, which is the ADB shell, for want of a runtime permission it cannot hold (`BYDAUTO_<DEVICE>_COMMON`,
-[hal-and-permissions.md](byd-internals/hal-and-permissions.md#dilink-50-the-device-classes-ask-for-a-runtime-permission)). The
-tyre pressure, which has no such permission, was read. The ways through; none is built:
+[hal-and-permissions.md](byd-internals/hal-and-permissions.md#dilink-50-the-device-classes-ask-for-a-runtime-permission)). The tyre
+pressure, whose class has no such permission, was read. The second log showed that the permission is a normal one, which the app
+already holds, and the car's own libraries show that its native service lets the shell through by its uid.
+
+**Built, not yet run on a car: the native route.** Where a device class refuses the helper, the helper makes the same read or
+write one layer lower, as a call to the car's native service, for the same registry commands with the same read-back (and the
+outside temperature, the inside temperature, the door read and the drive mode, whose speed limit and listed values are checked
+first as on any car). The call layout was read from the car's own binaries and the
+route has run in a simulator; see [the native route](byd-internals/hal-and-permissions.md#the-native-route) for what it is and how
+to check it. The ways not taken, none built:
 
 | Way | What it needs | Against it |
 | --- | --- | --- |
-| **The app holds the permission and the helper acts on its behalf** | The app is granted `…_COMMON` (a runtime permission it already declares: `pm grant` over the loopback ADB, or the usual dialog). The helper hosts a Binder that the app calls; while it handles such a call the check is made against the app's uid, which holds the permission, and the car's native side still sees the shell, which it accepted for the tyre read. | A new channel between the app and the helper, which can only be tried on a car that refuses the helper. Whether the permission can be granted is in the `perms=` field of the log line (`d`, or a `v` flag). |
-| **The calls are made in the app's own process** | The app holds `…_COMMON` as above. | The native side refused the app's uid on DiLink 5.1 (a whitelist); nothing says it accepts it on DiLink 5.0. |
-| **The helper is given a stand-in `Context` that answers the check** | A small class. | It works around the car's check instead of satisfying it, so it is not built unless that is chosen on purpose. |
+| **The app holds the permission and the helper acts on its behalf** | The app already holds `…_COMMON` (a normal permission it declares). The helper hosts a Binder that the app calls; while it handles such a call the check is made against the app's uid, and the car's native side still sees the shell. | A new channel between app and helper, only worth it if the native route fails on a car. |
+| **The helper is given a stand-in `Context` that answers the check** | A small class. | It works around the car's check instead of satisfying it. |
 | **Root** | A rooted head unit. | Not something the app can ask of an owner. |
 
 | Item | What it needs |
 | --- | --- |
-| **`perms=` from the same car** | The next log from that owner, with a build that writes it: it says whether `…_COMMON` is a runtime permission (`d`), whether the app already holds it and whether `pm grant` could give it. That decides between the first two rows. |
-| **The A/C device route on a car** | A car without the `byd_airconditioning` service whose climate device the helper may use. The route is written and has run in a simulator only ([ac-service.md](byd-internals/ac-service.md#a-car-without-the-service)). |
-| **Audio and light on DiLink 5.0** | Neither device has a `…_COMMON` permission in the framework, so the helper may be able to use them there; the log shows no result for either. |
+| **Check the native route on the Leopard** | The Leopard online and a build with the route: first the read-only check (`native=` in the log line), then a reversible write with `debug.bydang.nativeroute always`, then the drive mode (Eco and back), parked (the steps are in the notes linked above). |
+| **The owner's next log** | The Song Plus with a build that has the route: `native=` says whether the service answers, then the window and the A/C commands say whether they take. |
+| **Whether `airconditioning` is the climate service** | The `acalias=` field of that log: if its interface is `com.byd.ac.IBydAcService` the A/C service route is used under that name. |
+| **The drive mode's speed on a car that refuses the Speed device** | Not expected: the Speed device class has no runtime permission and the Song Plus logs got past the speed check four times. If a car refused it, no drive mode request would be sent (the answer says the speed was not reported), and the limit would need a speed read of its own through the service. |
+| **Audio and light on DiLink 5.0** | Neither device has a `…_COMMON` permission in the framework, so the helper may be able to use them there; the logs show no result for either. |
 
 ## DiLink 3 and DiLink 4
 

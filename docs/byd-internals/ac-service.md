@@ -117,11 +117,24 @@ the main (driver's) zone, as area 256 is on the service. The route is chosen onc
 (`acroute=` in the log line: `service`, `device` or `none`), and the commands in `vehicle_commands.json` carry it as
 `withoutAcService`. A car with neither does not get the A/C commands.
 
-**Status: run in a simulator only** (the DiLink 5.1 car's own classes over a fake car), where each call wrote the features
-the class is documented to write and read back. It has not run on a car, and the one car it was written for refuses the climate
-device class to the helper for want of `BYDAUTO_AC_COMMON` (see
-[hal-and-permissions.md](hal-and-permissions.md#dilink-50-the-device-classes-ask-for-a-runtime-permission)), so it cannot work
-there until that is settled.
+Two more things came from the DiLink 5.0 car's logs:
+
+- Its climate service is listed as **`airconditioning`** (no `byd_airconditioning`). The commands use that name for the service
+  route only if its binder says it speaks `com.byd.ac.IBydAcService`; the log shows `acalias=` with what it says either way, so
+  the next log tells whether it is the same protocol.
+- That car refuses the helper the climate device class for want of `BYDAUTO_AC_COMMON`
+  ([hal-and-permissions.md](hal-and-permissions.md#dilink-50-the-device-classes-ask-for-a-runtime-permission)). Each device route
+  therefore also names the one feature its typed setter writes (`nativeFeatureName`: `Ac.AC_POWER_STATE_SET`,
+  `Ac.AC_TEMP_MAIN_SET`, `Ac.AC_WIND_LEVEL_SET`, `Ac.AC_WIND_MODE_SET`, `Ac.AC_CYCLE_MODE_SET`, `Ac.AC_VENTILATION_STATE_SET`,
+  `Ac.AC_COMPRESSOR_MODE_SET`, `Ac.AC_CTRL_MODE_SET`, `Ac.AC_DEFROST_FRONT_STATE_SET`, `Ac.AC_DEFROST_REAR_STATE_SET`), and where
+  the class refuses, that feature is written straight to the car's native service with the value of the command and the same
+  state read back ([the native route](hal-and-permissions.md#the-native-route)). The typed setters also write the control source
+  next to the value; the single-feature write leaves it out, and whether the car does the same without it is part of what the
+  check on a car has to show.
+
+**Status: run in a simulator only** (the DiLink 5.1 car's own classes over a fake car and a fake service), where each call wrote
+the features the class is documented to write and read back, through the class and through the service. It has not run on a
+car.
 
 ## Learning more of it
 

@@ -107,7 +107,8 @@ and addresses are hidden by default). The first time the vehicle helper starts i
 are listed in [platforms.md](platforms.md#the-log-line): the Android level, the head unit's identification properties,
 the car's numbers for the three features that tell the platforms apart, how many numbers its table holds, which
 device classes, generic calls and services exist, how the A/C is reached (`acroute=`: the `byd_airconditioning` service, or on a
-car without it the climate device class), who holds the permissions that guard the car's devices (`perms=`), and the result of looking every number the app uses up by its name in the
+car without it the climate device class), who holds the permissions that guard the car's devices (`perms=`), whether the car's native service answers and agrees with the
+device classes (`native=`), and the result of looking every number the app uses up by its name in the
 car's own table: how many agree (`names=76/76` on a car like ours), which the car numbers differently
 (`differ=Group.NAME=<car's number>/<ours>`; the car's is the one the app then uses), which it does not have at all
 (`absent=`) and the commands that costs (`withheld=`). A number the car does not have cannot be right on that car, and one it

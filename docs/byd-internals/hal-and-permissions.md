@@ -144,8 +144,85 @@ uid of the process, or against the caller's uid while a Binder call is being han
 
 The app words the refusal for the person in the car ("This car's software does not let this app use the windows, doors and
 sunroof. Nothing was sent.", `PermissionRefusal`), and the helper's log line carries `perms=`: for each of the permissions of
-seven devices, how the system defines it, whether the helper holds it and whether the app does. How the helper could be let
-through, and what each way needs, is open: see the DiLink 5.0 section of the [roadmap](../roadmap.md).
+seven devices, how the system defines it, whether the helper holds it and whether the app does. The same car's next log
+(beta 3) answered it:
+
+| Permission | Defined as | Helper (shell) holds | App holds |
+| --- | --- | --- | --- |
+| `BYDAUTO_<DEVICE>_COMMON` | **normal** | no | yes where the app declares it (bodywork, setting, climate, audio) |
+| `BYDAUTO_<DEVICE>_GET` and `…_SET` | **signature** | no | no |
+
+So `…_COMMON` is not a hard gate: any app that declares it has it, and ours does. What no app can have is `…_GET` and `…_SET`,
+and the helper does not have them either, yet its tyre read worked: the native service does not decide by those permissions
+for the shell (next section).
+
+### The native route
+
+The device classes are a layer over the car's native service, `autoservice`. The car's own libraries show how it decides who
+may call it (read from the disassembly of `BYDAutoService::checkGetPermission` and `checkSetPermission` in
+`libbydautoservice.so`, which agree): it takes the uid of the caller, and **below 10,000 (root, system, the shell) it lets the
+call through with no permission check**; for an app's uid it asks for the device's signature-level `…_GET` or `…_SET`
+permission, which no app can hold. That is why the shell is accepted on every DiLink and an app is refused, and why the one
+thing in the helper's way on a DiLink 5.0 car is the Java check of the device classes, which is made before any call reaches
+the service.
+
+Where a device class refuses the helper for want of its `…_COMMON` permission, the helper therefore makes the same read or
+write one layer lower, as a call to the service itself (`NativeAutoservice`), for the same registry commands and with the
+same read-back. The call layout is the one in the car's client library (the binder stub in `libbydauto.so`, `onTransact`,
+checked against its jump table and handlers):
+
+| Call | Parcel written | Reply |
+| --- | --- | --- |
+| `5` read an int | the service's interface token, device type, feature id | status (0 when it answered), value |
+| `6` write an int | the interface token, device type, feature id, value (and no callback binder) | status (1 or more when it took, 0 when accepted and ignored, negative when refused) |
+| `7` read a float | as `5` | status, the float's bits |
+
+The interface token is the descriptor the service's binder gives (`getInterfaceDescriptor`), so it is asked for, not written down.
+The A/C commands of a car without the climate service name the one feature their typed setter writes
+(`withoutAcService.nativeFeatureName`, for example `Ac.AC_WIND_LEVEL_SET`), which is what is written; the temperature is written
+only on a car that shows Celsius, as on the device route.
+
+**The drive mode** is not a registry command (`DriveModeCommand` has its own code) and takes the same route for the same reason.
+For one int feature the Setting device's `get(int[], Class)` and `set(int[], BYDAutoEventValue)` end, in the car's framework, in the
+device manager's `getInt` and `setInt`, so those are the two calls made: `getInt` of `SETTING_TARGET_DRIVING_MODE`, the mode the car
+reports, and `setInt` of `SETTING_PRESELECTED_DRIVING_MODE_SET`, the one feature the car's own drive-mode screen writes. What is
+checked before a request is sent does not depend on the route: the value is one of the listed modes, the car names the feature with
+the verified id, and the car is below 80 km/h (an unknown speed is not). The speed is read through the Speed device class, which has
+no `…_COMMON` permission, and the four drive mode requests in the Song Plus logs all passed that check before they were refused at
+the Setting device, so the speed can be read on a DiLink 5.0 car and the limit applies there as anywhere. Where a car does not give
+its speed no request is sent, and the answer says the speed was not reported; there is no native speed read.
+
+When it is used: by default only after a device class has refused the helper (and from then on for that class); a test switch,
+`setprop debug.bydang.nativeroute always|never|auto`, prefers or forbids it, and `setprop debug.bydang.acroute service|device|none`
+sets the climate route by hand. A class the car has refused is remembered for the life of the helper, whichever part of the helper
+saw it first (the start-up check below, a command, the drive mode), so a refusal costs one failed attempt for each class and not
+one for each command. The log shows `[native]` after each note that came this way (the model is not told), and the
+helper's line carries `native=reads:<read>/<tried>,agree:<same>/<compared>,ms:<n>`: how many of a dozen states the commands read back
+the service answered, how many of those it answers the same as the device class where the car lets the helper use that
+too (a window that moved between the two reads is a difference too; every state differing would mean the answers are read
+wrongly), and how long the check took in milliseconds. The climate service of a DiLink 5.0 car was listed as `airconditioning`,
+not `byd_airconditioning`; that name is used for the A/C service route when its binder says it speaks `com.byd.ac.IBydAcService`,
+and the log shows `acalias=` with what it says in any case.
+
+**Status: not run on a car.** It has run in a simulator built from the DiLink 5.1 car's own device classes, with a fake service that
+answers in the layout above and refuses an app uid, and with the device classes refusing the helper as the Song Plus's do (the
+registry commands and the drive mode both went through the service and were confirmed); the layout is read from the vendor's
+binaries, not observed on a car. To check it on a car whose device classes work (the Leopard), with the debug build installed
+(`./gradlew :app:installDebug`) and `adb` connected:
+
+```text
+tools/check-native-route.sh <adb serial>            # read-only
+tools/check-native-route.sh <adb serial> --write    # also one reversible write: the driver's seat heating, low then off
+tools/check-native-route.sh <adb serial> --drive    # also the drive mode: Eco (Normal if the car is in Eco), then back
+```
+
+The first starts the helper and reads the `native=reads:N/M,agree:A/B` field of its line: N close to M, and A equal to B (or one
+or two short for a window that moved), proves the answers are read right without writing anything. The second sets
+`debug.bydang.nativeroute always`, sends the seat command through the debug tool receiver and requires the app log to show it
+confirmed with `[native]`; it puts the switch back to `auto` when it ends. Run it parked, with someone in the car to see the seat's switch.
+The third asks for the drive mode the way the assistant does (the debug receiver runs the same request, with the same checks, so it
+does nothing at 80 km/h or more), requires the app log to show the car changed to it with `[native]`, and puts the car back in the
+mode it was in (a mode the assistant cannot ask for is left, and the script says so). The options can be given together.
 
 ## Events
 

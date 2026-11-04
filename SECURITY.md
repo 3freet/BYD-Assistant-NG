@@ -28,6 +28,16 @@ What this means for you:
   head unit: another app on the unit that connects to the same loopback daemon may be able to do the same
   without this app.
 - The helper process stays alive for a few minutes after the last command and then exits.
+- **On a car whose device classes refuse the helper, it speaks to the car's native service itself.** On a DiLink 5.0 car the
+  climate, bodywork, setting and instrument classes of the car's framework refuse a process that does not hold a
+  `BYDAUTO_<DEVICE>_COMMON` permission, which the ADB shell cannot hold. The helper then makes the same read or write one layer
+  lower, as a call to the car's `autoservice` binder, for the same registry commands and for the one drive mode request (whose
+  listed values and speed limit are checked first, as on any car). That skips the classes' own check, made in the
+  helper's process; it does not skip the car's: the service decides from the caller's identity and lets the shell through on every
+  device, as above. So it reaches nothing the helper could not already reach on a car whose classes accept it (DiLink 5.1), and
+  the registry, the helper's re-validation and the dispatch gate apply to it as to any command. It is not used where the
+  classes accept the helper, unless a test switch (`debug.bydang.nativeroute`) says so.
+  ([details](docs/byd-internals/hal-and-permissions.md#the-native-route))
 
 **It is an accessibility service, for one key.** It asks to filter key events and nothing else: no window
 content, no events, no gestures (see `res/xml/wheel_key_service_config.xml`). It only reacts to the configured
