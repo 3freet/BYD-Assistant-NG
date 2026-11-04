@@ -113,6 +113,34 @@ class LogMaskerTest {
     }
 
     @Test
+    fun theHelpersLineAboutTheCarSoftwareIsKeptWhole() {
+        // As the vehicle helper of a DiLink 5.0 car wrote it: the platform, the A/C route, who holds the permissions that guard the
+        // car's devices, the services whose names look like the climate's, and what the car's table says. None of it is private.
+        unchanged(
+            "Platform",
+            "Vehicle helper found DiLink 5: sdk=32 release=12 props=vehicle.type:Di5.0_5.0UI,byd.dilink.version:-,dilink.version:-,product.model:DiLink5.0_For_BYD_AUTO " +
+                "numbers=AC_CTRL_MODE:1077936146,AC_CYCLE_MODE:1077936148,AC_DEFROST_FRONT_STATE:1077936150 constants=14851 " +
+                "classes=bodywork,light,audio,setting,ac calls=base,set:AbsBYDAutoDevice,get:AbsBYDAutoDevice services=autoservice,-byd_airconditioning " +
+                "acroute=device acabsent=Ac.AC_TEMP_MAIN others=IBYDCDRService,byd_ac " +
+                "perms=BODYWORK_COMMON:d/n/y,BODYWORK_GET:s/n/n,BODYWORK_SET:s/n/n,SETTING_COMMON:dv/n/y,TYRE_GET:s/y/n,TYRE_SET:-/n/n " +
+                "names=70/76 differ=Audio.AUDIO_HEADREST_SOUND_EFFECT_STATUS_SET=470810677/-1676672971(audio.headrestSound) " +
+                "absent=Audio.AUDIO_SPACE_SOUND_EFFECT_STATUS_IVI(audio.spaceSound) withheld=audio.spaceSound,audio.spaceSoundMode",
+        )
+    }
+
+    @Test
+    fun aRefusalOfTheCarsOwnPermissionCheckIsKeptWhole() {
+        unchanged(
+            "VehicleDispatch",
+            "dispatch window.driver(value=open -> 1) -> Failure(error=SECURITY_DENIED, detail=This car's software does not let this app use the windows, doors and sunroof. Nothing was sent.)",
+        )
+        unchanged(
+            "VehicleDispatch",
+            "dispatch window.driver(value=open -> 1) -> Failure(error=INVOCATION_FAILED, detail=Neither user 2000 nor current process has android.permission.BYDAUTO_BODYWORK_COMMON.)",
+        )
+    }
+
+    @Test
     fun anErrorBodyFromTheServerKeepsItsMessage() {
         val body = """{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}"""
         unchanged("GeminiClient", "<- HTTP 400 after 312ms — $body")

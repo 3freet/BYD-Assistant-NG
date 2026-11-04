@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Looper
 import androidx.annotation.Keep
+import com.bydassistantng.BuildConfig
 import com.bydassistantng.cluster.ClusterScreenCommand
 import com.bydassistantng.passenger.PassengerScreenCommand
 import kotlinx.coroutines.runBlocking
@@ -54,7 +55,9 @@ object VehicleShellHelper {
             val controller = newController()
             val seen = detectPlatform()
             // What the helper saw is for the log: it must never be the reason the helper does not start.
-            val details = runCatching { CarDiagnostics.describe(seen.readings, seen.properties, seen.table, seen.acRoute) }.getOrElse { "diagnostics unavailable: $it" }
+            val permissions = runCatching { controller.permissionReport(BuildConfig.APPLICATION_ID) }.getOrNull()
+            val details = runCatching { CarDiagnostics.describe(seen.readings, seen.properties, seen.table, seen.acRoute, permissions) }
+                .getOrElse { "diagnostics unavailable: $it" }
             emit(HelperProtocol.ready(seen.platform, VehicleCommandRegistry.unavailable.keys, details))
             val input = System.`in`.bufferedReader()
             // Ends when the app closes its end of the ADB stream (or dies).

@@ -10,7 +10,8 @@ import android.os.Build
  * name** (see [FeatureNameCheck]): which agree, which the car numbers differently (with the car's own number) and which
  * names it does not have at all. When a window name is among the differences, the car's window features are listed too.
  * Where the car has no A/C service (see [AcRoute]) the line says how the A/C is reached instead, and names the car's other
- * services that look like they have to do with its climate or its vehicle systems, to find where it lives.
+ * services that look like they have to do with its climate or its vehicle systems, to find where it lives. It also says who
+ * holds the permissions that guard the car's devices (`perms=`), since a car may refuse the helper for want of one.
  *
  * Writing the line only looks; nothing is written to the car. (What the app makes of the comparison is [NameResolution]'s: the
  * car's own numbers are used, and a command the car lacks a name for is withheld; the line says which.) Each part is read on
@@ -22,9 +23,16 @@ internal object CarDiagnostics {
     /**
      * [readings] are the car's numbers for [PlatformSignature.canaries], [properties] what [HeadUnitProperties] read and [table]
      * the car's own table of features ([CarFeatureTable.read]; null where it cannot be read, and then the registry's own numbers
-     * are in use). [acRoute] is how the car's climate system is reached (null where the helper did not look).
+     * are in use). [acRoute] is how the car's climate system is reached (null where the helper did not look) and [permissions]
+     * who holds the permissions that guard the car's devices ([PermissionRefusal.report]; null where it was not asked).
      */
-    fun describe(readings: List<Int?>, properties: Map<String, String>, table: Map<String, Int>?, acRoute: AcRoute? = null): String {
+    fun describe(
+        readings: List<Int?>,
+        properties: Map<String, String>,
+        table: Map<String, Int>?,
+        acRoute: AcRoute? = null,
+        permissions: String? = null,
+    ): String {
         val results = table?.let { FeatureNameCheck.check(FeatureNameCheck.references(), it) }
         return buildString {
             append("sdk=").append(Build.VERSION.SDK_INT)
@@ -44,6 +52,7 @@ internal object CarDiagnostics {
                 }
                 if (acRoute != AcRoute.SERVICE) relatedServices(SystemServices.names())?.let { append(" others=").append(it) }
             }
+            permissions?.let { append(" perms=").append(it) }
             append(' ').append(results?.let { FeatureNameCheck.summary(it, VehicleCommandRegistry.unavailable.keys) } ?: "names=?")
             if (results != null && FeatureNameCheck.windowsDiffer(results)) append(" windows=").append(attempt { CarFeatureTable.windowFeatures() })
         }

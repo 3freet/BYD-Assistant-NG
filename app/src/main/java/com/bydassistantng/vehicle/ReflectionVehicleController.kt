@@ -114,12 +114,31 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
     }
 
     private fun queryFailure(t: Throwable): VehicleDispatchResult {
-        val missing = t is ClassNotFoundException || t is NoSuchMethodException
+        // A reflective call wraps whatever it threw in an exception with no message of its own.
+        val cause = (t as? InvocationTargetException)?.targetException ?: t
+        PermissionRefusal.missingPermission(cause)?.let {
+            return VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, PermissionRefusal.message(it, wasCommand = false))
+        }
+        val missing = cause is ClassNotFoundException || cause is NoSuchMethodException
         return VehicleDispatchResult.Failure(
             if (missing) VehicleDispatchError.CLASS_NOT_FOUND else VehicleDispatchError.INVOCATION_FAILED,
-            t.toString(),
+            cause.toString(),
         )
     }
+
+    /**
+     * A call that threw [cause] (the car's own refusal of the process, or any other failure). A refusal by the car's permission
+     * check is worded for the person in the car, so that the assistant can say why it cannot; anything else keeps its message.
+     */
+    private fun threw(cause: Throwable?, security: Boolean = false): VehicleDispatchResult {
+        PermissionRefusal.missingPermission(cause)?.let {
+            return VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, PermissionRefusal.message(it, wasCommand = true))
+        }
+        return VehicleDispatchResult.Failure(if (security) VehicleDispatchError.SECURITY_DENIED else VehicleDispatchError.INVOCATION_FAILED, cause?.message)
+    }
+
+    /** Who holds the permissions that guard the car's devices, for the log (see [PermissionRefusal.report]). */
+    internal fun permissionReport(appPackage: String): String = PermissionRefusal.report(context, appPackage)
 
     /** A typed setter. A command that names a [VehicleCommand.stateFeatureId] and a device type is confirmed
      * by reading that state back, as the generic route is: the method's argument is [value] plus
@@ -158,10 +177,10 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             VehicleDispatchResult.Failure(VehicleDispatchError.METHOD_NOT_FOUND, e.message)
         } catch (e: SecurityException) {
             Log.w(TAG, "Security denied calling ${invocation.methodName}", e)
-            VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, e.message)
+            threw(e, security = true)
         } catch (e: InvocationTargetException) {
             Log.w(TAG, "${invocation.methodName} threw", e.targetException)
-            VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, e.targetException?.message)
+            threw(e.targetException)
         } catch (e: Throwable) {
             Log.e(TAG, "Unexpected error calling ${invocation.methodName}", e)
             VehicleDispatchResult.Failure(VehicleDispatchError.UNKNOWN, e.message)
@@ -222,10 +241,10 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             VehicleDispatchResult.Failure(VehicleDispatchError.METHOD_NOT_FOUND, e.message)
         } catch (e: SecurityException) {
             Log.w(TAG, "Security denied calling set() on $className", e)
-            VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, e.message)
+            threw(e, security = true)
         } catch (e: InvocationTargetException) {
             Log.w(TAG, "set() threw on $className", e.targetException)
-            VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, e.targetException?.message)
+            threw(e.targetException)
         } catch (e: Throwable) {
             Log.e(TAG, "Unexpected error calling set() on $className", e)
             VehicleDispatchResult.Failure(VehicleDispatchError.UNKNOWN, e.message)
@@ -280,11 +299,13 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
         CarNumbers.of(name, verified)?.let { readState(instance, deviceType, it) }
 
     /** `AbsBYDAutoDevice.get(deviceType, stateId)`; null when the car has no answer (an unsupported
-     * state reads -10011, or 65535 for some) or the call fails. */
+     * state reads -10011, or 65535 for some) or the call fails. The car refusing this process is not "no answer": it is thrown
+     * on, for the caller to word (see [threw] and [queryFailure]). */
     private fun readState(instance: Any, deviceType: Int, stateId: Int): Int? = try {
         val get = findMethod(instance.javaClass, "get", Int::class.javaPrimitiveType!!, Int::class.javaPrimitiveType!!)
         (get.invoke(instance, deviceType, stateId) as? Int)?.takeIf { it >= 0 && it != NO_READING }
     } catch (e: Exception) {
+        if (PermissionRefusal.missingPermission(e) != null) throw e
         Log.w(TAG, "Could not read state $stateId", e)
         null
     }
