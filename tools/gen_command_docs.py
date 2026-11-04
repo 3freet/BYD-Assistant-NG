@@ -83,11 +83,24 @@ def route(c):
     if inv["type"] == "streamVolume":
         return f"Android audio stream {inv['stream']} (`AudioManager.setStreamVolume`)"
     if inv["type"] == "acBinderProperty":
-        return f"A/C service, property {inv['propertyId']}, area {inv['area']}"
+        text = f"A/C service, property {inv['propertyId']}, area {inv['area']}"
+        device = c.get("withoutAcService")
+        if device:
+            text += "; on a car without that service, " + method(device["invocation"])
+        return text
     if inv["type"] == "namedMethod":
         return f"`{inv['deviceClass']}` method `{inv['methodName']}`"
     dev = DEVICES.get(c.get("deviceType"), str(c.get("deviceType")))
     return f"{dev} device ({c.get('deviceType')}), control id {c['featureId']}{named(c.get('featureName'))}"
+
+
+def method(inv):
+    """A typed call on a device class, with the arguments the registry fixes ('value' is the one the user chose)."""
+    args = ", ".join("value" if a is None else str(a) for a in inv["argsTemplate"])
+    call = f"`{inv['deviceClass']}` method `{inv['methodName']}({args})`"
+    if inv.get("offMethodName"):
+        call = f"`{inv['deviceClass']}` method `{inv['methodName']}({args})`, or `{inv['offMethodName']}({args})` for off"
+    return call
 
 
 def state(c):
@@ -97,6 +110,9 @@ def state(c):
     if inv["type"] == "streamVolume":
         return "the stream volume, read back"
     if inv["type"] == "acBinderProperty":
+        device = c.get("withoutAcService")
+        if device and device.get("stateFeatureId"):
+            return f"read back through the A/C service; on the device, state id {device['stateFeatureId']}{named(device.get('stateFeatureName'))}"
         return "read back through the A/C service"
     if c.get("stateFeatureId"):
         return f"state id {c['stateFeatureId']}{named(c.get('stateFeatureName'))}"
@@ -106,10 +122,14 @@ def state(c):
 def status(c):
     inv = c["invocation"]
     if c["id"] in NOTES:
-        return NOTES[c["id"]]
-    if inv["type"] in ("acBinderProperty", "binderCommand", "streamVolume") or c.get("stateFeatureId"):
-        return "Confirmed by read-back."
-    return "Accepted by the HAL; no read-back, so not independently verified."
+        text = NOTES[c["id"]]
+    elif inv["type"] in ("acBinderProperty", "binderCommand", "streamVolume") or c.get("stateFeatureId"):
+        text = "Confirmed by read-back."
+    else:
+        text = "Accepted by the HAL; no read-back, so not independently verified."
+    if c.get("withoutAcService"):
+        text += " The route for a car without the A/C service has run in a simulator only."
+    return text
 
 
 rows = json.loads(REGISTRY.read_text(encoding="utf-8"))
@@ -144,6 +164,11 @@ lines += [
     "",
     "The four window percent controls (`window.<door>.position`) are not sent on a car that is not a recognised DiLink 5 unless",
     "the car reports the window's position first.",
+    "",
+    "The A/C commands go through the car's `byd_airconditioning` service where it has one (as DiLink 5.1 does). A car without it",
+    "(the DiLink 5.0 log of a BYD Song Plus had none) reaches the same controls through the typed methods of the car's climate",
+    "device class instead, with the control source set to voice, and each is confirmed by reading the state back as well. That",
+    "route has been run in a simulator only; see [ac-service.md](ac-service.md#a-car-without-the-service).",
     "",
 ]
 lines += [

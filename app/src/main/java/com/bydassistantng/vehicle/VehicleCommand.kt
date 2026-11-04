@@ -107,21 +107,30 @@ sealed interface VehicleInvocation {
      * [paramTypes] is the reflection signature (e.g. `["int", "int"]`) used to look up the method.
      * [argsTemplate] is the actual call arguments with exactly one `null` marking the position the
      * dispatch-time value fills.
+     *
+     * An on/off control that has a method for each ([offMethodName]: the climate device's `start` and `stop`) has no value
+     * slot: the value chooses the method, 0 calling [offMethodName] and anything else [methodName], both with the same
+     * arguments.
      */
     data class NamedMethod(
         val deviceClass: String,
         val methodName: String,
         val paramTypes: List<String>,
         val argsTemplate: List<Int?>,
+        val offMethodName: String? = null,
     ) : VehicleInvocation {
         init {
-            require(argsTemplate.count { it == null } == 1) {
-                "argsTemplate must have exactly one null (the dispatch-time value slot): $argsTemplate"
+            val slots = if (offMethodName == null) 1 else 0
+            require(argsTemplate.count { it == null } == slots) {
+                "argsTemplate must have exactly $slots null (the dispatch-time value slot): $argsTemplate"
             }
             require(paramTypes.size == argsTemplate.size) {
                 "paramTypes and argsTemplate must be the same length"
             }
         }
+
+        /** The method that carries out [value]. */
+        fun methodFor(value: Int): String = if (offMethodName != null && value == 0) offMethodName else methodName
     }
 
     /**

@@ -23,7 +23,8 @@ import java.lang.reflect.InvocationTargetException
  *    `android.hardware.bydauto.<device>.BYDAuto<Device>Device` HAL classes.
  *  - [VehicleInvocation.AcBinderProperty] — a raw Binder transaction against a named sub-service
  *    of the `"byd_airconditioning"` system service, the same one the head unit's own A/C screen
- *    uses. For CLIMATE commands, the generic route is tried first, falling back to this mechanism.
+ *    uses. A car without that service (see [AcRoute]) has its A/C commands as [VehicleInvocation.NamedMethod]
+ *    calls on the climate device class instead, so none of them reaches this mechanism there.
  *
  * Commands that declare a state to read back are confirmed by it; for the rest,
  * [VehicleDispatchResult.Success] only means "the call did not throw," never "the car actually moved."
@@ -122,17 +123,25 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
 
     /** A typed setter. A command that names a [VehicleCommand.stateFeatureId] and a device type is confirmed
      * by reading that state back, as the generic route is: the method's argument is [value] plus
-     * [VehicleCommand.valueOffset], and the state is expected to read [value] plus [VehicleCommand.stateOffset]. */
+     * [VehicleCommand.valueOffset], and the state is expected to read [value] plus [VehicleCommand.stateOffset].
+     * One with a [VehicleCommand.requires] is refused, untouched, unless the car is in that state. */
     private suspend fun tryNamedMethod(invocation: VehicleInvocation.NamedMethod, command: VehicleCommand, value: Int): VehicleDispatchResult {
         val className = "android.hardware.bydauto.${invocation.deviceClass}.BYDAuto${invocation.deviceClass.replaceFirstChar { it.uppercase() }}Device"
         return try {
             val instance = getOrCreateInstance(className) ?: return VehicleDispatchResult.Failure(
                 VehicleDispatchError.CLASS_NOT_FOUND, "No usable instance for $className"
             )
+            command.requires?.let { requirement ->
+                val actual = command.deviceType?.let { readState(instance, it, requirement.featureId) }
+                if (actual != requirement.equals) {
+                    Log.i(TAG, "${command.id} refused: state ${requirement.featureId} reads $actual, needs ${requirement.equals}")
+                    return VehicleDispatchResult.Failure(VehicleDispatchError.PRECONDITION_NOT_MET, requirement.message)
+                }
+            }
             val paramTypes = invocation.paramTypes.map { intClassFor(it) }.toTypedArray()
             val args = invocation.argsTemplate.map { it ?: command.signalFor(value) }.toTypedArray()
 
-            val method = findMethod(instance.javaClass, invocation.methodName, *paramTypes)
+            val method = findMethod(instance.javaClass, invocation.methodFor(value), *paramTypes)
             val accepted = toResult(method.invoke(instance, *args))
             val deviceType = command.deviceType
             val stateId = command.stateFeatureId
@@ -171,8 +180,8 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
 
         // The generic route's owning device class isn't recorded per-command since it's shared
         // across a whole service group; resolve by domain instead of a hardcoded class guess.
-        // CLIMATE deliberately has no entry here — the guessed BYDAutoAcDevice class has zero
-        // evidence of existing, and a real shipped app uses AcBinderProperty for AC instead.
+        // CLIMATE deliberately has no entry here: the climate system is reached through the A/C service, or on a car
+        // without it through the typed methods of its device class (a NamedMethod), never through a bare feature set.
         val className = GENERIC_ROUTE_CLASS_BY_DOMAIN[command.domain] ?: return VehicleDispatchResult.Failure(
             VehicleDispatchError.CLASS_NOT_FOUND, "No known HAL class for domain ${command.domain}"
         )

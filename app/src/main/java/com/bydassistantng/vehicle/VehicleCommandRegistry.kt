@@ -51,6 +51,11 @@ object VehicleCommandRegistry {
 
     private var reportedUnavailable: Set<String> = emptySet()
 
+    /** How the car's climate system is reached, in the vehicle helper once it has looked; null in the app, which does not. */
+    @Volatile
+    internal var acRoute: AcRoute? = null
+        private set
+
     @Volatile
     private var current: CarCommands = CarCommands(entries, DiLinkPlatform.UNKNOWN)
 
@@ -58,6 +63,13 @@ object VehicleCommandRegistry {
     @Synchronized
     internal fun useCarTable(table: Map<String, Int>?) {
         carTable = table
+        rebuild()
+    }
+
+    /** The vehicle helper has found how the car's climate system is reached: the A/C commands follow it from here on. */
+    @Synchronized
+    internal fun useAcRoute(route: AcRoute?) {
+        acRoute = route
         rebuild()
     }
 
@@ -70,7 +82,7 @@ object VehicleCommandRegistry {
 
     @Synchronized
     private fun rebuild() {
-        current = CarCommands(entries, platform, carTable, reportedUnavailable)
+        current = CarCommands(entries, platform, carTable, reportedUnavailable, acRoute)
     }
 
     /** The commands of this car. */
@@ -79,8 +91,16 @@ object VehicleCommandRegistry {
     /** What this car cannot do: command id to the names its table lacks (empty where only the helper's word is known). */
     val unavailable: Map<String, List<String>> get() = current.missingNames
 
-    /** The commands of a car on [platform] with [table] (null: the registry's own numbers), whichever car this is. */
-    fun commandsFor(platform: DiLinkPlatform, table: Map<String, Int>? = null): CarCommands = CarCommands(entries, platform, table)
+    /**
+     * The commands of a car on [platform] with [table] (null: the registry's own numbers) and [acRoute] (null: the one the A/C
+     * commands were verified on), whichever car this is.
+     */
+    internal fun commandsFor(platform: DiLinkPlatform, table: Map<String, Int>? = null, acRoute: AcRoute? = null): CarCommands =
+        CarCommands(entries, platform, table, emptySet(), acRoute)
+
+    /** The names the A/C commands read in the car's table when they go through the climate device (see [AcRoute.DEVICE]). */
+    internal fun deviceRouteNames(): List<String> =
+        entries.mapNotNull { it.withoutAcService }.flatMap { listOfNotNull(it.stateFeatureName, it.requires?.featureName) }.distinct()
 
     private val families: Map<String, List<VehicleCommand>> get() = current.families
 
@@ -147,13 +167,15 @@ object VehicleCommandRegistry {
 
 /**
  * The registry as one car sees it: the commands it can do, with the car's own numbers where its [table] is known, and the
- * ones it cannot. [unavailable] are ids the helper reported (the app does not read the table itself).
+ * ones it cannot. [unavailable] are ids the helper reported (the app does not read the table itself). The A/C commands take
+ * the route the car has ([acRoute], see [AcRoute]; null is the one they were verified on).
  */
 class CarCommands internal constructor(
     entries: List<CommandEntryDto>,
     val platform: DiLinkPlatform,
     table: Map<String, Int>? = null,
     unavailable: Set<String> = emptySet(),
+    acRoute: AcRoute? = null,
 ) {
     /** Each command this car cannot do, with the names its table lacks (none where only the helper's word is known). */
     val missingNames: Map<String, List<String>>
@@ -164,10 +186,13 @@ class CarCommands internal constructor(
         val missing = LinkedHashMap<String, List<String>>()
         val usable = entries.mapNotNull { entry ->
             val here = entry.copy(requiresReadback = entry.requiresReadbackElsewhere && platform != DiLinkPlatform.DILINK_5)
+            val routed = here.forAcRoute(acRoute)
             when {
                 entry.id in unavailable -> null.also { missing[entry.id] = emptyList() }
-                table == null -> here
-                else -> when (val outcome = NameResolution.resolve(here, table)) {
+                // The climate system cannot be reached on this car: the name of the service stands for what is missing.
+                routed == null -> null.also { missing[entry.id] = listOf(ReflectionVehicleController.AC_SERVICE_NAME) }
+                table == null -> routed
+                else -> when (val outcome = NameResolution.resolve(routed, table)) {
                     is NameResolution.Outcome.Use -> outcome.entry
                     is NameResolution.Outcome.Withhold -> null.also { missing[entry.id] = outcome.missing }
                 }
@@ -219,7 +244,45 @@ internal data class CommandEntryDto(
     /** Set from [requiresReadbackElsewhere] and the car's platform, never read from the file. */
     @kotlinx.serialization.Transient
     val requiresReadback: Boolean = false,
+    /** For an A/C command: how the same control is done on a car with no A/C service (see [AcRoute.DEVICE]). */
+    val withoutAcService: DeviceRouteDto? = null,
 )
+
+/**
+ * An A/C command done through the car's climate device class instead of the A/C service: the call
+ * ([invocation], a named method of that class) and the state that reports its result, read back as for any other command.
+ * [requires] is a state that must hold first (the temperature is only set on a car showing Celsius). The values the user
+ * and the model deal in are those of the command itself and do not change.
+ */
+@Serializable
+internal data class DeviceRouteDto(
+    val invocation: InvocationDto,
+    val stateFeatureId: Int? = null,
+    val stateFeatureName: String? = null,
+    val requires: RequiresDto? = null,
+)
+
+/**
+ * The entry as a car with the climate system on [route] has it: itself for the A/C service (or an entry that is not an A/C
+ * command), the device route for a car without the service, and null (not offered) where it has neither or the command has no
+ * device route.
+ */
+internal fun CommandEntryDto.forAcRoute(route: AcRoute?): CommandEntryDto? {
+    if (invocation.type != "acBinderProperty") return this
+    return when (route) {
+        null, AcRoute.SERVICE -> this
+        AcRoute.DEVICE -> withoutAcService?.let {
+            copy(
+                invocation = it.invocation,
+                stateFeatureId = it.stateFeatureId,
+                stateFeatureName = it.stateFeatureName,
+                requires = it.requires,
+                withoutAcService = null,
+            )
+        }
+        AcRoute.NONE -> null
+    }
+}
 
 @Serializable
 internal data class OverrideDto(val whenValue: Int, val featureId: Int, val sendValue: Int, val featureName: String? = null)
@@ -235,6 +298,7 @@ internal data class InvocationDto(
     val methodName: String? = null,
     val paramTypes: List<String>? = null,
     val argsTemplate: List<Int?>? = null,
+    val offMethodName: String? = null,
     // acBinderProperty
     val subServiceKey: String? = null,
     val interfaceDescriptor: String? = null,
@@ -321,6 +385,7 @@ private fun InvocationDto.toVehicleInvocation(commandId: String): VehicleInvocat
         methodName = methodName ?: error("namedMethod invocation for '$commandId' missing methodName"),
         paramTypes = paramTypes ?: error("namedMethod invocation for '$commandId' missing paramTypes"),
         argsTemplate = argsTemplate ?: error("namedMethod invocation for '$commandId' missing argsTemplate"),
+        offMethodName = offMethodName,
     )
     "acBinderProperty" -> VehicleInvocation.AcBinderProperty(
         subServiceKey = subServiceKey ?: error("acBinderProperty invocation for '$commandId' missing subServiceKey"),

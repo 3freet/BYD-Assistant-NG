@@ -54,7 +54,7 @@ object VehicleShellHelper {
             val controller = newController()
             val seen = detectPlatform()
             // What the helper saw is for the log: it must never be the reason the helper does not start.
-            val details = runCatching { CarDiagnostics.describe(seen.readings, seen.properties, seen.table) }.getOrElse { "diagnostics unavailable: $it" }
+            val details = runCatching { CarDiagnostics.describe(seen.readings, seen.properties, seen.table, seen.acRoute) }.getOrElse { "diagnostics unavailable: $it" }
             emit(HelperProtocol.ready(seen.platform, VehicleCommandRegistry.unavailable.keys, details))
             val input = System.`in`.bufferedReader()
             // Ends when the app closes its end of the ADB stream (or dies).
@@ -73,14 +73,20 @@ object VehicleShellHelper {
         }
     }
 
-    /** What the helper read of the head unit: which platform it is, and the car's own table of features. */
-    private class Seen(val platform: DiLinkPlatform, val readings: List<Int?>, val properties: Map<String, String>, val table: Map<String, Int>?)
+    /** What the helper read of the head unit: which platform it is, the car's own table of features and how its climate system is reached. */
+    private class Seen(
+        val platform: DiLinkPlatform,
+        val readings: List<Int?>,
+        val properties: Map<String, String>,
+        val table: Map<String, Int>?,
+        val acRoute: AcRoute,
+    )
 
     /**
-     * Reads which platform the car runs and the car's own table of features (this process can always read them), and makes
-     * the registry follow them, so that every command here is the one for this car: the car's numbers by name, or not
-     * offered at all where the car lacks a name it needs. The platform only decides how careful to be, and the head unit's
-     * properties are read for the log only.
+     * Reads which platform the car runs, the car's own table of features and how its climate system is reached (this process can
+     * always read them), and makes the registry follow them, so that every command here is the one for this car: the car's
+     * numbers by name, the A/C through the service or the device the car has, or not offered at all where the car lacks what it
+     * needs. The platform only decides how careful to be, and the head unit's properties are read for the log only.
      */
     private fun detectPlatform(): Seen {
         // A car whose numbers cannot be read is a platform that is not recognised, which is how the app has always run.
@@ -88,9 +94,12 @@ object VehicleShellHelper {
         val properties = runCatching { HeadUnitProperties.readAll() }.getOrElse { emptyMap() }
         val platform = PlatformDetector.classify(Build.VERSION.SDK_INT, readings)
         val table = runCatching { CarFeatureTable.read() }.getOrNull()
+        // A car whose services cannot be asked keeps the route the A/C commands were verified on.
+        val acRoute = runCatching { AcRoute.detect() }.getOrDefault(AcRoute.SERVICE)
         VehicleCommandRegistry.platform = platform
+        VehicleCommandRegistry.useAcRoute(acRoute)
         VehicleCommandRegistry.useCarTable(table)
-        return Seen(platform, readings, properties, table)
+        return Seen(platform, readings, properties, table, acRoute)
     }
 
     private fun emit(line: String) {

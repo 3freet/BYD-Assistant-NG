@@ -22,6 +22,22 @@
         "on": 1,
         "off": 0
       }
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "start",
+        "offMethodName": "stop",
+        "paramTypes": [
+          "int"
+        ],
+        "argsTemplate": [
+          1
+        ]
+      },
+      "stateFeatureId": 1077936144,
+      "stateFeatureName": "Ac.AC_POWER_STATE"
     }
   },
   {
@@ -46,6 +62,33 @@
       "min": 17,
       "max": 33,
       "unit": "°C"
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "setAcTemperature",
+        "paramTypes": [
+          "int",
+          "int",
+          "int",
+          "int"
+        ],
+        "argsTemplate": [
+          1,
+          null,
+          1,
+          1
+        ]
+      },
+      "stateFeatureId": 1077936168,
+      "stateFeatureName": "Ac.AC_TEMP_MAIN",
+      "requires": {
+        "featureId": 1077936167,
+        "featureName": "Ac.AC_TEMPERATURE_UNIT",
+        "equals": 1,
+        "message": "The A/C is not showing Celsius, so its temperature is not set from here. Nothing was sent."
+      }
     }
   },
   {
@@ -69,6 +112,23 @@
       "type": "range",
       "min": 0,
       "max": 7
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "setAcWindLevel",
+        "paramTypes": [
+          "int",
+          "int"
+        ],
+        "argsTemplate": [
+          1,
+          null
+        ]
+      },
+      "stateFeatureId": 1077936156,
+      "stateFeatureName": "Ac.AC_WIND_LEVEL"
     }
   },
   {
@@ -97,6 +157,23 @@
         "feetAndDefrost": 4,
         "defrost": 5
       }
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "setAcWindMode",
+        "paramTypes": [
+          "int",
+          "int"
+        ],
+        "argsTemplate": [
+          1,
+          null
+        ]
+      },
+      "stateFeatureId": 1077936152,
+      "stateFeatureName": "Ac.AC_WIND_MODE"
     }
   },
   {
@@ -1428,6 +1505,23 @@
         "outside": 0,
         "inside": 1
       }
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "setAcCycleMode",
+        "paramTypes": [
+          "int",
+          "int"
+        ],
+        "argsTemplate": [
+          1,
+          null
+        ]
+      },
+      "stateFeatureId": 1077936148,
+      "stateFeatureName": "Ac.AC_CYCLE_MODE"
     }
   },
   {
@@ -1453,6 +1547,23 @@
         "on": 1,
         "off": 0
       }
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "setAcVentilationState",
+        "paramTypes": [
+          "int",
+          "int"
+        ],
+        "argsTemplate": [
+          1,
+          null
+        ]
+      },
+      "stateFeatureId": 1314914314,
+      "stateFeatureName": "Ac.AC_VENTILATION_STATE"
     }
   },
   {
@@ -1478,6 +1589,23 @@
         "on": 1,
         "off": 0
       }
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "setAcCompressorMode",
+        "paramTypes": [
+          "int",
+          "int"
+        ],
+        "argsTemplate": [
+          1,
+          null
+        ]
+      },
+      "stateFeatureId": 1077936137,
+      "stateFeatureName": "Ac.AC_COMPRESSOR_MODE"
     }
   },
   {
@@ -1502,6 +1630,23 @@
       "options": {
         "auto": 0
       }
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "setAcControlMode",
+        "paramTypes": [
+          "int",
+          "int"
+        ],
+        "argsTemplate": [
+          1,
+          null
+        ]
+      },
+      "stateFeatureId": 1077936146,
+      "stateFeatureName": "Ac.AC_CTRL_MODE"
     }
   },
   {
@@ -1527,6 +1672,25 @@
         "on": 1,
         "off": 0
       }
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "setAcDefrostState",
+        "paramTypes": [
+          "int",
+          "int",
+          "int"
+        ],
+        "argsTemplate": [
+          1,
+          1,
+          null
+        ]
+      },
+      "stateFeatureId": 1077936150,
+      "stateFeatureName": "Ac.AC_DEFROST_FRONT_STATE"
     }
   },
   {
@@ -1552,6 +1716,25 @@
         "on": 1,
         "off": 0
       }
+    },
+    "withoutAcService": {
+      "invocation": {
+        "type": "namedMethod",
+        "deviceClass": "ac",
+        "methodName": "setAcDefrostState",
+        "paramTypes": [
+          "int",
+          "int",
+          "int"
+        ],
+        "argsTemplate": [
+          1,
+          2,
+          null
+        ]
+      },
+      "stateFeatureId": 1128267825,
+      "stateFeatureName": "Ac.AC_DEFROST_REAR_STATE"
     }
   }
 ]

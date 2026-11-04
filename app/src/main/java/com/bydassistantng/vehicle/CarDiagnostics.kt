@@ -9,6 +9,8 @@ import android.os.Build
  * services answer, how many features its own table holds, and **how the numbers this app uses compare with that table by
  * name** (see [FeatureNameCheck]): which agree, which the car numbers differently (with the car's own number) and which
  * names it does not have at all. When a window name is among the differences, the car's window features are listed too.
+ * Where the car has no A/C service (see [AcRoute]) the line says how the A/C is reached instead, and names the car's other
+ * services that look like they have to do with its climate or its vehicle systems, to find where it lives.
  *
  * Writing the line only looks; nothing is written to the car. (What the app makes of the comparison is [NameResolution]'s: the
  * car's own numbers are used, and a command the car lacks a name for is withheld; the line says which.) Each part is read on
@@ -20,9 +22,9 @@ internal object CarDiagnostics {
     /**
      * [readings] are the car's numbers for [PlatformSignature.canaries], [properties] what [HeadUnitProperties] read and [table]
      * the car's own table of features ([CarFeatureTable.read]; null where it cannot be read, and then the registry's own numbers
-     * are in use).
+     * are in use). [acRoute] is how the car's climate system is reached (null where the helper did not look).
      */
-    fun describe(readings: List<Int?>, properties: Map<String, String>, table: Map<String, Int>?): String {
+    fun describe(readings: List<Int?>, properties: Map<String, String>, table: Map<String, Int>?, acRoute: AcRoute? = null): String {
         val results = table?.let { FeatureNameCheck.check(FeatureNameCheck.references(), it) }
         return buildString {
             append("sdk=").append(Build.VERSION.SDK_INT)
@@ -33,6 +35,15 @@ internal object CarDiagnostics {
             append(" classes=").append(classes())
             append(" calls=").append(calls())
             append(" services=").append(services())
+            if (acRoute != null) {
+                append(" acroute=").append(acRoute.key)
+                // A car that is reached through the device reads the A/C's states by name too: the ones its table lacks.
+                if (acRoute == AcRoute.DEVICE && table != null) {
+                    val lacking = VehicleCommandRegistry.deviceRouteNames().filter { it !in table }
+                    if (lacking.isNotEmpty()) append(" acabsent=").append(lacking.joinToString(","))
+                }
+                if (acRoute != AcRoute.SERVICE) relatedServices(SystemServices.names())?.let { append(" others=").append(it) }
+            }
             append(' ').append(results?.let { FeatureNameCheck.summary(it, VehicleCommandRegistry.unavailable.keys) } ?: "names=?")
             if (results != null && FeatureNameCheck.windowsDiffer(results)) append(" windows=").append(attempt { CarFeatureTable.windowFeatures() })
         }
@@ -88,16 +99,27 @@ internal object CarDiagnostics {
     }
 
     private fun services(): String {
-        val manager = try {
-            Class.forName("android.os.ServiceManager")
-        } catch (_: Throwable) {
-            return "?"
-        }
-        fun present(name: String): String = try {
-            if (manager.getMethod("getService", String::class.java).invoke(null, name) != null) name else "-$name"
-        } catch (_: Throwable) {
-            "?$name"
+        fun present(name: String): String = when (SystemServices.answers(name)) {
+            true -> name
+            false -> "-$name"
+            null -> "?$name"
         }
         return listOf("autoservice", ReflectionVehicleController.AC_SERVICE_NAME).joinToString(",") { present(it) }
     }
+
+    /**
+     * The services of the car, other than the two looked at above, whose names suggest the climate or the vehicle's own
+     * systems, as a short list: `?` when the service manager cannot be asked and null when none look so. Names only.
+     */
+    internal fun relatedServices(names: List<String>?, limit: Int = 40): String? {
+        if (names == null) return "?"
+        val related = names.asSequence()
+            .filter { RELATED.containsMatchIn(it) && it != "autoservice" && it != ReflectionVehicleController.AC_SERVICE_NAME }
+            .map { it.replace(Regex("[^A-Za-z0-9._-]"), "_").take(40) }
+            .distinct().sorted().toList()
+        if (related.isEmpty()) return null
+        return related.take(limit).joinToString(",") + if (related.size > limit) ",+${related.size - limit} more" else ""
+    }
+
+    private val RELATED = Regex("(?i)byd|climate|hvac|aircon|(^|[_.])ac([_.]|$)|vehicle|automotive")
 }

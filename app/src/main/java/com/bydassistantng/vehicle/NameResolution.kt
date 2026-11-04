@@ -36,11 +36,11 @@ internal object NameResolution {
             return table[name] ?: fallback.also { missing += name }
         }
 
-        var result = entry
+        // The precondition belongs to a typed setter as well (the A/C's temperature is only set on a car showing Celsius).
+        var result = entry.copy(requires = entry.requires?.let { it.copy(featureId = number(it.featureName, it.featureId)) })
         if (generic) {
             result = result.copy(
                 featureId = entry.featureId?.let { number(entry.featureName, it) },
-                requires = entry.requires?.let { it.copy(featureId = number(it.featureName, it.featureId)) },
                 overrides = entry.overrides.map { it.copy(featureId = number(it.featureName, it.featureId)) },
             )
         }
