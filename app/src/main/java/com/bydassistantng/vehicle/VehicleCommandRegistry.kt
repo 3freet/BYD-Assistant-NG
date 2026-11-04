@@ -246,6 +246,11 @@ internal data class CommandEntryDto(
     val requiresReadback: Boolean = false,
     /** For an A/C command: how the same control is done on a car with no A/C service (see [AcRoute.DEVICE]). */
     val withoutAcService: DeviceRouteDto? = null,
+    /** Set from [DeviceRouteDto] when the entry takes the device route, never read from the file. */
+    @kotlinx.serialization.Transient
+    val nativeFeatureId: Int? = null,
+    @kotlinx.serialization.Transient
+    val nativeFeatureName: String? = null,
 )
 
 /**
@@ -260,6 +265,9 @@ internal data class DeviceRouteDto(
     val stateFeatureId: Int? = null,
     val stateFeatureName: String? = null,
     val requires: RequiresDto? = null,
+    /** The one feature the typed method writes, for the native service to write when the device class refuses the helper. */
+    val nativeFeatureId: Int? = null,
+    val nativeFeatureName: String? = null,
 )
 
 /**
@@ -277,6 +285,8 @@ internal fun CommandEntryDto.forAcRoute(route: AcRoute?): CommandEntryDto? {
                 stateFeatureId = it.stateFeatureId,
                 stateFeatureName = it.stateFeatureName,
                 requires = it.requires,
+                nativeFeatureId = it.nativeFeatureId,
+                nativeFeatureName = it.nativeFeatureName,
                 withoutAcService = null,
             )
         }
@@ -375,6 +385,8 @@ internal fun CommandEntryDto.toVehicleCommand(): VehicleCommand {
         requires = requires?.let { StateRequirement(it.featureId, it.equals, it.message, it.featureName) },
         overrides = overrides.map { ValueOverride(it.whenValue, it.featureId, it.sendValue, it.featureName) },
         requiresReadback = requiresReadback,
+        nativeFeatureId = nativeFeatureId,
+        nativeFeatureName = nativeFeatureName,
     )
 }
 

@@ -15,7 +15,9 @@ internal object CommandAnswers {
 
     private val underWay = Regex("""under way: now at (-?\d+), heading for (-?\d+)""")
 
-    fun forModel(note: String?): String? {
+    fun forModel(rawNote: String?): String? {
+        // The log shows which way the note came; the model is not told.
+        val note = rawNote?.removeSuffix(NativeAnswer.NATIVE_TAG)
         if (note.isNullOrBlank()) return UNCHECKED_NOTE
         underWay.find(note)?.let { m ->
             return "On its way: now at ${m.groupValues[1]}, heading for ${m.groupValues[2]}. " +

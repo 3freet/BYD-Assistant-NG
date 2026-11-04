@@ -11,7 +11,8 @@ import android.os.Build
  * names it does not have at all. When a window name is among the differences, the car's window features are listed too.
  * Where the car has no A/C service (see [AcRoute]) the line says how the A/C is reached instead, and names the car's other
  * services that look like they have to do with its climate or its vehicle systems, to find where it lives. It also says who
- * holds the permissions that guard the car's devices (`perms=`), since a car may refuse the helper for want of one.
+ * holds the permissions that guard the car's devices (`perms=`), since a car may refuse the helper for want of one, and whether
+ * the car's native service can be spoken to directly and agrees with the device classes (`native=`).
  *
  * Writing the line only looks; nothing is written to the car. (What the app makes of the comparison is [NameResolution]'s: the
  * car's own numbers are used, and a command the car lacks a name for is withheld; the line says which.) Each part is read on
@@ -32,6 +33,7 @@ internal object CarDiagnostics {
         table: Map<String, Int>?,
         acRoute: AcRoute? = null,
         permissions: String? = null,
+        native: String? = null,
     ): String {
         val results = table?.let { FeatureNameCheck.check(FeatureNameCheck.references(), it) }
         return buildString {
@@ -51,8 +53,12 @@ internal object CarDiagnostics {
                     if (lacking.isNotEmpty()) append(" acabsent=").append(lacking.joinToString(","))
                 }
                 if (acRoute != AcRoute.SERVICE) relatedServices(SystemServices.names())?.let { append(" others=").append(it) }
+                // The climate service under its other name, with what its binder says it speaks: the commands use it only if that is theirs.
+                SystemServices.descriptorOf(AcService.ALIAS)?.let { append(" acalias=").append(it.replace(Regex("[^A-Za-z0-9._$-]"), "_").take(60)) }
+                if (AcService.name != AcService.PRIMARY) append(" acservice=").append(AcService.name)
             }
             permissions?.let { append(" perms=").append(it) }
+            native?.let { append(" native=").append(it) }
             append(' ').append(results?.let { FeatureNameCheck.summary(it, VehicleCommandRegistry.unavailable.keys) } ?: "names=?")
             if (results != null && FeatureNameCheck.windowsDiffer(results)) append(" windows=").append(attempt { CarFeatureTable.windowFeatures() })
         }

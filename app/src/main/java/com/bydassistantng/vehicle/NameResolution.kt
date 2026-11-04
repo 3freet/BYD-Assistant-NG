@@ -44,6 +44,11 @@ internal object NameResolution {
                 overrides = entry.overrides.map { it.copy(featureId = number(it.featureName, it.featureId)) },
             )
         }
+        // The control written straight to the car's service: by name too, and a car that lacks the name only loses that route.
+        entry.nativeFeatureName?.let { name ->
+            val number = table[name]
+            result = result.copy(nativeFeatureId = number, nativeFeatureName = if (number == null) null else name)
+        }
         val stateName = entry.stateFeatureName
         if (entry.stateFeatureId != null && stateName != null) {
             val state = table[stateName]

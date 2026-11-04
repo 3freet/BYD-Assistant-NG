@@ -87,6 +87,8 @@ def route(c):
         device = c.get("withoutAcService")
         if device:
             text += "; on a car without that service, " + method(device["invocation"])
+            if device.get("nativeFeatureName"):
+                text += f", or, where the car refuses the helper that class, a write of `{device['nativeFeatureName']}` to the car's service"
         return text
     if inv["type"] == "namedMethod":
         return f"`{inv['deviceClass']}` method `{inv['methodName']}`"
@@ -167,8 +169,10 @@ lines += [
     "",
     "The A/C commands go through the car's `byd_airconditioning` service where it has one (as DiLink 5.1 does). A car without it",
     "(the DiLink 5.0 log of a BYD Song Plus had none) reaches the same controls through the typed methods of the car's climate",
-    "device class instead, with the control source set to voice, and each is confirmed by reading the state back as well. That",
-    "route has been run in a simulator only; see [ac-service.md](ac-service.md#a-car-without-the-service).",
+    "device class instead, with the control source set to voice, or, where the car refuses the helper that class, by writing the",
+    "same control straight to the car's service ([hal-and-permissions.md](hal-and-permissions.md#the-native-route)); each is",
+    "confirmed by reading the state back as well. That route has been run in a simulator only; see",
+    "[ac-service.md](ac-service.md#a-car-without-the-service).",
     "",
 ]
 lines += [

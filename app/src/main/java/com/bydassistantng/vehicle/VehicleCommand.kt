@@ -58,6 +58,14 @@ data class VehicleCommand(
      * name this control without it being wired to anything, and would otherwise be told "sent" (see
      * [CommandEntryDto.requiresReadbackElsewhere]). */
     val requiresReadback: Boolean = false,
+    /**
+     * For a [VehicleInvocation.NamedMethod] that writes one feature (the climate device's typed setters): that feature, so the
+     * same value can be written straight to the car's native service when the car refuses the helper the device class (see
+     * [NativeAutoservice]). It is what the typed method writes, and the state read back is [stateFeatureId].
+     */
+    val nativeFeatureId: Int? = null,
+    /** What the car's own table calls [nativeFeatureId], as `Group.NAME`. */
+    val nativeFeatureName: String? = null,
 )
 
 /** What the car's signal is for the value a user speaks of, and the other way round. */

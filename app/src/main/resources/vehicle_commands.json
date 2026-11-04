@@ -37,7 +37,9 @@
         ]
       },
       "stateFeatureId": 1077936144,
-      "stateFeatureName": "Ac.AC_POWER_STATE"
+      "stateFeatureName": "Ac.AC_POWER_STATE",
+      "nativeFeatureId": 501219364,
+      "nativeFeatureName": "Ac.AC_POWER_STATE_SET"
     }
   },
   {
@@ -88,7 +90,9 @@
         "featureName": "Ac.AC_TEMPERATURE_UNIT",
         "equals": 1,
         "message": "The A/C is not showing Celsius, so its temperature is not set from here. Nothing was sent."
-      }
+      },
+      "nativeFeatureId": 501219368,
+      "nativeFeatureName": "Ac.AC_TEMP_MAIN_SET"
     }
   },
   {
@@ -128,7 +132,9 @@
         ]
       },
       "stateFeatureId": 1077936156,
-      "stateFeatureName": "Ac.AC_WIND_LEVEL"
+      "stateFeatureName": "Ac.AC_WIND_LEVEL",
+      "nativeFeatureId": 501219340,
+      "nativeFeatureName": "Ac.AC_WIND_LEVEL_SET"
     }
   },
   {
@@ -173,7 +179,9 @@
         ]
       },
       "stateFeatureId": 1077936152,
-      "stateFeatureName": "Ac.AC_WIND_MODE"
+      "stateFeatureName": "Ac.AC_WIND_MODE",
+      "nativeFeatureId": 501219336,
+      "nativeFeatureName": "Ac.AC_WIND_MODE_SET"
     }
   },
   {
@@ -1521,7 +1529,9 @@
         ]
       },
       "stateFeatureId": 1077936148,
-      "stateFeatureName": "Ac.AC_CYCLE_MODE"
+      "stateFeatureName": "Ac.AC_CYCLE_MODE",
+      "nativeFeatureId": 501219355,
+      "nativeFeatureName": "Ac.AC_CYCLE_MODE_SET"
     }
   },
   {
@@ -1563,7 +1573,9 @@
         ]
       },
       "stateFeatureId": 1314914314,
-      "stateFeatureName": "Ac.AC_VENTILATION_STATE"
+      "stateFeatureName": "Ac.AC_VENTILATION_STATE",
+      "nativeFeatureId": 501219394,
+      "nativeFeatureName": "Ac.AC_VENTILATION_STATE_SET"
     }
   },
   {
@@ -1605,7 +1617,9 @@
         ]
       },
       "stateFeatureId": 1077936137,
-      "stateFeatureName": "Ac.AC_COMPRESSOR_MODE"
+      "stateFeatureName": "Ac.AC_COMPRESSOR_MODE",
+      "nativeFeatureId": 501219344,
+      "nativeFeatureName": "Ac.AC_COMPRESSOR_MODE_SET"
     }
   },
   {
@@ -1646,7 +1660,9 @@
         ]
       },
       "stateFeatureId": 1077936146,
-      "stateFeatureName": "Ac.AC_CTRL_MODE"
+      "stateFeatureName": "Ac.AC_CTRL_MODE",
+      "nativeFeatureId": 501219352,
+      "nativeFeatureName": "Ac.AC_CTRL_MODE_SET"
     }
   },
   {
@@ -1690,7 +1706,9 @@
         ]
       },
       "stateFeatureId": 1077936150,
-      "stateFeatureName": "Ac.AC_DEFROST_FRONT_STATE"
+      "stateFeatureName": "Ac.AC_DEFROST_FRONT_STATE",
+      "nativeFeatureId": 501219362,
+      "nativeFeatureName": "Ac.AC_DEFROST_FRONT_STATE_SET"
     }
   },
   {
@@ -1734,7 +1752,9 @@
         ]
       },
       "stateFeatureId": 1128267825,
-      "stateFeatureName": "Ac.AC_DEFROST_REAR_STATE"
+      "stateFeatureName": "Ac.AC_DEFROST_REAR_STATE",
+      "nativeFeatureId": 501219357,
+      "nativeFeatureName": "Ac.AC_DEFROST_REAR_STATE_SET"
     }
   }
 ]

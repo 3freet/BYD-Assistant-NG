@@ -49,16 +49,33 @@ object OutsideTemperatureTool {
         }
     }
 
-    /** Reads it with the cluster's own getters; runs only inside the helper process. */
-    internal fun read(context: Context): Result<RawOutsideTemperature> = try {
-        val device = Class.forName("android.hardware.bydauto.instrument.BYDAutoInstrumentDevice")
-            .getMethod("getInstance", Context::class.java).invoke(null, context)
-            ?: error("the instrument device is not available")
+    /** The cluster's device class, and its type, the way the helper asks for it. */
+    internal const val DEVICE_CLASS = "android.hardware.bydauto.instrument.BYDAutoInstrumentDevice"
+    internal const val DEVICE_TYPE = 1007
+
+    /** The two states the cluster's own getters read, for where the car refuses the helper the class and the service is asked (see [NativeAutoservice]). */
+    internal const val VALUE_NAME = "Instrument.INSTRUMENT_DD_OUT_TEMP"
+    internal const val VALUE_ID = 1246769216
+    internal const val UNIT_NAME = "Instrument.INSTRUMENT_UNIT_TEMPERATURE"
+    internal const val UNIT_ID = 1246769215
+
+    /** What the cluster says, as a reading: 195 is its "no reading"; the rest of its range is real temperatures. */
+    internal fun reading(value: Int?, unit: Int?) = RawOutsideTemperature(celsius = value?.takeIf { it in -60..150 }, unitCode = unit)
+
+    /** Reads it from the instrument device object with the cluster's own getters; runs only inside the helper process. */
+    internal fun readFrom(device: Any): RawOutsideTemperature {
         val type = device.javaClass
         val value = type.getMethod("getOutCarTemperature").invoke(device) as? Int
         val unit = type.getMethod("getUnit", Int::class.javaPrimitiveType).invoke(device, 1) as? Int
-        // 195 is the cluster's "no reading"; the rest of its range is real temperatures.
-        Result.success(RawOutsideTemperature(celsius = value?.takeIf { it in -60..150 }, unitCode = unit))
+        return reading(value, unit)
+    }
+
+    /** Reads it with the cluster's own getters; runs only inside the helper process. */
+    internal fun read(context: Context): Result<RawOutsideTemperature> = try {
+        val device = Class.forName(DEVICE_CLASS)
+            .getMethod("getInstance", Context::class.java).invoke(null, context)
+            ?: error("the instrument device is not available")
+        Result.success(readFrom(device))
     } catch (t: Throwable) {
         Result.failure(t.cause ?: t)
     }
