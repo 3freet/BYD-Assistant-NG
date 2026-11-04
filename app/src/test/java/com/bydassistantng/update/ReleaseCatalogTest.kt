@@ -65,6 +65,33 @@ class ReleaseCatalogTest {
     }
 
     @Test
+    fun everyReleaseNewerThanTheInstalledBuildIsListedNewestFirst() {
+        val all = catalog(
+            release("v1.1.0-beta.1", prerelease = true),
+            release("v1.1.0-beta.3", prerelease = true),
+            release("v1.0.0"),
+            release("v1.1.0-beta.2", prerelease = true),
+            release("v1.1.0"),
+        )
+        val installed = AppVersion(1, 0, 0).code.toLong()
+        assertEquals(
+            listOf("v1.1.0", "v1.1.0-beta.3", "v1.1.0-beta.2", "v1.1.0-beta.1"),
+            ReleaseCatalog.newerThan(all, UpdateChannel.BETA, installed).map { it.tag },
+        )
+        assertEquals(listOf("v1.1.0"), ReleaseCatalog.newerThan(all, UpdateChannel.STABLE, installed).map { it.tag })
+        // Nothing is newer than the newest, or than a build that is newer still.
+        assertEquals(emptyList<String>(), ReleaseCatalog.newerThan(all, UpdateChannel.BETA, AppVersion(1, 1, 0).code.toLong()).map { it.tag })
+        assertEquals(emptyList<String>(), ReleaseCatalog.newerThan(all, UpdateChannel.BETA, AppVersion(1, 2, 0, 1).code.toLong()).map { it.tag })
+    }
+
+    @Test
+    fun theFirstOfTheNewerReleasesIsTheOneOnOffer() {
+        val all = catalog(release("v1.1.0-beta.1", prerelease = true), release("v1.1.0-beta.2", prerelease = true), release("v1.0.0"))
+        val installed = AppVersion(1, 0, 0).code.toLong()
+        assertEquals(ReleaseCatalog.latest(all, UpdateChannel.BETA), ReleaseCatalog.newerThan(all, UpdateChannel.BETA, installed).first())
+    }
+
+    @Test
     fun theDigestMustBeAProperSha256() {
         assertEquals(digest, ReleaseCatalog.parseDigest("sha256:$digest"))
         assertEquals(digest, ReleaseCatalog.parseDigest("sha256:" + digest.uppercase()))
@@ -122,5 +149,54 @@ class ReleaseNotesTest {
     @Test
     fun emptyNotesStayEmpty() {
         assertEquals("", ReleaseNotes.plain("   "))
+    }
+
+    private fun release(tag: String, notes: String) = UpdateRelease(
+        version = checkNotNull(AppVersion.parse(tag)),
+        tag = tag,
+        prerelease = "-beta." in tag,
+        notes = notes,
+        publishedAt = "",
+        pageUrl = "",
+        apkUrl = "",
+        apkSize = 0L,
+        sha256 = null,
+    )
+
+    @Test
+    fun theReleaseOnOfferAloneIsShownAsItIsWithoutAHeading() {
+        val shown = ReleaseNotes.forUpdate(listOf(release("v1.2.0-beta.4", "- One thing.\n- Another.\n\n**Full Changelog**: https://x")))
+        assertEquals("• One thing.\n• Another.", shown)
+    }
+
+    @Test
+    fun severalReleasesAreShownNewestFirstEachUnderItsVersion() {
+        val shown = ReleaseNotes.forUpdate(
+            listOf(release("v1.2.0-beta.4", "- Four."), release("v1.2.0-beta.3", "- Three."), release("v1.2.0-beta.2", "- Two.")),
+        )
+        assertEquals("1.2.0-beta.4\n• Four.\n\n1.2.0-beta.3\n• Three.\n\n1.2.0-beta.2\n• Two.", shown)
+    }
+
+    @Test
+    fun aReleaseWithNothingToSayIsLeftOutAndAnOlderOneIsNotPassedOffAsTheOneOnOffer() {
+        val onlyAnOlderOneSpeaks = ReleaseNotes.forUpdate(
+            listOf(release("v1.2.0-beta.4", "**Full Changelog**: https://x"), release("v1.2.0-beta.3", "- Three.")),
+        )
+        assertEquals("1.2.0-beta.3\n• Three.", onlyAnOlderOneSpeaks)
+
+        val nobodySpeaks = ReleaseNotes.forUpdate(listOf(release("v1.2.0-beta.4", ""), release("v1.2.0-beta.3", "  ")))
+        assertEquals("", nobodySpeaks)
+        assertEquals("", ReleaseNotes.forUpdate(emptyList()))
+    }
+
+    @Test
+    fun onlyTheNewestFewAreShown() {
+        val many = (7 downTo 1).map { release("v1.2.0-beta.$it", "- Number $it.") }
+        val shown = ReleaseNotes.forUpdate(many)
+        assertEquals(5, shown.split("\n\n").size)
+        assertTrue(shown.startsWith("1.2.0-beta.7\n• Number 7."))
+        assertTrue(shown.contains("1.2.0-beta.3"))
+        assertTrue(!shown.contains("1.2.0-beta.2"))
+        assertEquals(2, ReleaseNotes.forUpdate(many, limit = 2).split("\n\n").size)
     }
 }

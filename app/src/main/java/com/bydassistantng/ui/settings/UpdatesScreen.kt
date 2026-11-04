@@ -98,12 +98,12 @@ fun UpdatesScreen(onBack: () -> Unit, onOpenUpdateSettings: () -> Unit, viewMode
                 }
             }
 
-            val notesFor = when (val current = state) {
-                is UpdateState.Available -> current.release
-                is UpdateState.Failed -> current.release
-                else -> null
+            // The release on offer and, when the installed build is several behind, the ones skipped on the way to it.
+            val notes = when (val current = state) {
+                is UpdateState.Available -> ReleaseNotes.forUpdate(current.newer)
+                is UpdateState.Failed -> current.release?.let { ReleaseNotes.plain(it.notes) }.orEmpty()
+                else -> ""
             }
-            val notes = notesFor?.let { ReleaseNotes.plain(it.notes) }.orEmpty()
             if (notes.isNotEmpty()) {
                 item {
                     Column {

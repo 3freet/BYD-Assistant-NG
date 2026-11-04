@@ -68,6 +68,14 @@ object ReleaseCatalog {
     fun latest(releases: List<UpdateRelease>, channel: UpdateChannel): UpdateRelease? =
         releases.filter { channel.accepts(it) }.maxByOrNull { it.version }
 
+    /**
+     * Every release [channel] offers that is newer than the installed build ([installedCode] is its version code), newest
+     * first. The first is the one to install, and the rest are the releases that were skipped on the way to it: each release's
+     * notes tell only what changed since the one before, so the person who was several builds behind has not seen theirs.
+     */
+    fun newerThan(releases: List<UpdateRelease>, channel: UpdateChannel, installedCode: Long): List<UpdateRelease> =
+        releases.filter { channel.accepts(it) && it.version.code > installedCode }.sortedByDescending { it.version }
+
     /** GitHub writes an asset's digest as `sha256:<hex>`. */
     fun parseDigest(digest: String?): String? {
         val hex = digest?.trim()?.removePrefix("sha256:")?.lowercase() ?: return null
@@ -93,4 +101,20 @@ object ReleaseNotes {
             .joinToString("\n")
             .replace(Regex("\n{3,}"), "\n\n")
             .trim()
+
+    /**
+     * What the update screen says is new, for the releases [newer] than the installed build (newest first, see
+     * [ReleaseCatalog.newerThan]). The notes of the release on offer alone are shown as they are. When more releases have
+     * something to say, each is shown under its version, newest first, at most [limit] of them: a release's notes tell only what
+     * changed since the one before it. A release with nothing to say is left out.
+     */
+    fun forUpdate(newer: List<UpdateRelease>, limit: Int = 5): String {
+        val written = newer.map { it to plain(it.notes) }.filter { it.second.isNotEmpty() }.take(limit)
+        val onlyTheOneOnOffer = written.size == 1 && written.single().first.tag == newer.firstOrNull()?.tag
+        return when {
+            written.isEmpty() -> ""
+            onlyTheOneOnOffer -> written.single().second
+            else -> written.joinToString("\n\n") { (release, text) -> "${release.version}\n$text" }
+        }
+    }
 }
