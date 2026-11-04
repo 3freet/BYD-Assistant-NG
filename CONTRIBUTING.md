@@ -27,7 +27,7 @@ Two branches:
 | Branch | Purpose | What happens |
 | --- | --- | --- |
 | `main` | Development. Open pull requests against it | Every push runs unit tests and lint ([ci.yml](.github/workflows/ci.yml)); adding the release notes of the next beta also builds that beta (below) |
-| `stable` | What has been released | Pushing to it runs the tests and lint, builds and signs the app, and puts a GitHub **release** `v<version>` on GitHub as a draft, to be published after a last look ([stable.yml](.github/workflows/stable.yml)) |
+| `stable` | What has been released | Pushing to it runs the tests and lint, builds and signs the app, and puts the **release** `v<version>` on GitHub as a draft, to be published after a last look ([stable.yml](.github/workflows/stable.yml)) |
 
 **Pre-releases** are built from `main` when the release notes of the next beta are pushed
 ([beta.yml](.github/workflows/beta.yml)). The notes are a file that is read and approved before anything is published, and
