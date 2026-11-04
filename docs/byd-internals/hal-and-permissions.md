@@ -109,6 +109,44 @@ In this project the helper reads one command per line (`<commandId> <value>`), r
 command registry (so the shell process never trusts the app), and answers with one `BYDRESULT …` line. It stays
 alive between commands: a cold start costs about 1.3 s, a command in a running helper about 0.2 s.
 
+### DiLink 5.0: the device classes ask for a runtime permission
+
+A second check showed up in the log of a BYD Song Plus (DiLink 5.0, Android 12). Six device classes (`ac`, `bodywork`,
+`doorlock`, `instrument`, `panorama` and `setting`) carry a `…_COMMON` permission next to their `…_GET` and `…_SET` (the
+constants are in the DiLink 5.1 framework too), and BYD's API documentation for them says that "when `getInstance(Context)` is
+used" the app must be granted that runtime permission, while `…_GET` and `…_SET` need only be declared. On that car it is
+enforced when the device object is made, against the process that asks, and the vehicle helper, which is the ADB shell
+(uid 2000), does not hold it:
+
+```text
+dispatch window.driver(value=open -> 1) -> Failure(INVOCATION_FAILED, Neither user 2000 nor current process has android.permission.BYDAUTO_BODYWORK_COMMON.)
+```
+
+That is `Context.enforceCallingOrSelfPermission` (the "Neither user … nor current process" wording is its own), reached through
+reflection, which is why the exception arrives inside an `InvocationTargetException` that has no message of its own. What was
+refused on that car, and what was not:
+
+| Device | Refused for want of | What failed |
+| --- | --- | --- |
+| Bodywork | `BYDAUTO_BODYWORK_COMMON` | the windows and the sunroof |
+| Setting | `BYDAUTO_SETTING_COMMON` | seat ventilation, the cabin light, the drive mode |
+| Instrument | `BYDAUTO_INSTRUMENT_COMMON` | the outside temperature |
+| Ac | (not named: the wrapper hides it) | the inside temperature |
+| Seat and door | (not named) | the greeting's read ("Could not read the seat and the door yet") |
+| Tyre | none | **the tyre pressures were read**, from the same helper |
+
+So the car's native side accepts the shell on that car as it does on DiLink 5.1 (the tyre read went through it); what stops the
+helper is the Java check in the device classes. The DiLink 5.1 framework we pulled has the same `…_COMMON_PERM` constants and
+nothing in `android.hardware.bydauto` enforces them (no `enforce…` or `check…Permission` call), and the helper is accepted
+there. `…_COMMON` is a runtime permission, which a package can be given (`pm grant`, or the usual dialog) if it declares it; the
+shell is not a package that can, and a `Context` made for another package does not help, because the check is made against the
+uid of the process, or against the caller's uid while a Binder call is being handled.
+
+The app words the refusal for the person in the car ("This car's software does not let this app use the windows, doors and
+sunroof. Nothing was sent.", `PermissionRefusal`), and the helper's log line carries `perms=`: for each of the permissions of
+seven devices, how the system defines it, whether the helper holds it and whether the app does. How the helper could be let
+through, and what each way needs, is open: see the DiLink 5.0 section of the [roadmap](../roadmap.md).
+
 ## Events
 
 State changes also reach listeners (`registerListener`). The same stream is visible without any code: the

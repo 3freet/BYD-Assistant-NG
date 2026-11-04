@@ -20,6 +20,27 @@ The other lead, `LIGHTS_FLASHING_LIGHT_AND_HORN` (the "find my car" flash and ho
 cloud and over a direct Bluetooth connection, show the command reaching the car without passing through the Android
 side; the head unit only sees the lights come on. See [findings-and-dead-ends.md](byd-internals/findings-and-dead-ends.md).
 
+## DiLink 5.0
+
+One owner's log (a BYD Song Plus, Android 12) shows what stops the app on that generation (see
+[platforms.md](byd-internals/platforms.md#status)): the climate, bodywork, setting and instrument device classes refuse the
+vehicle helper, which is the ADB shell, for want of a runtime permission it cannot hold (`BYDAUTO_<DEVICE>_COMMON`,
+[hal-and-permissions.md](byd-internals/hal-and-permissions.md#dilink-50-the-device-classes-ask-for-a-runtime-permission)). The
+tyre pressure, which has no such permission, was read. The ways through; none is built:
+
+| Way | What it needs | Against it |
+| --- | --- | --- |
+| **The app holds the permission and the helper acts on its behalf** | The app is granted `…_COMMON` (a runtime permission it already declares: `pm grant` over the loopback ADB, or the usual dialog). The helper hosts a Binder that the app calls; while it handles such a call the check is made against the app's uid, which holds the permission, and the car's native side still sees the shell, which it accepted for the tyre read. | A new channel between the app and the helper, which can only be tried on a car that refuses the helper. Whether the permission can be granted is in the `perms=` field of the log line (`d`, or a `v` flag). |
+| **The calls are made in the app's own process** | The app holds `…_COMMON` as above. | The native side refused the app's uid on DiLink 5.1 (a whitelist); nothing says it accepts it on DiLink 5.0. |
+| **The helper is given a stand-in `Context` that answers the check** | A small class. | It works around the car's check instead of satisfying it, so it is not built unless that is chosen on purpose. |
+| **Root** | A rooted head unit. | Not something the app can ask of an owner. |
+
+| Item | What it needs |
+| --- | --- |
+| **`perms=` from the same car** | The next log from that owner, with a build that writes it: it says whether `…_COMMON` is a runtime permission (`d`), whether the app already holds it and whether `pm grant` could give it. That decides between the first two rows. |
+| **The A/C device route on a car** | A car without the `byd_airconditioning` service whose climate device the helper may use. The route is written and has run in a simulator only ([ac-service.md](byd-internals/ac-service.md#a-car-without-the-service)). |
+| **Audio and light on DiLink 5.0** | Neither device has a `…_COMMON` permission in the framework, so the helper may be able to use them there; the log shows no result for either. |
+
 ## DiLink 3 and DiLink 4
 
 The app looks every number up by name in the car's own table of features (see [platforms.md](byd-internals/platforms.md)): a
