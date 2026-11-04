@@ -41,3 +41,27 @@ jobs:
           name: lint-report
           path: app/build/reports/lint-results-release.html
           if-no-files-found: ignore
+
+  # The release tooling (tools/*.sh), the release notes files, and the version the next release will have.
+  release-tools:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Test the release tools
+        run: tools/test_release_tools.sh
+
+      - name: Check the release notes
+        run: tools/check_release_notes.sh
+
+      # A version can be released once. After a stable release, raise appVersionName for the next one: until then a beta
+      # cannot be built, and this check says so on every push instead of on the day a beta is wanted.
+      - name: Check that the version is not released yet
+        run: |
+          VERSION=$(sed -n 's/^val appVersionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+          if [ -z "$VERSION" ]; then echo "::error::Could not read appVersionName from app/build.gradle.kts."; exit 1; fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::Version ${VERSION} is released already. Raise appVersionName in app/build.gradle.kts for the next version."
+            exit 1
+          fi
