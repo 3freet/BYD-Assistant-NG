@@ -111,7 +111,7 @@ Opcjonalne ustawienia budowania:
 
 ## Gałęzie
 
-`main` to rozwój; commit zaczynający się od `beta:` (lub ręczne uruchomienie) publikuje z niej wersję wstępną, a wypchnięcie do `stable` publikuje wydanie. Zobacz [CONTRIBUTING.md](CONTRIBUTING.md).
+`main` to rozwój; dodanie do niej notatek o wydaniu następnej wersji wstępnej (plik w `release-notes/`) publikuje wersję wstępną, a wypchnięcie do `stable` publikuje wydanie. Zobacz [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Struktura projektu
 

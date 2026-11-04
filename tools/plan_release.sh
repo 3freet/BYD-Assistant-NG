@@ -86,10 +86,19 @@ plan_beta() {
     tag=${TAG_INPUT:-}
     [ -n "$tag" ] || die "notes_only needs the tag of the release to put the notes on (the input tag, for example the tag of the newest beta)"
     tag_exists "$tag" || die "there is no release $tag to put the notes on"
+    case $tag in
+      *-beta.[0-9]*) ;;
+      *) die "notes_only here is for the notes of a beta, and $tag is not one" ;;
+    esac
     notes="release-notes/${tag}.md"
     check_notes "$notes"
-    say "Notes only: $notes goes on the release $tag again; nothing is built."
-    emit mode notes-only
+    if [ "$dry" = true ]; then
+      say "Dry run: $notes would go on the release $tag. Nothing was changed."
+      emit mode skip
+    else
+      say "Notes only: $notes goes on the release $tag again; nothing is built."
+      emit mode notes-only
+    fi
     emit tag "$tag"
     emit notes "$notes"
     return 0

@@ -10,8 +10,6 @@ on:
 
 jobs:
   test:
-    # A "beta:" commit on main is tested by beta.yml as part of its own build, so don't test it twice.
-    if: github.event_name != 'push' || github.ref != 'refs/heads/main' || !startsWith(github.event.head_commit.message, 'beta:')
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout

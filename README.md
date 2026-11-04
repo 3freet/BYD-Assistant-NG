@@ -222,8 +222,8 @@ Optional build settings:
 
 ## Branches
 
-`main` is development; a commit starting with `beta:` (or a manual run) publishes a pre-release from it, and pushing to
-`stable` publishes a release. See [CONTRIBUTING.md](CONTRIBUTING.md).
+`main` is development; adding the release notes of the next beta to it (a file in `release-notes/`) publishes a pre-release,
+and pushing to `stable` publishes a release. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project layout
 

@@ -1,25 +1,83 @@
 name: Build Beta
 
 # Builds, signs and publishes a pre-release from main (version suffix -beta.N, numbered automatically).
-# Start it by committing to main with a message that begins with "beta:", or press "Run workflow" for this
-# workflow in the Actions tab.
+#
+# What starts it: pushing the release notes of the next beta, a new file release-notes/v<version>-beta.<N>.md where N is one more
+# than the newest beta (tools/new_release_notes.sh beta writes the file to read, adjust and approve). The pre-release is built
+# from the pushed commit and published with those notes as they are written, and a link to everything that changed under them.
+# Pushing such a file to any other branch builds and shows the notes and publishes nothing.
+#
+# From the Actions tab ("Run workflow") a run can also be started by hand, with these options:
+#   dry_run     build and show the notes, publish nothing
+#   notes_only  put release-notes/<tag>.md on the existing release <tag> again (after a fix to the file), build nothing
 on:
   push:
-    branches:
-      - main
+    branches-ignore:
+      - stable
+    paths:
+      - 'release-notes/v*-beta.*.md'
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build, show the release notes and publish nothing'
+        type: boolean
+        default: false
+      notes_only:
+        description: 'Only put release-notes/<tag>.md on the existing release <tag> again (no build)'
+        type: boolean
+        default: false
+      tag:
+        description: 'For notes_only: the beta to put the notes on, for example v1.2.0-beta.4'
+        type: string
+        required: false
 
 concurrency:
-  group: beta-build
+  # Real builds wait for each other. A dry run, or a run on any branch but main, has a group of its own, so that it never
+  # holds up a release or takes the place of one that is waiting.
+  group: ${{ github.ref == 'refs/heads/main' && inputs.dry_run != true && 'beta-build' || format('beta-dry-run-{0}', github.ref) }}
   cancel-in-progress: false
 
 jobs:
+  # Decides in seconds what this run does, and fails at once when it cannot: no notes file for the next beta, a file that fails
+  # the check, a number that is not the next one. All of it is in tools/plan_release.sh, which tools/test_release_tools.sh tests.
+  plan:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+      tag: ${{ steps.plan.outputs.tag }}
+      notes: ${{ steps.plan.outputs.notes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Plan
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          REF: ${{ github.ref }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          NOTES_ONLY: ${{ inputs.notes_only }}
+          TAG_INPUT: ${{ inputs.tag }}
+        run: tools/plan_release.sh beta
+
   build:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'beta:')
+    needs: plan
+    if: needs.plan.outputs.mode == 'build' || needs.plan.outputs.mode == 'dry-run'
     runs-on: ubuntu-24.04
 
     permissions:
       contents: write
+
+    env:
+      MODE: ${{ needs.plan.outputs.mode }}
+      TAG: ${{ needs.plan.outputs.tag }}
+      NOTES: ${{ needs.plan.outputs.notes }}
 
     steps:
       - name: Checkout
@@ -87,13 +145,29 @@ jobs:
         with:
           apk-path: ${{ steps.apk-path.outputs.path }}
 
-      - name: Generate tag
+      # The notes were written for one beta number and Gradle numbers the build itself: they must be the same.
+      - name: Check the tag
         id: tag
-        run: echo "tag=v${{ steps.apk-info.outputs.version-name }}" >> "$GITHUB_OUTPUT"
+        env:
+          VERSION_NAME: ${{ steps.apk-info.outputs.version-name }}
+        run: |
+          if [ "v${VERSION_NAME}" != "$TAG" ]; then
+            echo "::error::This build is v${VERSION_NAME}, but the release notes are for ${TAG}."
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       # The app shows these lines under "What's new" when it offers this build as an update.
-      - name: Write release notes
-        run: tools/release_notes.sh beta "${{ github.repository }}" "${{ steps.tag.outputs.tag }}" > release-notes.md
+      - name: Put the release notes together
+        run: tools/compose_release_body.sh beta "${{ github.repository }}" "$TAG" "$NOTES" > release-notes.md
+
+      - name: Show the release notes
+        run: |
+          {
+            echo "### ${TAG} (${MODE})"
+            echo
+            cat release-notes.md
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
@@ -110,7 +184,16 @@ jobs:
           path: app/build/outputs/mapping/beta/mapping.txt
           if-no-files-found: warn
 
+      - name: Upload release notes
+        uses: actions/upload-artifact@v7
+        with:
+          name: beta-release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
+      # Only a run that the plan made a real build, on main, publishes. A dry run ends here.
       - name: Create pre-release
+        if: needs.plan.outputs.mode == 'build' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
@@ -120,3 +203,32 @@ jobs:
           make_latest: false
           body_path: release-notes.md
           files: ${{ steps.apk-path.outputs.path }}
+
+  # Puts the notes file on a release that exists, without a build: a fix to the text of a page that is out.
+  notes:
+    needs: plan
+    if: needs.plan.outputs.mode == 'notes-only'
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Put the release notes on the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          NOTES: ${{ needs.plan.outputs.notes }}
+        run: |
+          tools/compose_release_body.sh beta "$GITHUB_REPOSITORY" "$TAG" "$NOTES" > release-notes.md
+          gh release edit "$TAG" --notes-file release-notes.md
+          {
+            echo "### ${TAG}: the release notes were put on the release"
+            echo
+            cat release-notes.md
+          } >> "$GITHUB_STEP_SUMMARY"

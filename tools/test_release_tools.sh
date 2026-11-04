@@ -193,6 +193,10 @@ mv "$work/held.md" release-notes/v1.2.0-beta.3.md
 plan beta EVENT_NAME=workflow_dispatch REF=refs/heads/main NOTES_ONLY=true TAG_INPUT=v1.2.0-beta.1
 expect "notes only for a release that has its file: mode" notes-only "$mode"
 expect "  the tag" v1.2.0-beta.1 "$tag"
+plan beta EVENT_NAME=workflow_dispatch REF=refs/heads/main NOTES_ONLY=true TAG_INPUT=v1.2.0-beta.1 DRY_RUN=true
+expect "notes only as a dry run changes nothing" skip "$mode"
+plan beta EVENT_NAME=workflow_dispatch REF=refs/heads/main NOTES_ONLY=true TAG_INPUT=v1.1.0
+expect "notes only for a stable release is refused here" 1 "$status"
 plan beta EVENT_NAME=workflow_dispatch REF=refs/heads/main NOTES_ONLY=true TAG_INPUT=v1.2.0-beta.7
 expect "notes only for a release that does not exist fails" 1 "$status"
 plan beta EVENT_NAME=workflow_dispatch REF=refs/heads/main NOTES_ONLY=true

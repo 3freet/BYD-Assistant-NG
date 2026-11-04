@@ -26,12 +26,25 @@ Two branches:
 
 | Branch | Purpose | What happens |
 | --- | --- | --- |
-| `main` | Development. Open pull requests against it | Every push runs unit tests and lint ([ci.yml](.github/workflows/ci.yml)) |
+| `main` | Development. Open pull requests against it | Every push runs unit tests and lint ([ci.yml](.github/workflows/ci.yml)); adding the release notes of the next beta also builds that beta (below) |
 | `stable` | What has been released | Pushing to it runs the tests and lint, builds and signs the app, and publishes a GitHub **release** `v<version>` ([stable.yml](.github/workflows/stable.yml)) |
 
-**Pre-releases** are built from `main` on request ([beta.yml](.github/workflows/beta.yml)): commit with a message
-that begins with `beta:`, or press *Run workflow* for "Build Beta" in the Actions tab. It tests, builds, signs and
-publishes `v<version>-beta.N`, numbered automatically.
+**Pre-releases** are built from `main` when the release notes of the next beta are pushed
+([beta.yml](.github/workflows/beta.yml)). The notes are a file that is read and approved before anything is published, and
+the page of the release is that file, as it is:
+
+1. `tools/new_release_notes.sh beta` writes `release-notes/v<version>-beta.<N>.md` for the next beta, with the commits
+   since the previous release as bullets under a comment.
+2. Read the lines: keep them, reword them, or drop the ones of little weight (see [release-notes/README.md](release-notes/README.md)).
+   Show the result to the maintainer, then delete the comment; the check refuses the file while it is there.
+3. Commit the file and push `main`. **Adding that file starts the build.** The workflow first checks the file and the beta
+   number and stops within seconds when they are wrong. It then tests, builds, signs and publishes `v<version>-beta.<N>`
+   (numbered from the existing tags) with the file as the page and a *Full Changelog* link under it. Nothing is edited on
+   GitHub afterwards.
+
+To see a build and its page without publishing, push the file to another branch, or press *Run workflow* for "Build Beta" in
+the Actions tab with `dry_run`. To change the text of a beta that is out, change its file on `main` and run the workflow with
+`notes_only` and the tag: the notes go onto the release, nothing is built.
 
 **To release:** test a beta on a vehicle, then fast-forward `stable` to the commit you tested:
 
@@ -52,8 +65,9 @@ build on the **channel** the user follows (Settings → Advanced): *Stable* sees
 releases alike, whichever is newer. It never offers a build that is not newer than the installed one, so switching
 channel cannot downgrade.
 
-- The release notes shown under *What's new* are the commit subjects since the previous release, written by
-  [`tools/release_notes.sh`](tools/release_notes.sh) — so write commit subjects a user could read.
+- The release notes shown under *What's new* are the page of the release: for a beta the file
+  `release-notes/<tag>.md` (see above); for a stable release, for now, the commit subjects since the previous stable release,
+  written by [`tools/release_notes.sh`](tools/release_notes.sh) — so write commit subjects a user could read.
 - An update is downloaded only from the repository's own release assets, checked against the size and SHA-256 GitHub
   recorded for the file, and checked to be the same package signed by the same key as the installed app, before it is
   handed to the installer.
