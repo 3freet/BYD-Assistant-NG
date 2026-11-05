@@ -35,6 +35,7 @@ object AppMatcher {
         "the", "app", "application", "open", "launch", "start", "تطبيق", "برنامج", "افتح", "شغل",
         "приложение", "приложения", "программа", "программу", "открой", "запусти", "включи",
         "aplikacja", "aplikacje", "program", "otworz", "uruchom", "wlacz",
+        "aplikasi", "buka", "bukakan", "jalankan", "nyalakan", "tolong",
     )
 
     private fun words(normalized: String): List<String> = normalized.split(' ').filter { it.isNotEmpty() && it !in FILLER }

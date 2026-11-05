@@ -295,7 +295,7 @@ const val END_CONVERSATION_FUNCTION = "end_conversation"
 private val endConversationDeclaration = GeminiFunctionDeclaration(
     name = END_CONVERSATION_FUNCTION,
     description = "End the voice conversation: stop listening. Call this when the user says they are finished — " +
-        "e.g. stop, that's all, thanks, goodbye, cancel — in English, Arabic, Russian or Polish.",
+        "e.g. stop, that's all, thanks, goodbye, cancel — in English, Arabic, Russian, Polish or Indonesian (e.g. sudah, cukup, itu saja, terima kasih, selesai, batal).",
 )
 
 /** Shared system prompt for both the classic and Live conversation paths. [conversation] is the Live
@@ -312,19 +312,22 @@ fun voiceAssistantSystemPrompt(
     // A fixed language is a firm rule and is said twice (here and again at the very end): a model that listens in many
     // languages, and was told only once, tends to answer in whichever it heard, which an unclear word can make the wrong one.
     val languageInstruction = when (language) {
-        AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English, Arabic, Russian or Polish."
+        AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English, Arabic, Russian, Polish or Indonesian."
         AssistantLanguage.ENGLISH ->
             "Always reply in English. This is a firm rule: whatever language the user speaks, or seems to speak " +
-                "(Arabic, Russian, Polish, Spanish, anything else), your reply is in English."
+                "(Arabic, Russian, Polish, Indonesian, Spanish, anything else), your reply is in English."
         AssistantLanguage.ARABIC ->
             "Always reply in Arabic. This is a firm rule: whatever language the user speaks, or seems to speak " +
-                "(English, Russian, Polish, Spanish, anything else), your reply is in Arabic."
+                "(English, Russian, Polish, Indonesian, Spanish, anything else), your reply is in Arabic."
         AssistantLanguage.RUSSIAN ->
             "Always reply in Russian. This is a firm rule: whatever language the user speaks, or seems to speak " +
-                "(English, Arabic, Polish, Spanish, anything else), your reply is in Russian."
+                "(English, Arabic, Polish, Indonesian, Spanish, anything else), your reply is in Russian."
         AssistantLanguage.POLISH ->
             "Always reply in Polish. This is a firm rule: whatever language the user speaks, or seems to speak " +
-                "(English, Arabic, Russian, Spanish, anything else), your reply is in Polish."
+                "(English, Arabic, Russian, Indonesian, Spanish, anything else), your reply is in Polish."
+        AssistantLanguage.INDONESIAN ->
+            "Always reply in Indonesian. This is a firm rule: whatever language the user speaks, or seems to speak " +
+                "(English, Arabic, Russian, Polish, Malay, anything else), your reply is in Indonesian."
     }
     val languageReminder = when (language) {
         AssistantLanguage.AUTO -> ""
@@ -340,16 +343,27 @@ fun voiceAssistantSystemPrompt(
         AssistantLanguage.POLISH ->
             " Remember: every reply is in Polish, whatever language you think you heard. If you could not make out " +
                 "what was said, ask the user in Polish to say it again."
+        AssistantLanguage.INDONESIAN ->
+            " Remember: every reply is in Indonesian, whatever language you think you heard. If you could not make out " +
+                "what was said, ask the user in Indonesian to say it again."
     }
     // Only said when it can matter: an assistant fixed to English or Russian never speaks Arabic.
     val dialectInstruction = dialect.promptName
         ?.takeIf { language == AssistantLanguage.AUTO || language == AssistantLanguage.ARABIC }
         ?.let { " When you reply in Arabic, speak $it — not another dialect." }
         .orEmpty()
+    // Indonesian read word for word from English sounds stiff in a car; say how it should sound. Only said when the
+    // assistant may answer in it.
+    val indonesianInstruction = if (language == AssistantLanguage.AUTO || language == AssistantLanguage.INDONESIAN) {
+        " When you reply in Indonesian, speak natural, everyday Bahasa Indonesia, polite but not stiff: address the " +
+            "user as \"Anda\", use the words Indonesian drivers use (AC, jok, jendela, kaca, setir, ban, lampu, " +
+            "bagasi) and do not translate word for word from English. Understand informal Indonesian and Jakarta slang " +
+            "too (e.g. \"nyalain\", \"matiin\", \"gedein\", \"kecilin\", \"dong\", \"ya\"), and regional accents."
+    } else ""
     // The speech recognizer behind the Live API can't be told which language to expect (the native-audio
     // models choose it themselves), so say it here: what this user speaks, and what they mostly ask about,
     // so an unclear word is heard as the car command it most likely was.
-    val listeningHint = " The user speaks Arabic (in any dialect), Russian, Polish and English, and sometimes mixes " +
+    val listeningHint = " The user speaks Arabic (in any dialect), Russian, Polish, Indonesian and English, and sometimes mixes " +
         "them in one sentence. Most requests are about the car — windows, seats (heating, ventilation, massage), " +
         "the fridge, the A/C, lights, tyre pressure, navigation, music — so when a word is unclear, prefer the reading that is a " +
         "car or assistant request over an unrelated phrase."
@@ -375,7 +389,7 @@ fun voiceAssistantSystemPrompt(
         " Music may be playing in the car. Sung words and other music are not the driver speaking to you: ignore them, and " +
             "answer only when a person speaks to you."
     } else ""
-    return "You are a concise voice assistant built into a car's head unit. $languageInstruction$dialectInstruction " +
+    return "You are a concise voice assistant built into a car's head unit. $languageInstruction$dialectInstruction$indonesianInstruction " +
         "Keep replies short — they will be read aloud.$listeningHint When the user asks to be taken somewhere, call " +
         "navigate_to with the place name instead of describing the route. When the user asks to open an app, call " +
         "open_app, and to close or quit an app, call close_app; for play, pause, next or previous on the music, " +
@@ -415,6 +429,8 @@ object ReplyLanguage {
             // Polish is written in the Latin script, like English and Spanish, so its letters cannot prove it (a short
             // reply may have no accented letter at all): only a reply in another script is certainly not Polish.
             AssistantLanguage.POLISH -> arabic == 0 && cyrillic == 0
+            // Indonesian is written in plain Latin letters, so, as with Polish, only another script rules it out.
+            AssistantLanguage.INDONESIAN -> arabic == 0 && cyrillic == 0
         }
     }
 }

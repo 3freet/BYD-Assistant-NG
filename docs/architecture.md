@@ -151,8 +151,8 @@ started, so the activity and the banner also set their direction explicitly; wit
 in place changes the text but leaves the layout mirrored. The back button stays on the left in right-to-left
 languages on purpose (the driver's side).
 
-Strings live in `res/values`, `res/values-ar`, `res/values-ru` and `res/values-pl`; a unit test fails if they drift apart.
-Vehicle command names shown on the banner are in the registry (`label`, `labelAr`, `labelRu`, `labelPl`). Arabic is the
+Strings live in `res/values`, `res/values-ar`, `res/values-ru`, `res/values-pl` and `res/values-in` (Indonesian, under the legacy code Android still uses); a unit test fails if they drift apart.
+Vehicle command names shown on the banner are in the registry (`label`, `labelAr`, `labelRu`, `labelPl`, `labelId`). Arabic is the
 only right-to-left language; Russian and Polish need nothing beyond their strings, their labels and the assistant's
 instruction to answer in them. Polish is written in the Latin script like English, so a reply in it cannot be told from
 English or Spanish by its letters (the reply-language check in the log can only rule out other scripts), and the app-name

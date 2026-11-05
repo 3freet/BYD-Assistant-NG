@@ -278,6 +278,10 @@ class VehicleCommandRegistryTest {
             assertEquals(russian, c.labelFor("ru"))
             assertTrue("${c.id} needs a Polish label", !c.labelPl.isNullOrBlank())
             assertEquals(c.labelPl, c.labelFor("pl"))
+            assertTrue("${c.id} needs an Indonesian label", !c.labelId.isNullOrBlank())
+            assertEquals(c.labelId, c.labelFor("id"))
+            // Android reports Indonesian with its legacy code.
+            assertEquals(c.labelId, c.labelFor("in"))
             // Any other language gets the English name.
             assertEquals(c.label, c.labelFor("de"))
         }
@@ -285,7 +289,7 @@ class VehicleCommandRegistryTest {
 
     @Test
     fun aMissingTranslationFallsBackToTheEnglishDisplayName() {
-        val bare = command("audio.volume").copy(label = null, labelAr = null, labelRu = null, labelPl = null)
+        val bare = command("audio.volume").copy(label = null, labelAr = null, labelRu = null, labelPl = null, labelId = null)
         assertEquals(bare.displayName, bare.labelFor("ru"))
         assertEquals(bare.displayName, bare.labelFor("ar"))
     }
