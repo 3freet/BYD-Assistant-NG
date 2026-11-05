@@ -1,0 +1,1507 @@
+From 1c508c365b02e6655e7a1c74720404b10e09927a Mon Sep 17 00:00:00 2001
+From: jkabuaufa-tech <jk.abuaufa@gmail.com>
+Date: Thu, 5 Nov 2026 08:39:25 +0000
+Subject: [PATCH] Add Indonesian (Bahasa Indonesia) to the app, the assistant's
+ replies and the car command names
+
+- res/values-in/strings.xml: full Indonesian translation of every string (values-in is the
+  qualifier Android resolves for Indonesian on every API level).
+- AppLanguageChoice.INDONESIAN and AssistantLanguage.INDONESIAN, shown in both language pickers.
+- System prompt: firm-rule and reminder for Indonesian, Indonesian named in the automatic
+  language and listening hint, and an instruction to speak natural, everyday Indonesian
+  (and understand informal speech) whenever the assistant may answer in it.
+- TTS locale, reply-language check, app-name filler words, labelId for all 56 car commands.
+- Tests and contributor docs updated to cover the new language.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ CONTRIBUTING.md                               |   4 +-
+ .../com/bydassistantng/apps/AppMatcher.kt     |   1 +
+ .../audio/TextToSpeechEngine.kt               |   1 +
+ .../com/bydassistantng/data/Preferences.kt    |   2 +-
+ .../gemini/ConversationShared.kt              |  32 +-
+ .../bydassistantng/ui/AppLanguageSelector.kt  |   4 +-
+ .../ui/settings/SettingsPanesCar.kt           |   2 +
+ .../com/bydassistantng/util/AppLanguage.kt    |   4 +-
+ .../bydassistantng/vehicle/VehicleCommand.kt  |   5 +-
+ .../vehicle/VehicleCommandRegistry.kt         |   2 +
+ app/src/main/res/values-ar/strings.xml        |   2 +
+ app/src/main/res/values-in/strings.xml        | 467 ++++++++++++++++++
+ app/src/main/res/values-pl/strings.xml        |   2 +
+ app/src/main/res/values-ru/strings.xml        |   2 +
+ app/src/main/res/values/strings.xml           |   2 +
+ app/src/main/resources/vehicle_commands.json  |  56 +++
+ .../gemini/AssistantSetupTest.kt              |  25 +-
+ .../bydassistantng/ui/StringResourcesTest.kt  |  36 +-
+ .../vehicle/VehicleCommandRegistryTest.kt     |   6 +-
+ docs/architecture.md                          |   4 +-
+ 20 files changed, 634 insertions(+), 25 deletions(-)
+ create mode 100644 app/src/main/res/values-in/strings.xml
+
+diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
+index feefb7e..ebaa9f4 100644
+--- a/CONTRIBUTING.md
++++ b/CONTRIBUTING.md
+@@ -147,7 +147,7 @@ in step with [exterior-speaker.md](docs/byd-internals/exterior-speaker.md) and
+    | --- | --- |
+    | `id`, `domain` | e.g. `seat.driver.heating`, `SETTING`. The part before the first dot is the **family** (the function the model calls, here `seat`) and the rest its **setting** (`driver.heating`); keep to the existing families unless there really is a new part of the car. A blocked domain is dropped at load time |
+    | `displayName` | A description for the model (long is fine) |
+-   | `label`, `labelAr`, `labelRu`, `labelPl` | Short names for the status banner, in English, Arabic, Russian and Polish |
++   | `label`, `labelAr`, `labelRu`, `labelPl`, `labelId` | Short names for the status banner, in English, Arabic, Russian, Polish and Indonesian |
+    | `deviceType`, `featureId` | The device and the **control** id (generic route), or the A/C `propertyId` and `area` |
+    | `stateFeatureId` | The **state** id to read back. Required for anything you can read |
+    | `parameter` | `fixedEnum` (`options`) or `range` (`min`, `max`, `unit`) in the units a user speaks |
+@@ -163,7 +163,7 @@ in step with [exterior-speaker.md](docs/byd-internals/exterior-speaker.md) and
+ 
+ ## Translations
+ 
+-All text is in `app/src/main/res/values/strings.xml`; Arabic (`values-ar`), Russian (`values-ru`) and Polish (`values-pl`) are there already.
++All text is in `app/src/main/res/values/strings.xml`; Arabic (`values-ar`), Russian (`values-ru`), Polish (`values-pl`) and Indonesian (`values-in`, the legacy code Android still uses for Indonesian) are there already.
+ Add `values-<code>/strings.xml` with the **same keys and placeholders** (a test checks this), and add the command
+ labels to the registry (`label<Code>` in `vehicle_commands.json`, `labelFor` in `VehicleCommand.kt`). A new language
+ the assistant is to speak also goes into `AssistantLanguage`, the prompt in `ConversationShared.kt` and the app language
+diff --git a/app/src/main/java/com/bydassistantng/apps/AppMatcher.kt b/app/src/main/java/com/bydassistantng/apps/AppMatcher.kt
+index 755b73b..91adae3 100644
+--- a/app/src/main/java/com/bydassistantng/apps/AppMatcher.kt
++++ b/app/src/main/java/com/bydassistantng/apps/AppMatcher.kt
+@@ -35,6 +35,7 @@ object AppMatcher {
+         "the", "app", "application", "open", "launch", "start", "تطبيق", "برنامج", "افتح", "شغل",
+         "приложение", "приложения", "программа", "программу", "открой", "запусти", "включи",
+         "aplikacja", "aplikacje", "program", "otworz", "uruchom", "wlacz",
++        "aplikasi", "buka", "bukakan", "jalankan", "nyalakan", "tolong",
+     )
+ 
+     private fun words(normalized: String): List<String> = normalized.split(' ').filter { it.isNotEmpty() && it !in FILLER }
+diff --git a/app/src/main/java/com/bydassistantng/audio/TextToSpeechEngine.kt b/app/src/main/java/com/bydassistantng/audio/TextToSpeechEngine.kt
+index e886237..64487aa 100644
+--- a/app/src/main/java/com/bydassistantng/audio/TextToSpeechEngine.kt
++++ b/app/src/main/java/com/bydassistantng/audio/TextToSpeechEngine.kt
+@@ -123,6 +123,7 @@ class TextToSpeechEngine @Inject constructor(@ApplicationContext context: Contex
+         AssistantLanguage.ENGLISH -> Locale.US
+         AssistantLanguage.RUSSIAN -> Locale.forLanguageTag("ru")
+         AssistantLanguage.POLISH -> Locale.forLanguageTag("pl")
++        AssistantLanguage.INDONESIAN -> Locale.forLanguageTag("id")
+         AssistantLanguage.AUTO -> when {
+             text.any { it in ARABIC_UNICODE_RANGE } -> Locale.forLanguageTag("ar")
+             text.any { it in CYRILLIC_UNICODE_RANGE } -> Locale.forLanguageTag("ru")
+diff --git a/app/src/main/java/com/bydassistantng/data/Preferences.kt b/app/src/main/java/com/bydassistantng/data/Preferences.kt
+index ed9fe70..5d13070 100644
+--- a/app/src/main/java/com/bydassistantng/data/Preferences.kt
++++ b/app/src/main/java/com/bydassistantng/data/Preferences.kt
+@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.map
+ import javax.inject.Inject
+ import javax.inject.Singleton
+ 
+-enum class AssistantLanguage(val bcp47: String) { AUTO(""), ENGLISH("en"), ARABIC("ar"), RUSSIAN("ru"), POLISH("pl") }
++enum class AssistantLanguage(val bcp47: String) { AUTO(""), ENGLISH("en"), ARABIC("ar"), RUSSIAN("ru"), POLISH("pl"), INDONESIAN("id") }
+ 
+ /** Which Arabic the assistant should speak. [MATCH] says nothing, so the model follows the user. */
+ enum class ArabicDialect(val promptName: String?) {
+diff --git a/app/src/main/java/com/bydassistantng/gemini/ConversationShared.kt b/app/src/main/java/com/bydassistantng/gemini/ConversationShared.kt
+index cba0373..8c81c17 100644
+--- a/app/src/main/java/com/bydassistantng/gemini/ConversationShared.kt
++++ b/app/src/main/java/com/bydassistantng/gemini/ConversationShared.kt
+@@ -295,7 +295,7 @@ const val END_CONVERSATION_FUNCTION = "end_conversation"
+ private val endConversationDeclaration = GeminiFunctionDeclaration(
+     name = END_CONVERSATION_FUNCTION,
+     description = "End the voice conversation: stop listening. Call this when the user says they are finished — " +
+-        "e.g. stop, that's all, thanks, goodbye, cancel — in English, Arabic, Russian or Polish.",
++        "e.g. stop, that's all, thanks, goodbye, cancel — in English, Arabic, Russian, Polish or Indonesian (e.g. sudah, cukup, itu saja, terima kasih, selesai, batal).",
+ )
+ 
+ /** Shared system prompt for both the classic and Live conversation paths. [conversation] is the Live
+@@ -312,19 +312,22 @@ fun voiceAssistantSystemPrompt(
+     // A fixed language is a firm rule and is said twice (here and again at the very end): a model that listens in many
+     // languages, and was told only once, tends to answer in whichever it heard, which an unclear word can make the wrong one.
+     val languageInstruction = when (language) {
+-        AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English, Arabic, Russian or Polish."
++        AssistantLanguage.AUTO -> "Reply in whichever language the user spoke — English, Arabic, Russian, Polish or Indonesian."
+         AssistantLanguage.ENGLISH ->
+             "Always reply in English. This is a firm rule: whatever language the user speaks, or seems to speak " +
+-                "(Arabic, Russian, Polish, Spanish, anything else), your reply is in English."
++                "(Arabic, Russian, Polish, Indonesian, Spanish, anything else), your reply is in English."
+         AssistantLanguage.ARABIC ->
+             "Always reply in Arabic. This is a firm rule: whatever language the user speaks, or seems to speak " +
+-                "(English, Russian, Polish, Spanish, anything else), your reply is in Arabic."
++                "(English, Russian, Polish, Indonesian, Spanish, anything else), your reply is in Arabic."
+         AssistantLanguage.RUSSIAN ->
+             "Always reply in Russian. This is a firm rule: whatever language the user speaks, or seems to speak " +
+-                "(English, Arabic, Polish, Spanish, anything else), your reply is in Russian."
++                "(English, Arabic, Polish, Indonesian, Spanish, anything else), your reply is in Russian."
+         AssistantLanguage.POLISH ->
+             "Always reply in Polish. This is a firm rule: whatever language the user speaks, or seems to speak " +
+-                "(English, Arabic, Russian, Spanish, anything else), your reply is in Polish."
++                "(English, Arabic, Russian, Indonesian, Spanish, anything else), your reply is in Polish."
++        AssistantLanguage.INDONESIAN ->
++            "Always reply in Indonesian. This is a firm rule: whatever language the user speaks, or seems to speak " +
++                "(English, Arabic, Russian, Polish, Malay, anything else), your reply is in Indonesian."
+     }
+     val languageReminder = when (language) {
+         AssistantLanguage.AUTO -> ""
+@@ -340,16 +343,27 @@ fun voiceAssistantSystemPrompt(
+         AssistantLanguage.POLISH ->
+             " Remember: every reply is in Polish, whatever language you think you heard. If you could not make out " +
+                 "what was said, ask the user in Polish to say it again."
++        AssistantLanguage.INDONESIAN ->
++            " Remember: every reply is in Indonesian, whatever language you think you heard. If you could not make out " +
++                "what was said, ask the user in Indonesian to say it again."
+     }
+     // Only said when it can matter: an assistant fixed to English or Russian never speaks Arabic.
+     val dialectInstruction = dialect.promptName
+         ?.takeIf { language == AssistantLanguage.AUTO || language == AssistantLanguage.ARABIC }
+         ?.let { " When you reply in Arabic, speak $it — not another dialect." }
+         .orEmpty()
++    // Indonesian read word for word from English sounds stiff in a car; say how it should sound. Only said when the
++    // assistant may answer in it.
++    val indonesianInstruction = if (language == AssistantLanguage.AUTO || language == AssistantLanguage.INDONESIAN) {
++        " When you reply in Indonesian, speak natural, everyday Bahasa Indonesia, polite but not stiff: address the " +
++            "user as \"Anda\", use the words Indonesian drivers use (AC, jok, jendela, kaca, setir, ban, lampu, " +
++            "bagasi) and do not translate word for word from English. Understand informal Indonesian and Jakarta slang " +
++            "too (e.g. \"nyalain\", \"matiin\", \"gedein\", \"kecilin\", \"dong\", \"ya\"), and regional accents."
++    } else ""
+     // The speech recognizer behind the Live API can't be told which language to expect (the native-audio
+     // models choose it themselves), so say it here: what this user speaks, and what they mostly ask about,
+     // so an unclear word is heard as the car command it most likely was.
+-    val listeningHint = " The user speaks Arabic (in any dialect), Russian, Polish and English, and sometimes mixes " +
++    val listeningHint = " The user speaks Arabic (in any dialect), Russian, Polish, Indonesian and English, and sometimes mixes " +
+         "them in one sentence. Most requests are about the car — windows, seats (heating, ventilation, massage), " +
+         "the fridge, the A/C, lights, tyre pressure, navigation, music — so when a word is unclear, prefer the reading that is a " +
+         "car or assistant request over an unrelated phrase."
+@@ -375,7 +389,7 @@ fun voiceAssistantSystemPrompt(
+         " Music may be playing in the car. Sung words and other music are not the driver speaking to you: ignore them, and " +
+             "answer only when a person speaks to you."
+     } else ""
+-    return "You are a concise voice assistant built into a car's head unit. $languageInstruction$dialectInstruction " +
++    return "You are a concise voice assistant built into a car's head unit. $languageInstruction$dialectInstruction$indonesianInstruction " +
+         "Keep replies short — they will be read aloud.$listeningHint When the user asks to be taken somewhere, call " +
+         "navigate_to with the place name instead of describing the route. When the user asks to open an app, call " +
+         "open_app, and to close or quit an app, call close_app; for play, pause, next or previous on the music, " +
+@@ -415,6 +429,8 @@ object ReplyLanguage {
+             // Polish is written in the Latin script, like English and Spanish, so its letters cannot prove it (a short
+             // reply may have no accented letter at all): only a reply in another script is certainly not Polish.
+             AssistantLanguage.POLISH -> arabic == 0 && cyrillic == 0
++            // Indonesian is written in plain Latin letters, so, as with Polish, only another script rules it out.
++            AssistantLanguage.INDONESIAN -> arabic == 0 && cyrillic == 0
+         }
+     }
+ }
+diff --git a/app/src/main/java/com/bydassistantng/ui/AppLanguageSelector.kt b/app/src/main/java/com/bydassistantng/ui/AppLanguageSelector.kt
+index b08cd01..576e044 100644
+--- a/app/src/main/java/com/bydassistantng/ui/AppLanguageSelector.kt
++++ b/app/src/main/java/com/bydassistantng/ui/AppLanguageSelector.kt
+@@ -31,7 +31,7 @@ fun Context.findActivity(): Activity? {
+ }
+ 
+ /**
+- * The "App language" control: system default, English, Arabic or Russian. The language names are shown in
++ * The "App language" control: system default, English, Arabic, Russian, Polish or Indonesian. The language names are shown in
+  * their own language on purpose, so someone who can't read the current UI language can still find theirs.
+  */
+ @Composable
+@@ -46,6 +46,7 @@ fun AppLanguageSelector(selected: AppLanguageChoice, onSelect: (AppLanguageChoic
+                 AppLanguageChoice.ARABIC to stringResource(R.string.app_language_arabic),
+                 AppLanguageChoice.RUSSIAN to stringResource(R.string.app_language_russian),
+                 AppLanguageChoice.POLISH to stringResource(R.string.app_language_polish),
++                AppLanguageChoice.INDONESIAN to stringResource(R.string.app_language_indonesian),
+             )
+             options.forEachIndexed { index, (value, label) ->
+                 SegmentedButton(
+@@ -85,6 +86,7 @@ fun AssistantLanguage.label(): String = stringResource(
+         AssistantLanguage.ARABIC -> R.string.language_arabic
+         AssistantLanguage.RUSSIAN -> R.string.language_russian
+         AssistantLanguage.POLISH -> R.string.language_polish
++        AssistantLanguage.INDONESIAN -> R.string.language_indonesian
+     },
+ )
+ 
+diff --git a/app/src/main/java/com/bydassistantng/ui/settings/SettingsPanesCar.kt b/app/src/main/java/com/bydassistantng/ui/settings/SettingsPanesCar.kt
+index 9a8c573..172c33d 100644
+--- a/app/src/main/java/com/bydassistantng/ui/settings/SettingsPanesCar.kt
++++ b/app/src/main/java/com/bydassistantng/ui/settings/SettingsPanesCar.kt
+@@ -367,6 +367,7 @@ internal fun AppPane(
+                 ChoiceOption(AppLanguageChoice.ARABIC.name, stringResource(R.string.app_language_arabic)),
+                 ChoiceOption(AppLanguageChoice.RUSSIAN.name, stringResource(R.string.app_language_russian)),
+                 ChoiceOption(AppLanguageChoice.POLISH.name, stringResource(R.string.app_language_polish)),
++                ChoiceOption(AppLanguageChoice.INDONESIAN.name, stringResource(R.string.app_language_indonesian)),
+             ),
+             selectedKey = appLanguage.name,
+             onSelect = { key ->
+@@ -407,6 +408,7 @@ internal fun AppPane(
+                         AppLanguageChoice.ARABIC -> stringResource(R.string.app_language_arabic)
+                         AppLanguageChoice.RUSSIAN -> stringResource(R.string.app_language_russian)
+                         AppLanguageChoice.POLISH -> stringResource(R.string.app_language_polish)
++                        AppLanguageChoice.INDONESIAN -> stringResource(R.string.app_language_indonesian)
+                     },
+                     onClick = { showAppLanguageChoice = true },
+                 )
+diff --git a/app/src/main/java/com/bydassistantng/util/AppLanguage.kt b/app/src/main/java/com/bydassistantng/util/AppLanguage.kt
+index 50896a2..b66b14f 100644
+--- a/app/src/main/java/com/bydassistantng/util/AppLanguage.kt
++++ b/app/src/main/java/com/bydassistantng/util/AppLanguage.kt
+@@ -7,7 +7,7 @@ import androidx.annotation.StringRes
+ import java.util.Locale
+ 
+ /** What the user picked for the app's own screens and messages. [SYSTEM] follows the device. */
+-enum class AppLanguageChoice(val tag: String?) { SYSTEM(null), ENGLISH("en"), ARABIC("ar"), RUSSIAN("ru"), POLISH("pl") }
++enum class AppLanguageChoice(val tag: String?) { SYSTEM(null), ENGLISH("en"), ARABIC("ar"), RUSSIAN("ru"), POLISH("pl"), INDONESIAN("id") }
+ 
+ /**
+  * The language of the app's UI (screens, banner, notifications) — separate from the language the
+@@ -50,6 +50,8 @@ object AppLanguage {
+         "ar" -> "Arabic"
+         "ru" -> "Russian"
+         "pl" -> "Polish"
++        // Android still reports Indonesian with its legacy code "in" (Locale("id").language == "in").
++        "in", "id" -> "Indonesian"
+         else -> "English"
+     }
+ 
+diff --git a/app/src/main/java/com/bydassistantng/vehicle/VehicleCommand.kt b/app/src/main/java/com/bydassistantng/vehicle/VehicleCommand.kt
+index bfce4af..33c33eb 100644
+--- a/app/src/main/java/com/bydassistantng/vehicle/VehicleCommand.kt
++++ b/app/src/main/java/com/bydassistantng/vehicle/VehicleCommand.kt
+@@ -23,6 +23,7 @@ data class VehicleCommand(
+     val labelAr: String? = null,
+     val labelRu: String? = null,
+     val labelPl: String? = null,
++    val labelId: String? = null,
+     val invocation: VehicleInvocation,
+     val parameter: VehicleParameter,
+     /** For [VehicleInvocation.GenericFeatureSet]: the *state* id that reports what [featureId] (a
+@@ -84,13 +85,15 @@ val VehicleCommand.needsCarLink: Boolean get() = invocation !is VehicleInvocatio
+ data class ValueOverride(val whenValue: Int, val featureId: Int, val sendValue: Int, val featureName: String? = null)
+ 
+ /**
+- * The name to show for this command in the language with this tag ("ar", "ru", "pl"; any other is English), falling back to
++ * The name to show for this command in the language with this tag ("ar", "ru", "pl", "id"/"in"; any other is English), falling back to
+  * [VehicleCommand.displayName].
+  */
+ fun VehicleCommand.labelFor(languageTag: String): String = when (languageTag) {
+     "ar" -> labelAr
+     "ru" -> labelRu
+     "pl" -> labelPl
++    // Android reports Indonesian as "in" (its legacy code); "id" is the current one.
++    "id", "in" -> labelId
+     else -> label
+ } ?: displayName
+ 
+diff --git a/app/src/main/java/com/bydassistantng/vehicle/VehicleCommandRegistry.kt b/app/src/main/java/com/bydassistantng/vehicle/VehicleCommandRegistry.kt
+index 23b4f24..57f47fe 100644
+--- a/app/src/main/java/com/bydassistantng/vehicle/VehicleCommandRegistry.kt
++++ b/app/src/main/java/com/bydassistantng/vehicle/VehicleCommandRegistry.kt
+@@ -221,6 +221,7 @@ internal data class CommandEntryDto(
+     val labelAr: String? = null,
+     val labelRu: String? = null,
+     val labelPl: String? = null,
++    val labelId: String? = null,
+     val deviceType: Int? = null,
+     val featureId: Int? = null,
+     val featureName: String? = null,
+@@ -373,6 +374,7 @@ internal fun CommandEntryDto.toVehicleCommand(): VehicleCommand {
+         labelAr = labelAr,
+         labelRu = labelRu,
+         labelPl = labelPl,
++        labelId = labelId,
+         invocation = invocation.toVehicleInvocation(id),
+         parameter = parameter.toVehicleParameter(id),
+         stateFeatureId = stateFeatureId,
+diff --git a/app/src/main/res/values-ar/strings.xml b/app/src/main/res/values-ar/strings.xml
+index 2d2cb49..9bb9d51 100644
+--- a/app/src/main/res/values-ar/strings.xml
++++ b/app/src/main/res/values-ar/strings.xml
+@@ -104,6 +104,7 @@
+     <string name="app_language_arabic">العربية</string>
+     <string name="app_language_russian">Русский</string>
+     <string name="app_language_polish">Polski</string>
++    <string name="app_language_indonesian">Bahasa Indonesia</string>
+     <string name="assistant_language_title">لغة الرد</string>
+     <string name="assistant_language_hint">اللغة التي يجيب بها المساعد. «تلقائي» يتبع اللغة التي تتحدث بها.</string>
+     <string name="language_auto">تلقائي</string>
+@@ -111,6 +112,7 @@
+     <string name="language_arabic">العربية</string>
+     <string name="language_russian">الروسية</string>
+     <string name="language_polish">البولندية</string>
++    <string name="language_indonesian">الإندونيسية</string>
+     <string name="dialect_title">اللهجة العربية</string>
+     <string name="dialect_hint">اللهجة التي يتحدث بها عندما يرد بالعربية. «مثلي» يتبع طريقة كلامك. يسري التغيير في المحادثة التالية.</string>
+     <string name="dialect_match">مثلي</string>
+diff --git a/app/src/main/res/values-in/strings.xml b/app/src/main/res/values-in/strings.xml
+new file mode 100644
+index 0000000..1a290ae
+--- /dev/null
++++ b/app/src/main/res/values-in/strings.xml
+@@ -0,0 +1,467 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    Bahasa Indonesia. The folder is values-in, not values-id: Android still reports Indonesian with the legacy code
++    "in" (Locale("id").language == "in"), and values-in is the qualifier that resolves on every API level.
++-->
++<resources>
++    <string name="wheel_key_service_name">Tombol setir BYD Assistant NG</string>
++    <string name="wheel_key_service_description">Memungkinkan BYD Assistant NG mulai mendengarkan saat Anda menekan tombol mikrofon di setir. Aplikasi hanya memantau satu tombol itu; aplikasi tidak membaca layar atau apa pun yang Anda ketik.</string>
++
++    <!-- Shared actions -->
++    <string name="action_back">Kembali</string>
++    <string name="action_cancel">Batal</string>
++    <string name="action_enable">Aktifkan</string>
++    <string name="action_save">Simpan</string>
++    <string name="action_clear">Hapus</string>
++    <string name="action_share">Bagikan</string>
++    <string name="action_change">Ubah</string>
++    <string name="action_open">Buka</string>
++    <string name="action_close">Tutup</string>
++    <string name="action_add">Tambah</string>
++    <string name="action_manage">Kelola</string>
++
++    <!-- Home -->
++    <string name="home_settings">Pengaturan</string>
++    <string name="home_vehicle_armed">Kontrol kendaraan aktif</string>
++    <string name="home_talk">Bicara</string>
++    <string name="home_tap_to_talk">Ketuk untuk bicara</string>
++    <string name="home_connecting">Menghubungkan…</string>
++    <string name="home_listening">Mendengarkan… ketuk untuk selesai</string>
++    <string name="home_thinking">Berpikir…</string>
++
++    <!-- Status banner -->
++    <string name="banner_connecting">Menghubungkan…</string>
++    <string name="banner_listening">Mendengarkan…</string>
++    <string name="banner_thinking">Berpikir…</string>
++    <string name="banner_speaking">Berbicara…</string>
++    <string name="banner_error">Terjadi kesalahan</string>
++    <string name="banner_listening_press_to_stop">Mendengarkan… tekan untuk berhenti</string>
++    <string name="banner_navigating">Navigasi ke %1$s</string>
++    <string name="banner_opening_app">Membuka %1$s</string>
++    <string name="banner_closing_app">Menutup %1$s</string>
++    <string name="banner_tyres">Membaca tekanan ban</string>
++    <string name="banner_playing">Memutar: %1$s</string>
++    <string name="banner_playing_favorites">Memutar favorit Anda</string>
++    <string name="banner_playing_playlists">Memutar playlist Anda</string>
++    <string name="banner_outside_temperature">Membaca suhu luar</string>
++    <string name="banner_inside_temperature">Membaca suhu kabin</string>
++    <string name="banner_air_quality">Membaca kualitas udara</string>
++    <string name="banner_volume">Membaca volume</string>
++    <string name="banner_passenger_open">Membuka %1$s di layar penumpang</string>
++    <string name="banner_passenger_close">Menutup aplikasi di layar penumpang</string>
++    <string name="banner_passenger_home">Layar penumpang: beranda</string>
++    <string name="banner_passenger_back">Layar penumpang: kembali</string>
++    <string name="banner_passenger_screen_off">Mematikan layar penumpang</string>
++    <string name="banner_passenger_screen_on">Menyalakan layar penumpang</string>
++    <string name="banner_passenger_status">Memeriksa layar penumpang</string>
++    <string name="banner_passenger_brightness">Mengatur kecerahan layar penumpang</string>
++    <string name="banner_cluster_open">Menampilkan %1$s di panel instrumen</string>
++    <string name="banner_cluster_close">Mengembalikan panel instrumen</string>
++    <string name="banner_cluster_status">Memeriksa panel instrumen</string>
++    <string name="banner_speak_outside">Berbicara di luar mobil</string>
++    <string name="banner_play_sound_outside">Memutar suara di luar mobil</string>
++    <string name="banner_drive_mode">Mode berkendara: %1$s</string>
++    <string name="banner_remember">Mengingat hal itu</string>
++    <string name="banner_forget">Melupakan hal itu</string>
++    <string name="banner_media">Media: %1$s</string>
++    <string name="media_play">putar</string>
++    <string name="media_pause">jeda</string>
++    <string name="media_next">berikutnya</string>
++    <string name="media_previous">sebelumnya</string>
++    <string name="media_stop">berhenti</string>
++
++    <!-- Errors shown to the user -->
++    <string name="err_no_audio">Tidak ada audio yang terekam</string>
++    <string name="err_cant_record">Tidak dapat mulai merekam</string>
++    <string name="err_mic_off">Izin mikrofon nonaktif — buka BYD Assistant NG untuk memberikannya</string>
++    <string name="err_finish_setup">Selesaikan dulu penyiapan BYD Assistant NG</string>
++    <string name="fail_no_network">Tidak ada koneksi internet — periksa jaringan atau hotspot ponsel Anda</string>
++    <string name="fail_api_key">Gemini menolak permintaan — periksa kunci API di Pengaturan</string>
++    <string name="fail_busy">Gemini sedang sibuk atau melebihi batas — coba lagi sebentar lagi</string>
++    <string name="fail_generic">Koneksi suara gagal — coba lagi</string>
++    <string name="fail_no_key">Tambahkan kunci API Gemini Anda di pengaturan BYD Assistant NG</string>
++    <string name="err_mic_reopen">Tidak dapat membuka kembali mikrofon.</string>
++    <string name="fail_lost">Koneksi suara terputus</string>
++    <string name="classic_no_key">Kunci API Gemini belum diatur — tambahkan di Pengaturan.</string>
++    <string name="classic_cant_read">Tidak dapat membaca rekaman.</string>
++    <string name="classic_empty_reply">Balasan kosong dari Gemini.</string>
++    <string name="classic_key_rejected">Gemini menolak kunci API — periksa di Pengaturan.</string>
++    <string name="classic_permission_denied">Google menolak akses untuk proyek kunci ini%1$s. Memasukkan ulang kunci tidak akan membantu — gunakan kunci dari proyek lain atau periksa AI Studio.</string>
++    <string name="classic_rate_limited">Gemini sedang membatasi permintaan — coba lagi sebentar lagi.</string>
++    <string name="classic_network">Tidak dapat menghubungi Gemini — periksa koneksi.</string>
++    <string name="classic_provider_error">Gemini mengembalikan galat.</string>
++    <string name="classic_empty_response">Gemini mengembalikan respons kosong.</string>
++
++    <!-- Settings -->
++    <string name="settings_title">Pengaturan</string>
++    <string name="settings_section_assistant">Asisten</string>
++    <string name="settings_section_conversation">Percakapan</string>
++    <string name="settings_section_memory">Memori</string>
++    <string name="settings_section_car">Mobil</string>
++    <string name="settings_section_app">Aplikasi</string>
++    <string name="settings_section_voice_channel">Kanal suara</string>
++    <string name="advanced_section_updates">Pembaruan</string>
++    <string name="app_language_title">Bahasa aplikasi</string>
++    <string name="app_language_hint">Bahasa untuk layar dan pesan. Tidak mengubah bahasa yang digunakan asisten saat berbicara.</string>
++    <string name="app_language_system">Bawaan sistem</string>
++    <string name="app_language_english">English</string>
++    <string name="app_language_arabic">العربية</string>
++    <string name="app_language_russian">Русский</string>
++    <string name="app_language_polish">Polski</string>
++    <string name="app_language_indonesian">Bahasa Indonesia</string>
++    <string name="assistant_language_title">Bahasa balasan</string>
++    <string name="assistant_language_hint">Bahasa yang digunakan asisten untuk menjawab. Otomatis mengikuti bahasa yang Anda ucapkan.</string>
++    <string name="language_auto">Otomatis</string>
++    <string name="language_english">Inggris</string>
++    <string name="language_arabic">Arab</string>
++    <string name="language_russian">Rusia</string>
++    <string name="language_polish">Polandia</string>
++    <string name="language_indonesian">Indonesia</string>
++    <string name="dialect_title">Dialek Arab</string>
++    <string name="dialect_hint">Bahasa Arab mana yang digunakan saat menjawab dalam bahasa Arab. “Ikuti saya” menyesuaikan cara Anda berbicara. Berlaku pada percakapan berikutnya.</string>
++    <string name="dialect_match">Ikuti saya</string>
++    <string name="dialect_gulf">Teluk</string>
++    <string name="dialect_egyptian">Mesir</string>
++    <string name="dialect_levantine">Syam (Levant)</string>
++    <string name="dialect_maghrebi">Maghribi</string>
++    <string name="dialect_msa">Arab Standar Modern</string>
++    <string name="voice_title">Suara</string>
++    <string name="voice_default">Bawaan</string>
++    <string name="voice_hint">Suara asisten. Berlaku pada percakapan berikutnya — mulai percakapan dan dengarkan.</string>
++    <string name="web_search_title">Pencarian web</string>
++    <string name="web_search_desc">Memungkinkan asisten mencari di Google — berita, cuaca, skor, harga — saat Anda menanyakan sesuatu yang tidak bisa dijawabnya sendiri. Pertanyaan Anda dikirim ke Google Search. Berlaku pada percakapan berikutnya.</string>
++    <string name="web_search_note">Memerlukan paket Gemini berbayar (penagihan aktif pada kunci API Anda). Dengan kunci gratis, Google menolaknya, dan asisten tetap berjalan tanpa pencarian.</string>
++    <string name="wheel_title">Tombol setir</string>
++    <string name="wheel_off">Nonaktif. Aktifkan agar asisten mulai mendengarkan dengan tombol mikrofon di setir. Aplikasi hanya memantau satu tombol itu.</string>
++    <string name="wheel_turning_on">Mengaktifkan…</string>
++    <string name="wheel_waiting_for_prompt">Jika mobil menampilkan “Izinkan debugging USB?”, ketuk Izinkan. Aplikasi menunggu jawaban Anda selama satu menit.</string>
++    <string name="wheel_turn_on">Aktifkan</string>
++    <string name="wheel_press_now">Tekan tombol di setir sekarang…</string>
++    <string name="wheel_on">Aktif. %1$s memulai dan menghentikan mendengarkan.</string>
++    <string name="wheel_use_different">Gunakan tombol lain</string>
++    <string name="wheel_back_to_mic">Kembali ke tombol mikrofon</string>
++    <string name="car_voice_title">Asisten suara BYD</string>
++    <string name="car_voice_on">Aktif. Asisten bawaan juga merespons tombol mikrofon di setir, sehingga kedua asisten bisa menyala bersamaan. Nonaktifkan agar tombol itu hanya dipakai aplikasi ini.</string>
++    <string name="car_voice_off">Nonaktif. Tombol mikrofon di setir hanya dipakai aplikasi ini. Anda dapat mengaktifkannya kembali di sini.</string>
++    <string name="car_voice_turn_off">Nonaktifkan</string>
++    <string name="car_voice_turn_on">Aktifkan kembali</string>
++    <string name="car_voice_working">Memproses…</string>
++    <string name="car_voice_confirm_title">Nonaktifkan asisten suara BYD?</string>
++    <string name="car_voice_confirm_body">Ini mematikan asisten suara bawaan mobil, sehingga tidak lagi merespons tombol mikrofon di setir. Perintah suara bawaannya juga berhenti berfungsi sampai Anda mengaktifkannya kembali di sini. Tidak ada yang dihapus instalasinya.</string>
++    <string name="car_voice_failed">Tidak dapat mengubahnya. Diperlukan debugging ADB yang aktif pada head unit ini.</string>
++    <string name="wheel_conflict_note">Jika aplikasi lain (misalnya aplikasi pemeta tombol) sudah memakai tombol ini, hapus pemetaannya di sana — jika tidak, keduanya akan merespons.</string>
++    <string name="wheel_failure_hint">Tidak dapat mengaktifkannya secara otomatis — diperlukan debugging ADB yang aktif pada head unit ini, dan ketuk Izinkan pada pertanyaan mobil “Izinkan debugging USB?”. Atau, sekali dari komputer: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS, lalu coba lagi.</string>
++    <string name="end_wait_title">Jeda setelah Anda berhenti bicara</string>
++    <string name="end_wait_desc">Berapa lama asisten menunggu dalam diam sebelum menganggap Anda selesai berbicara. Jeda yang lebih singkat membuat jawaban lebih cepat, tetapi bisa memotong ucapan Anda saat berhenti sejenak di tengah kalimat.</string>
++    <string name="end_wait_value">%1$d ms</string>
++    <string name="sensitivity_title">Kepekaan pendengaran</string>
++    <string name="sensitivity_desc">Seberapa jelas suara harus terdengar agar asisten menganggapnya sebagai ucapan Anda, baik saat mulai mendengarkan maupun saat Anda menyela. Nilai lebih tinggi menangkap suara yang lebih pelan tetapi lebih mudah terkecoh oleh bising; nilai lebih rendah memerlukan suara yang lebih tegas. Jika asisten menjawab suara yang bukan dari Anda, atau berhenti bicara sendiri, turunkan; jika ucapan Anda terlewat, naikkan.</string>
++    <string name="sensitivity_value">%1$+d</string>
++    <string name="sensitivity_reset">Kembali ke 0</string>
++    <string name="media_access_service_name">Media yang diputar (tidak membaca notifikasi)</string>
++    <string name="group_music_in_background">Musik di latar belakang</string>
++    <string name="level_gate_title">Abaikan musik di latar belakang</string>
++    <string name="level_gate_desc">Saat musik diputar, asisten mengukur seberapa keras musik dan kabin sesaat sebelum Anda berbicara, lalu hanya mengirim suara yang jelas lebih keras, sehingga lirik lagu tidak dianggap sebagai ucapan Anda. Tidak berpengaruh saat tidak ada musik.</string>
++    <string name="level_gate_note">Suara Anda harus jelas lebih keras daripada musik. Jika ucapan Anda terpotong atau terlewat, kecilkan musik (Pengaturan → Suara), naikkan “Kepekaan pendengaran”, atau nonaktifkan fitur ini. Nonaktif secara bawaan.</string>
++    <string name="music_hint_title">Beri tahu asisten bahwa musik mungkin sedang diputar</string>
++    <string name="music_hint_desc">Menambahkan satu baris ke instruksi asisten: musik mungkin sedang diputar, lirik lagu bukan ucapan Anda kepadanya, dan asisten hanya menjawab orang yang berbicara kepadanya.</string>
++    <string name="music_hint_note">Terkadang ini membuat asisten mengabaikan Anda saat musik diputar. Nonaktif secara bawaan.</string>
++    <string name="end_wait_reset">Kembali ke bawaan (%1$d ms)</string>
++    <string name="memory_short_title">Memori jangka pendek</string>
++    <string name="memory_short_desc">Menyimpan beberapa percakapan terakhir selama sepuluh menit, sehingga permintaan lanjutan seperti “lakukan hal yang sama untuk penumpang” berfungsi di percakapan berikutnya.</string>
++    <string name="memory_long_title">Memori jangka panjang</string>
++    <string name="memory_long_desc">Memungkinkan asisten mengingat hal yang Anda minta, misalnya alamat rumah Anda atau cara Anda ingin disapa. Hanya disimpan di perangkat ini.</string>
++    <string name="memory_manage">Yang diingat (%1$d)</string>
++    <string name="memory_dialog_title">Yang diingat asisten</string>
++    <string name="memory_empty">Belum ada. Ucapkan “ingat bahwa …” dalam percakapan, atau tambahkan catatan di bawah.</string>
++    <string name="memory_add_hint">Tambahkan sesuatu untuk diingat</string>
++    <string name="memory_add">Tambah</string>
++    <string name="memory_forget">Lupakan</string>
++    <string name="memory_close">Tutup</string>
++    <string name="memory_clear_all">Lupakan semuanya</string>
++    <string name="memory_clear_title">Lupakan semuanya?</string>
++    <string name="memory_clear_body">Semua yang diingat asisten tentang Anda, serta percakapan terakhir yang disimpannya, akan dihapus.</string>
++    <string name="memory_full">Daftar sudah penuh (%1$d item). Lupakan sesuatu terlebih dahulu.</string>
++    <string name="memory_duplicate">Hal itu sudah diingat.</string>
++    <string name="barge_title">Menyela asisten</string>
++    <string name="barge_desc">Mulailah berbicara saat asisten sedang berbicara, maka asisten akan berhenti dan mendengarkan. Nonaktifkan jika asisten pernah terpotong sendiri secara tidak sengaja.</string>
++    <string name="vehicle_title">Kontrol kendaraan</string>
++    <string name="vehicle_desc">Memungkinkan asisten benar-benar mengoperasikan kontrol mobil, bukan sekadar membicarakannya.</string>
++    <string name="vehicle_warning_title">Aktifkan kontrol kendaraan?</string>
++    <string name="vehicle_warning_body">Ini memungkinkan asisten mengoperasikan AC, jendela, jok, dan kontrol serupa saat Anda memintanya. Gunakan saat parkir atau saat aman untuk melakukannya.</string>
++    <string name="autostart_title">Mulai otomatis setelah reboot</string>
++    <string name="autostart_confirmed">Anda sudah membuka layar mulai otomatis (auto-start) head unit sejak pembaruan terakhir. Jika tombol setir berhenti merespons setelah mobil tidur atau dinyalakan ulang, pastikan sakelar aplikasi ini di sana dalam posisi nonaktif.</string>
++    <string name="autostart_unconfirmed">Belum dikonfirmasi. Buka layar mulai otomatis (auto-start) head unit dan nonaktifkan sakelar aplikasi ini, agar head unit dapat menjalankan aplikasi dengan sendirinya. Jika tidak, aplikasi bisa ditutup saat mobil tidur atau dinyalakan ulang, sehingga tombol setir tidak berfungsi sampai Anda membuka aplikasi lagi.</string>
++    <string name="autostart_open">Buka pengaturan mulai otomatis</string>
++    <string name="api_key_title">Kunci API Gemini</string>
++    <string name="api_key_saved">Sebuah kunci sudah tersimpan.</string>
++    <string name="api_key_none">Belum ada kunci tersimpan — asisten belum bisa terhubung ke Gemini.</string>
++    <string name="api_key_new_label">Kunci API baru</string>
++    <string name="updates_title">Pembaruan</string>
++    <!-- Updates, advanced settings and the API-key link -->
++    <string name="api_key_get_text">Untuk membuat kunci Google AI Studio Anda, %1$s.</string>
++    <string name="api_key_get_link">klik di sini</string>
++    <string name="open_with">Buka dengan</string>
++    <string name="api_key_open_failed">Tidak dapat membuka browser di sini. Di perangkat lain, buka aistudio.google.com/apikey.</string>
++    <string name="updates_status_unchecked">Ketuk untuk memeriksa pembaruan</string>
++    <string name="updates_status_checking">Memeriksa pembaruan…</string>
++    <string name="updates_status_up_to_date">Versi %1$s · terbaru</string>
++    <string name="updates_status_available">Pembaruan tersedia: %1$s</string>
++    <string name="updates_status_downloading">Mengunduh %1$s…</string>
++    <string name="updates_status_installing">Memasang %1$s…</string>
++    <string name="updates_status_failed">Percobaan pembaruan terakhir gagal</string>
++    <string name="updates_installed_version">Versi terpasang</string>
++    <string name="updates_channel_line">Kanal pembaruan: %1$s</string>
++    <string name="channel_stable">Stabil</string>
++    <string name="channel_beta">Beta</string>
++    <string name="updates_check">Periksa pembaruan</string>
++    <string name="updates_checking">Memeriksa pembaruan…</string>
++    <string name="updates_up_to_date">Aplikasi Anda sudah versi terbaru.</string>
++    <string name="updates_last_checked">Terakhir diperiksa: %1$s</string>
++    <string name="updates_channel_latest">Terbaru di kanal %1$s: %2$s</string>
++    <string name="updates_available_title">Versi %1$s tersedia</string>
++    <string name="updates_available_meta">Dirilis %1$s · %2$s</string>
++    <string name="updates_whats_new">Yang baru</string>
++    <string name="updates_install">Unduh dan pasang</string>
++    <string name="updates_downloading">Mengunduh… %1$d%%</string>
++    <string name="updates_installing">Memasang — aplikasi akan dimulai ulang sebentar lagi.</string>
++    <string name="updates_system_installer">Selesaikan pemasangan di jendela penginstal sistem.</string>
++    <string name="updates_confirm_title">Pasang versi %1$s?</string>
++    <string name="updates_confirm_body">Aplikasi akan ditutup dan dimulai ulang untuk menyelesaikan pembaruan, dan percakapan suara yang sedang berjalan akan berakhir. Lakukan saat parkir.</string>
++    <string name="updates_confirm_install">Pasang</string>
++    <string name="updates_retry">Coba lagi</string>
++    <string name="updates_open_advanced">Kanal pembaruan dan pemeriksaan otomatis ada di Pengaturan, bagian Aplikasi.</string>
++    <string name="updates_banner_available">Pembaruan tersedia: %1$s</string>
++    <string name="updates_banner_updated">Diperbarui ke versi %1$s</string>
++    <string name="updates_banner_view">Lihat</string>
++    <string name="action_dismiss">Tutup</string>
++    <string name="update_err_unsupported">Build ini tidak memeriksa pembaruan.</string>
++    <string name="update_err_busy">Percakapan suara sedang berlangsung. Akhiri dulu, lalu coba lagi.</string>
++    <string name="update_err_offline">Tidak dapat menghubungi GitHub. Periksa koneksi internet dan coba lagi.</string>
++    <string name="update_err_rate_limited">GitHub sedang membatasi permintaan. Coba lagi beberapa saat lagi.</string>
++    <string name="update_err_server">GitHub menjawab dengan galat (%1$s). Coba lagi nanti.</string>
++    <string name="update_err_bad_response">Informasi pembaruan tidak dapat dibaca.</string>
++    <string name="update_err_no_space">Ruang penyimpanan tidak cukup untuk mengunduh pembaruan.</string>
++    <string name="update_err_download">Unduhan gagal. Periksa koneksi dan coba lagi.</string>
++    <string name="update_err_corrupt">Berkas yang diunduh tidak cocok dengan yang dirilis, sehingga dibuang. Coba lagi.</string>
++    <string name="update_err_wrong_package">Berkas yang diunduh bukan aplikasi ini, sehingga dibuang.</string>
++    <string name="update_err_wrong_signature">Berkas yang diunduh tidak ditandatangani oleh penerbit yang sama dengan aplikasi terpasang, sehingga tidak dipasang.</string>
++    <string name="update_err_not_newer">Versi yang diunduh tidak lebih baru daripada yang terpasang.</string>
++    <string name="update_err_no_installer">Pembaruan dipasang melalui koneksi debugging lokal head unit, yang tidak dapat dijangkau, dan perangkat ini tidak memiliki penginstal cadangan. Pastikan debugging nirkabel aktif, lalu coba lagi.</string>
++    <string name="update_err_install">Pemasangan ditolak (%1$s).</string>
++    <string name="update_err_install_timeout">Pemasangan tidak selesai. Coba lagi.</string>
++    <string name="advanced_channel_title">Kanal pembaruan</string>
++    <string name="advanced_channel_stable_desc">Rilis yang sudah diuji. Direkomendasikan.</string>
++    <string name="advanced_channel_beta_desc">Build terbaru, segera setelah dirilis. Mungkin masih mengandung bug.</string>
++    <string name="advanced_channel_note">Hanya build yang lebih baru dari yang terpasang yang ditawarkan, sehingga mengganti kanal tidak akan pernah mengembalikan aplikasi ke versi lama.</string>
++    <string name="advanced_beta_title">Beralih ke kanal beta?</string>
++    <string name="advanced_beta_body">Build beta dirilis sebelum diuji sepenuhnya dan mungkin mengandung bug. Anda dapat kembali ke Stabil kapan saja.</string>
++    <string name="advanced_auto_title">Periksa pembaruan secara otomatis</string>
++    <string name="advanced_auto_desc">Mencari versi baru kira-kira setiap enam jam selama internet tersedia, dan menampilkan notifikasi jika ada. Tidak ada yang dipasang tanpa konfirmasi Anda.</string>
++    <string name="advanced_experimental_title">Fitur eksperimental</string>
++    <string name="advanced_experimental_note">Fungsi-fungsi ini bersifat eksperimental. Fungsi ini memakai fitur mobil yang tidak dirancang untuk aplikasi ini, baru dicoba pada satu model mobil, dan bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Gunakan dengan risiko Anda sendiri.</string>
++    <string name="advanced_exterior_enable_title">Speaker eksterior</string>
++    <string name="advanced_exterior_enable_desc">Memungkinkan asisten berbicara dan memutar suara melalui speaker eksterior mobil, sehingga orang di luar dapat mendengarnya. Nonaktif secara bawaan.</string>
++    <string name="advanced_drive_modes_title">Penggantian mode berkendara</string>
++    <string name="advanced_drive_modes_desc">Memungkinkan asisten mengganti mode berkendara mobil (salju, pasir, lumpur, pegunungan, bebatuan, otomatis, eco, sport) saat Anda memintanya. Mobil tetap yang memutuskan apakah menerimanya. Nonaktif secara bawaan.</string>
++    <string name="advanced_cluster_enable_title">Panel instrumen</string>
++    <string name="advanced_cluster_enable_desc">Memungkinkan asisten menampilkan aplikasi di panel instrumen di belakang setir dan melepasnya kembali. Aplikasi ditampilkan di tengah panel, tempat BYD Maps menampilkan petanya, sementara kecepatan dan lampu peringatan tetap terlihat. Apa pun yang ditampilkan di sana berada dalam pandangan pengemudi, jadi gunakan hanya saat mobil parkir. Fitur ini menyalakan BYD Maps selama bekerja. Nonaktif secara bawaan.</string>
++    <string name="advanced_cluster_confirm_title">Aktifkan fitur panel instrumen?</string>
++    <string name="advanced_cluster_confirm_body">Ini adalah fitur eksperimental. Selama aplikasi berada di panel instrumen, aplikasi ditampilkan di tengahnya, tempat BYD Maps menampilkan petanya, sementara kecepatan dan lampu peringatan tetap terlihat. Apa pun yang ditampilkan di sana berada dalam pandangan pengemudi, jadi gunakan hanya saat mobil parkir. Untuk menampilkan aplikasi di sana, fitur ini menyalakan dan mematikan aplikasi navigasi BYD serta mengubah cara panel diberi tampilan, yang tidak dirancang untuk aplikasi ini. Fitur ini baru dicoba pada satu model mobil; mungkin tidak berfungsi, mungkin membiarkan peta tetap tampil di panel, atau bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Untuk mengembalikan tampilan meter, minta asisten melepas aplikasi dari panel, atau nonaktifkan fitur ini. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas pengoperasian mobil Anda dengan aman.</string>
++    <string name="advanced_cluster_keep_title">Tetap nonaktifkan BYD Maps setelahnya</string>
++    <string name="advanced_cluster_keep_desc">Aktif: BYD Maps dinonaktifkan lagi setelah aplikasi meninggalkan panel dan tampilan meter kembali. Nonaktif: BYD Maps tetap aktif (dan juga muncul di pengalih layar beranda). Nonaktif secara bawaan.</string>
++    <string name="voice_channel_title">Balas di kanal suara</string>
++    <string name="voice_channel_desc">Mengucapkan balasan asisten di kanal suara bawaan mobil, yang dipakai asisten BYD, dengan volume tersendiri, terpisah dari musik.</string>
++    <string name="voice_channel_music_title">Musik selama percakapan</string>
++    <string name="voice_channel_music_desc">Apa yang terjadi pada musik sejak asisten mulai mendengarkan hingga percakapan selesai.</string>
++    <string name="voice_music_keep">Tetap diputar</string>
++    <string name="voice_music_keep_desc">Musik tetap berjalan seperti biasa.</string>
++    <string name="voice_music_lower">Peredaman bawaan mobil</string>
++    <string name="voice_music_lower_desc">Mobil mengecilkan musik selama percakapan dengan peredaman bawaannya, yang dalam dan tidak bisa diubah, lalu membesarkannya kembali setelahnya. Musik bisa berhenti sejenak saat kembali.</string>
++    <string name="voice_music_level">Kecilkan</string>
++    <string name="voice_music_level_desc">Volume musik dikecilkan sebesar porsi yang Anda pilih selama asisten mendengarkan dan berbicara, lalu dikembalikan saat percakapan selesai. Hanya saat musik diputar.</string>
++    <string name="voice_channel_dip_always_title">Juga saat tidak ada yang tercatat diputar</string>
++    <string name="voice_channel_dip_always_desc">Mengecilkan volume media di setiap percakapan, bahkan saat mobil tidak melaporkan ada yang sedang diputar. Cadangan untuk saat aplikasi tidak dapat melihat apa yang diputar.</string>
++    <string name="voice_channel_dip_always_note">Bilah volume mobil bergerak di awal dan akhir setiap percakapan, juga saat tidak ada yang diputar. Nonaktif secara bawaan.</string>
++    <string name="voice_channel_dip_title">Seberapa banyak musik dikecilkan</string>
++    <string name="voice_channel_dip_desc">Porsi volume musik yang dikurangi selama asisten aktif.</string>
++    <string name="voice_channel_dip_value">%1$d%%</string>
++    <string name="voice_music_pause">Jeda</string>
++    <string name="voice_music_pause_desc">Musik berhenti selama percakapan dan diputar lagi setelahnya, pada aplikasi yang dapat melanjutkan sendiri.</string>
++    <string name="voice_channel_adaptive_title">Volume mengikuti kebisingan kabin</string>
++    <string name="voice_channel_adaptive_desc">Mendengarkan kabin sesaat sebelum berbicara dan menyesuaikan volume suara: lebih keras saat kabin bising, lebih pelan saat tenang. Nonaktif: volume tetap seperti adanya.</string>
++    <string name="voice_channel_adaptive_desc_headrest">Mendengarkan kabin sesaat sebelum berbicara dan menyesuaikan volume sandaran kepala: lebih keras saat kabin bising, lebih pelan saat tenang. Volume navigasi mobil diubah selama percakapan lalu dikembalikan. Nonaktif: sandaran kepala diputar pada volume navigasi yang Anda atur di mobil.</string>
++    <string name="voice_channel_gain_title">Lebih keras atau lebih pelan dari kebisingan kabin</string>
++    <string name="voice_channel_gain_desc">Menggeser volume yang dipilih ke atas atau ke bawah, sekitar 2 dB per langkah. Di kabin yang tenang, saat suara sudah di tingkat terendah, ini membuat suara itu sendiri lebih pelan.</string>
++    <string name="voice_channel_gain_value">%1$+d</string>
++    <string name="voice_channel_gain_reset">Kembali ke 0</string>
++    <string name="advanced_exterior_confirm_title">Aktifkan speaker eksterior?</string>
++    <string name="advanced_exterior_confirm_body">Ini adalah fitur eksperimental. Fitur ini mengeluarkan suara dan bunyi asisten ke luar mobil, yang dapat mengejutkan atau mengganggu orang di sekitar, dan bekerja melalui fungsi mobil yang tidak dirancang untuk aplikasi ini. Fitur ini baru dicoba pada satu model mobil dan bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas cara dan tempat penggunaannya.</string>
++    <string name="advanced_drive_modes_confirm_title">Aktifkan penggantian mode berkendara?</string>
++    <string name="advanced_drive_modes_confirm_body">Ini adalah fitur eksperimental. Mengganti mode berkendara mengubah cara mobil menyalurkan tenaga, menangani jalan, dan mengerem, dan bekerja melalui fungsi mobil yang tidak dirancang untuk aplikasi ini. Fitur ini baru dicoba pada satu model mobil; mungkin tidak berfungsi, atau bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Gunakan hanya saat aman. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas pengoperasian mobil Anda dengan aman.</string>
++    <string name="advanced_exterior_title">Volume speaker eksterior</string>
++    <string name="advanced_exterior_desc">Seberapa keras asisten saat berbicara atau memutar suara di luar mobil. Anda juga dapat meminta tingkat volume lewat suara, misalnya “ucapkan dengan keras”.</string>
++    <string name="exterior_volume_low">Rendah</string>
++    <string name="exterior_volume_medium">Sedang</string>
++    <string name="exterior_volume_high">Tinggi</string>
++    <string name="update_channel_name">Pembaruan aplikasi</string>
++    <string name="update_channel_desc">Memberi tahu Anda saat versi baru BYD Assistant NG tersedia</string>
++    <string name="update_notif_title">Pembaruan tersedia: %1$s</string>
++    <string name="update_notif_text">Ketuk untuk melihat yang baru dan memasangnya.</string>
++    <string name="view_app_log">Lihat log aplikasi</string>
++    <string name="view_crash_log">Lihat log crash</string>
++    <string name="view_about">Tentang</string>
++    <string name="key_cannot_use">%1$s tidak dapat digunakan — tombol ini diperlukan untuk navigasi head unit.</string>
++    <string name="key_now_using">Sekarang menggunakan: %1$s</string>
++    <string name="key_no_press">Tidak ada tekanan tombol yang terdeteksi — coba lagi.</string>
++    <string name="key_service_not_running">Layanan tombol setir tidak berjalan — aktifkan dulu di pengaturan Aksesibilitas.</string>
++    <string name="api_enter_key">Masukkan kunci terlebih dahulu.</string>
++    <string name="api_saved">Kunci API disimpan.</string>
++    <string name="api_save_failed">Tidak dapat menyimpan kunci API — coba lagi.</string>
++    <string name="api_cleared">Kunci API dihapus.</string>
++
++    <!-- Onboarding -->
++    <string name="onb_welcome">Selamat datang</string>
++    <string name="onb_intro">Beberapa hal yang dibutuhkan asisten ini sebelum dapat menjawab Anda.</string>
++    <string name="onb_api_label">Kunci API</string>
++    <string name="onb_api_note">Dari Google AI Studio. Disimpan terenkripsi di perangkat, tidak pernah dikirim ke mana pun selain ke API Google.</string>
++    <string name="onb_get_started">Mulai</string>
++    <string name="onb_enter_key">Masukkan kunci API Gemini.</string>
++
++    <!-- Logs -->
++    <string name="log_app_title">Log aplikasi</string>
++    <string name="log_crash_title">Log crash</string>
++
++    <!-- Steering-wheel key names -->
++    <string name="key_mic_short">Tombol mikrofon setir, tekan singkat (tombol %1$d)</string>
++    <string name="key_mic_long">Tombol mikrofon setir, tekan lama (tombol %1$d)</string>
++    <string name="key_generic">Tombol %1$d</string>
++    <string name="key_named">%1$s (tombol %2$d)</string>
++
++
++    <!-- About -->
++    <string name="about_title">Tentang</string>
++    <string name="about_version">Versi %1$s</string>
++    <string name="about_disclaimer_title">Penafian — tanggung jawab Anda</string>
++    <string name="about_disclaimer_body">BYD Assistant NG adalah proyek independen. Aplikasi ini tidak dibuat, disetujui, atau didukung oleh BYD maupun Google; nama BYD, DiLink, dan Gemini adalah milik pemiliknya masing-masing.\n\nAplikasi ini disediakan “sebagaimana adanya”, tanpa jaminan apa pun. Anda menggunakannya sepenuhnya atas tanggung jawab sendiri — termasuk semua yang diucapkannya dan semua yang dilakukannya pada mobil Anda. Kontrol kendaraan bersifat eksperimental: gunakan hanya saat aman, jangan biarkan mengalihkan perhatian Anda dari mengemudi, dan periksa bahwa mobil melakukan apa yang Anda minta.\n\nApa yang Anda ucapkan dikirim ke layanan Gemini milik Google, dan ke Google Search jika Anda mengaktifkan pencarian web.</string>
++    <string name="about_open_source_title">Sumber terbuka</string>
++    <string name="about_open_source_body">BYD Assistant NG adalah perangkat lunak gratis dan bersumber terbuka, berlisensi GNU General Public License versi 3. Anda dapat membaca kodenya, melaporkan masalah, dan menyumbangkan perbaikan melalui halaman proyek. Kontrol kendaraan yang sudah terverifikasi untuk model lain sangat diharapkan.</string>
++    <string name="about_source_link">Buka halaman proyek</string>
++    <string name="about_libraries_title">Dibangun dengan perangkat lunak sumber terbuka</string>
++    <string name="about_libraries_body">Kotlin dan kotlinx.serialization, AndroidX dan Jetpack Compose, OkHttp, Dagger Hilt, dan Dadb — semuanya sumber terbuka di bawah Apache License 2.0. Teks lisensi tersedia di masing-masing proyek.</string>
++
++    <string name="cat_assistant_desc">Kunci, bahasa dan suara, serta pencarian web</string>
++    <string name="cat_conversation_desc">Bagaimana giliran bicara dimulai dan diakhiri</string>
++    <string name="cat_memory_desc">Apa yang disimpan antarpercakapan</string>
++    <string name="cat_sound">Suara</string>
++    <string name="cat_sound_desc">Suara asisten, dan musik Anda saat asisten berbicara</string>
++    <string name="cat_car_desc">Apa yang boleh dioperasikan, tombol setir, dan asisten bawaan mobil</string>
++    <string name="cat_app_desc">Bahasa, pembaruan, dan dukungan</string>
++    <string name="group_setup">Penyiapan</string>
++    <string name="group_language_voice">Bahasa dan suara</string>
++    <string name="group_lookup">Mencari informasi</string>
++    <string name="group_greeting">Saat Anda masuk mobil</string>
++    <string name="greeting_title">Sapa saya saat masuk mobil</string>
++    <string name="greeting_desc">Saat mobil menyala, Anda duduk di kursi pengemudi dan pintu pengemudi tertutup, asisten menyapa Anda dengan hangat, menyebutkan waktu dan suhu di luar, lalu berhenti. Asisten tidak pernah berbicara sendiri untuk alasan lain. Untuk mengubah sapaannya, atau agar asisten menanyakan sesuatu kepada Anda, beri tahu asisten bagaimana Anda ingin disapa dan minta asisten mengingatnya (memerlukan memori jangka panjang aktif).</string>
++    <string name="greeting_note">Memerlukan debugging ADB aktif, untuk membaca jok dan pintu, sama seperti kontrol mobil. Jika Anda memulai percakapan lebih dulu, asisten tetap diam.</string>
++    <string name="greeting_autostart_notice">Wajib: NONAKTIFKAN sakelar aplikasi ini di layar mulai otomatis (auto-start) head unit. Selama sakelar aktif, head unit menutup aplikasi setelah mobil tidur, dan sapaan tidak akan berfungsi.</string>
++    <string name="greeting_autostart_done">Anda sudah membuka layar mulai otomatis sejak pembaruan terakhir. Pastikan sakelar aplikasi ini di sana NONAKTIF, atau sapaan tidak akan berfungsi. Pembaruan aplikasi akan mengatur ulangnya.</string>
++    <string name="greeting_speaker_title">Speaker sapaan</string>
++    <string name="greeting_speaker_desc">Tempat sapaan terdengar.</string>
++    <string name="greeting_speaker_note">Sandaran kepala pengemudi membuat sapaan hanya terdengar oleh Anda. Fitur ini memakai jalur sandaran kepala yang sama dengan suara asisten, sehingga memerlukan kanal suara aktif di pengaturan Suara dan debugging ADB; tanpa itu, sapaan keluar dari speaker mobil.</string>
++    <string name="greeting_test_title">Uji sapaan</string>
++    <string name="greeting_test_desc">Memutar sapaan sekarang, seolah-olah mobil baru menyala dan Anda baru duduk serta menutup pintu.</string>
++    <string name="greeting_test_button">Putar sekarang</string>
++    <string name="greeting_test_busy">Asisten sedang dalam percakapan.</string>
++    <string name="greeting_test_not_running">Layanan tombol setir tidak berjalan, sehingga asisten tidak dapat mulai sendiri. Aktifkan dulu di pengaturan mobil.</string>
++    <string name="greeting_test_failed">Sapaan tidak dapat dimulai. Periksa koneksi dan kunci Gemini.</string>
++    <string name="group_control">Kontrol</string>
++    <string name="group_volume">Volume</string>
++    <string name="group_language">Bahasa</string>
++    <string name="group_support">Dukungan</string>
++    <string name="chip_saved">Tersimpan</string>
++    <string name="chip_missing">Belum ada</string>
++    <string name="step_less">Kurangi</string>
++    <string name="step_more">Tambah</string>
++    <string name="wheel_button_row">Tombol mikrofon</string>
++    <string name="autostart_notice">Mulai otomatis setelah reboot belum dikonfirmasi. Buka layar mulai otomatis (auto-start) head unit dan nonaktifkan sakelar aplikasi ini, atau asisten bisa berhenti berfungsi setelah mobil tidur atau dinyalakan ulang.</string>
++    <string name="status_assistant">Kunci tersimpan · %1$s</string>
++    <string name="status_no_key">Belum ada kunci Gemini</string>
++    <string name="status_talk_over_on">Menyela: aktif</string>
++    <string name="status_talk_over_off">Menyela: nonaktif</string>
++    <string name="status_memories">%1$d diingat</string>
++    <string name="status_voice_channel_on">Kanal suara aktif</string>
++    <string name="status_voice_channel_off">Kanal suara nonaktif</string>
++    <string name="status_needs_attention">Perlu perhatian</string>
++    <string name="status_all_set">Semua siap</string>
++    <string name="status_update_available">Pembaruan tersedia</string>
++    <string name="status_version">Versi %1$s</string>
++    <string name="settings_search_hint">Cari pengaturan</string>
++    <string name="settings_search_clear">Hapus pencarian</string>
++    <string name="settings_search_results">%1$d ditemukan</string>
++    <string name="settings_search_none">Tidak ada yang cocok. Coba kata yang lebih pendek.</string>
++    <string name="updates_open_settings">Buka pengaturan pembaruan</string>
++    <string name="setup_rail_title">Penyiapan</string>
++    <string name="setup_name_language">Bahasa</string>
++    <string name="setup_name_microphone">Mikrofon</string>
++    <string name="setup_name_key">Kunci Gemini</string>
++    <string name="setup_name_wheel">Tombol setir</string>
++    <string name="setup_name_autostart">Mulai otomatis</string>
++    <string name="setup_name_done">Siap</string>
++    <string name="setup_state_language">Pilihan Anda</string>
++    <string name="setup_required">Wajib</string>
++    <string name="setup_recommended">Disarankan</string>
++    <string name="chip_allowed">Diizinkan</string>
++    <string name="setup_state_added">Ditambahkan</string>
++    <string name="setup_state_on">Aktif</string>
++    <string name="setup_state_off">Nonaktif</string>
++    <string name="setup_state_opened">Dibuka</string>
++    <string name="setup_state_done">Tinjau</string>
++    <string name="setup_step_of">Langkah %1$d dari %2$d</string>
++    <string name="setup_mic_title">Mikrofon</string>
++    <string name="setup_mic_body">Asisten mendengarkan melalui mikrofon mobil dan mengirim suara Anda ke Gemini untuk dijawab. Asisten tidak dapat bekerja tanpa izin ini.</string>
++    <string name="setup_mic_row">Akses mikrofon</string>
++    <string name="setup_mic_hint">Pilih “Saat aplikasi digunakan” (atau “Izinkan”). “Hanya kali ini” akan kedaluwarsa dan asisten diam-diam berhenti berfungsi.</string>
++    <string name="setup_mic_granted">Diizinkan. Asisten dapat mendengar Anda.</string>
++    <string name="setup_mic_button">Izinkan</string>
++    <string name="setup_notif_row">Notifikasi</string>
++    <string name="setup_notif_desc">Memungkinkan aplikasi memberi tahu Anda saat versi baru tersedia.</string>
++    <string name="setup_notif_button">Izinkan</string>
++    <string name="setup_key_title">Kunci API Gemini</string>
++    <string name="setup_key_body">Gemini adalah AI yang mendengarkan dan menjawab. Tempelkan kunci dari Google AI Studio.</string>
++    <string name="setup_wheel_title">Tombol setir</string>
++    <string name="setup_wheel_body">Mulai dan hentikan asisten dengan tombol mikrofon di setir, tanpa menyentuh layar.</string>
++    <string name="setup_wheel_on">Aktif. Tombol mikrofon di setir memulai dan menghentikan mendengarkan.</string>
++    <string name="setup_wheel_needs_adb">Memerlukan debugging ADB yang aktif pada head unit ini. Aplikasi hanya memantau satu tombol itu.</string>
++    <string name="setup_wheel_skip_note">Anda dapat melewati langkah ini. Tombol mikrofon di layar tetap berfungsi tanpanya, dan Anda dapat mengatur semua ini nanti di Pengaturan.</string>
++    <string name="setup_autostart_title">Mulai otomatis setelah reboot</string>
++    <string name="setup_autostart_body">Diperlukan agar asisten berjalan dengan andal. Head unit menutup aplikasi saat mobil tidur atau dinyalakan ulang, dan tombol setir lalu berhenti berfungsi sampai Anda membuka aplikasi lagi.</string>
++    <string name="setup_autostart_step1">Buka layar mulai otomatis (auto-start) head unit.</string>
++    <string name="setup_autostart_step2">Cari %1$s di daftar.</string>
++    <string name="setup_autostart_step3">NONAKTIFKAN sakelarnya. Head unit hanya menjalankan aplikasi dengan sendirinya jika sakelarnya nonaktif.</string>
++    <string name="setup_autostart_opened">Dibuka. Pastikan sakelarnya nonaktif.</string>
++    <string name="setup_done_title">Semua siap</string>
++    <string name="setup_done_body">Inilah kondisinya saat ini. Anda dapat mengubah semuanya nanti di Pengaturan.</string>
++    <string name="setup_sum_needed">Masih diperlukan</string>
++    <string name="setup_sum_wheel_off">Nonaktif. Tombol mikrofon di layar tetap berfungsi.</string>
++    <string name="setup_sum_autostart_yes">Dibuka. Pastikan sakelarnya nonaktif.</string>
++    <string name="setup_sum_autostart_no">Belum dilakukan. Asisten mungkin berhenti setelah mobil dinyalakan ulang.</string>
++    <string name="setup_back">Kembali</string>
++    <string name="setup_skip">Lewati dulu</string>
++    <string name="setup_next">Berikutnya</string>
++    <string name="voice_speaker_title">Pengeras suara</string>
++    <string name="voice_speaker_desc">Tempat suara asisten terdengar.</string>
++    <string name="voice_speaker_car">Speaker mobil</string>
++    <string name="voice_speaker_headrest">Sandaran kepala pengemudi</string>
++    <string name="voice_speaker_car_note">Terdengar di speaker mobil, dan juga di sandaran kepala jika suara sandaran kepala mobil diatur ke Surround.</string>
++    <string name="voice_speaker_headrest_note">Selama Anda berbicara dengan asisten, suara sandaran kepala mobil diatur ke Interactive dan suara asisten diputar di kanal navigasi mobil, sehingga hanya terdengar dari sandaran kepala pengemudi. Suara sandaran kepala kembali seperti semula setelahnya. Musik tetap di speaker mobil. Volumenya diatur di bagian Volume di bawah. Memerlukan debugging ADB, sama seperti kontrol mobil.</string>
++    <string name="log_share_failed">Tidak dapat membagikan log.</string>
++    <string name="log_showing_newest">Menampilkan %1$d karakter terbaru dari %2$d; baris yang lebih lama tidak ditampilkan.</string>
++    <string name="action_save_to_downloads">Simpan ke Unduhan</string>
++    <string name="log_saved_to">Disimpan ke %1$s</string>
++    <string name="log_save_failed">Tidak dapat menyimpan log.</string>
++    <string name="log_preparing">Menyiapkan log…</string>
++    <string name="log_hide_private">Sembunyikan info pribadi</string>
++    <string name="log_hide_private_on">Apa yang Anda ucapkan dan minta, tempat, judul lagu, kunci, alamat e-mail, nomor telepon, dan alamat jaringan disamarkan di sini, dalam yang Anda bagikan, dan dalam yang Anda simpan.</string>
++    <string name="log_hide_private_off">Seluruh log ditampilkan. Termasuk apa yang Anda ucapkan dan minta. Bagikan hanya kepada orang yang Anda percayai.</string>
++</resources>
+diff --git a/app/src/main/res/values-pl/strings.xml b/app/src/main/res/values-pl/strings.xml
+index a3e0650..7f27328 100644
+--- a/app/src/main/res/values-pl/strings.xml
++++ b/app/src/main/res/values-pl/strings.xml
+@@ -104,6 +104,7 @@
+     <string name="app_language_arabic">العربية</string>
+     <string name="app_language_russian">Русский</string>
+     <string name="app_language_polish">Polski</string>
++    <string name="app_language_indonesian">Bahasa Indonesia</string>
+     <string name="assistant_language_title">Język odpowiedzi</string>
+     <string name="assistant_language_hint">Język, w którym odpowiada asystent. „Auto” oznacza język, w którym mówisz.</string>
+     <string name="language_auto">Auto</string>
+@@ -111,6 +112,7 @@
+     <string name="language_arabic">Arabski</string>
+     <string name="language_russian">Rosyjski</string>
+     <string name="language_polish">Polski</string>
++    <string name="language_indonesian">Indonezyjski</string>
+     <string name="dialect_title">Dialekt arabski</string>
+     <string name="dialect_hint">Jakim arabskim mówi asystent, gdy odpowiada po arabsku. „Jak ja” dopasowuje się do Twojej mowy. Zmiana zadziała od następnej rozmowy.</string>
+     <string name="dialect_match">Jak ja</string>
+diff --git a/app/src/main/res/values-ru/strings.xml b/app/src/main/res/values-ru/strings.xml
+index 69f5ee3..d8845c3 100644
+--- a/app/src/main/res/values-ru/strings.xml
++++ b/app/src/main/res/values-ru/strings.xml
+@@ -104,6 +104,7 @@
+     <string name="app_language_arabic">العربية</string>
+     <string name="app_language_russian">Русский</string>
+     <string name="app_language_polish">Polski</string>
++    <string name="app_language_indonesian">Bahasa Indonesia</string>
+     <string name="assistant_language_title">Язык ответов</string>
+     <string name="assistant_language_hint">Язык, на котором отвечает ассистент. «Авто» — на том языке, на котором вы говорите.</string>
+     <string name="language_auto">Авто</string>
+@@ -111,6 +112,7 @@
+     <string name="language_arabic">Арабский</string>
+     <string name="language_russian">Русский</string>
+     <string name="language_polish">Польский</string>
++    <string name="language_indonesian">Индонезийский</string>
+     <string name="dialect_title">Диалект арабского</string>
+     <string name="dialect_hint">Какой арабский используется, когда ассистент отвечает по-арабски. «Как у меня» подстраивается под вашу речь. Вступает в силу со следующего разговора.</string>
+     <string name="dialect_match">Как у меня</string>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index bdeb559..efd3b4f 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -105,6 +105,7 @@
+     <string name="app_language_arabic">العربية</string>
+     <string name="app_language_russian">Русский</string>
+     <string name="app_language_polish">Polski</string>
++    <string name="app_language_indonesian">Bahasa Indonesia</string>
+     <string name="assistant_language_title">Reply language</string>
+     <string name="assistant_language_hint">The language the assistant answers in. Auto follows the language you speak.</string>
+     <string name="language_auto">Auto</string>
+@@ -112,6 +113,7 @@
+     <string name="language_arabic">Arabic</string>
+     <string name="language_russian">Russian</string>
+     <string name="language_polish">Polish</string>
++    <string name="language_indonesian">Indonesian</string>
+     <string name="dialect_title">Arabic dialect</string>
+     <string name="dialect_hint">Which Arabic it speaks when it answers in Arabic. “Match me” follows how you talk. Takes effect on the next conversation.</string>
+     <string name="dialect_match">Match me</string>
+diff --git a/app/src/main/resources/vehicle_commands.json b/app/src/main/resources/vehicle_commands.json
+index b9aef09..bd787e7 100644
+--- a/app/src/main/resources/vehicle_commands.json
++++ b/app/src/main/resources/vehicle_commands.json
+@@ -7,6 +7,7 @@
+     "labelAr": "تشغيل المكيف",
+     "labelRu": "Включение кондиционера",
+     "labelPl": "Klimatyzacja: włączanie",
++    "labelId": "Daya AC",
+     "deviceType": 1000,
+     "featureId": 501219364,
+     "invocation": {
+@@ -50,6 +51,7 @@
+     "labelAr": "درجة حرارة المكيف",
+     "labelRu": "Температура кондиционера",
+     "labelPl": "Temperatura klimatyzacji",
++    "labelId": "Suhu AC",
+     "deviceType": 1000,
+     "featureId": 501219368,
+     "invocation": {
+@@ -103,6 +105,7 @@
+     "labelAr": "سرعة مروحة المكيف",
+     "labelRu": "Скорость вентилятора",
+     "labelPl": "Prędkość nawiewu",
++    "labelId": "Kecepatan kipas AC",
+     "deviceType": 1000,
+     "featureId": 501219340,
+     "invocation": {
+@@ -145,6 +148,7 @@
+     "labelAr": "اتجاه الهواء",
+     "labelRu": "Направление воздуха",
+     "labelPl": "Kierunek nawiewu",
++    "labelId": "Arah aliran udara",
+     "deviceType": 1000,
+     "featureId": 501219336,
+     "invocation": {
+@@ -192,6 +196,7 @@
+     "labelAr": "نافذة السائق",
+     "labelRu": "Окно водителя",
+     "labelPl": "Szyba kierowcy",
++    "labelId": "Jendela pengemudi",
+     "deviceType": 1001,
+     "featureId": 1125122104,
+     "featureName": "Bodywork.BODYWORK_LF_WINDOW_CTRL_SET",
+@@ -217,6 +222,7 @@
+     "labelAr": "نافذة الراكب",
+     "labelRu": "Окно пассажира",
+     "labelPl": "Szyba pasażera",
++    "labelId": "Jendela penumpang",
+     "deviceType": 1001,
+     "featureId": 1125122107,
+     "featureName": "Bodywork.BODYWORK_RF_WINDOW_CTRL_SET",
+@@ -242,6 +248,7 @@
+     "labelAr": "النافذة الخلفية اليسرى",
+     "labelRu": "Заднее левое окно",
+     "labelPl": "Tylna lewa szyba",
++    "labelId": "Jendela belakang kiri",
+     "deviceType": 1001,
+     "featureId": 1125122112,
+     "featureName": "Bodywork.BODYWORK_LR_WINDOW_CTRL_SET",
+@@ -267,6 +274,7 @@
+     "labelAr": "النافذة الخلفية اليمنى",
+     "labelRu": "Заднее правое окно",
+     "labelPl": "Tylna prawa szyba",
++    "labelId": "Jendela belakang kanan",
+     "deviceType": 1001,
+     "featureId": 1125122115,
+     "featureName": "Bodywork.BODYWORK_RR_WINDOW_CTRL_SET",
+@@ -292,6 +300,7 @@
+     "labelAr": "فتحة السقف",
+     "labelRu": "Люк",
+     "labelPl": "Szyberdach",
++    "labelId": "Sunroof",
+     "deviceType": 1001,
+     "featureId": 1125122056,
+     "featureName": "Bodywork.BODYWORK_MOON_ROOF_CTL_SET",
+@@ -315,6 +324,7 @@
+     "labelAr": "وضع فتحة السقف",
+     "labelRu": "Положение люка",
+     "labelPl": "Położenie szyberdachu",
++    "labelId": "Posisi sunroof",
+     "deviceType": 1001,
+     "featureId": 1330642976,
+     "featureName": "Bodywork.BODYWORK_MOON_ROOF_OPEN_PERCENT_SET",
+@@ -336,6 +346,7 @@
+     "labelAr": "الستارة الشمسية",
+     "labelRu": "Солнцезащитная шторка",
+     "labelPl": "Roleta przeciwsłoneczna",
++    "labelId": "Tirai matahari",
+     "deviceType": 1001,
+     "featureId": 1330642984,
+     "featureName": "Bodywork.BODYWORK_SUNSHADE_PANEL_PERCENT_SET",
+@@ -357,6 +368,7 @@
+     "labelAr": "مستوى الصوت",
+     "labelRu": "Громкость",
+     "labelPl": "Głośność",
++    "labelId": "Volume",
+     "invocation": {
+       "type": "streamVolume",
+       "stream": 3
+@@ -375,6 +387,7 @@
+     "labelAr": "صوت الوسائط",
+     "labelRu": "Звук мультимедиа",
+     "labelPl": "Dźwięk multimediów",
++    "labelId": "Suara media",
+     "deviceType": 1002,
+     "featureId": 470810680,
+     "featureName": "Audio.AUDIO_MEDIA_SOUND_MUTE_SET_SET",
+@@ -399,6 +412,7 @@
+     "labelAr": "صوت الملاحة",
+     "labelRu": "Громкость навигации",
+     "labelPl": "Głośność nawigacji",
++    "labelId": "Volume navigasi",
+     "deviceType": 1002,
+     "featureId": 1309081616,
+     "featureName": "Audio.AUDIO_NAVI_VOLUME_SET",
+@@ -421,6 +435,7 @@
+     "labelAr": "تركيز الصوت",
+     "labelRu": "Фокус звука",
+     "labelPl": "Ognisko dźwięku",
++    "labelId": "Fokus suara",
+     "deviceType": 1002,
+     "featureId": 470810653,
+     "featureName": "Audio.AUDIO_LEFT_RIGHT_FIELD_SET_SET",
+@@ -446,6 +461,7 @@
+     "labelAr": "الصوت المحيطي",
+     "labelRu": "Объёмный звук",
+     "labelPl": "Dźwięk przestrzenny",
++    "labelId": "Suara ruang",
+     "deviceType": 1002,
+     "featureId": 372244496,
+     "featureName": "Audio.AUDIO_SPACE_SOUND_EFFECT_STATUS_IVI_SET",
+@@ -470,6 +486,7 @@
+     "labelAr": "قوة الصوت المحيطي",
+     "labelRu": "Сила объёмного звука",
+     "labelPl": "Siła dźwięku przestrzennego",
++    "labelId": "Kekuatan suara ruang",
+     "deviceType": 1002,
+     "featureId": 372244498,
+     "featureName": "Audio.AUDIO_SPACE_SOUND_MODE_STATUS_IVI_SET",
+@@ -495,6 +512,7 @@
+     "labelAr": "صوت مسند الرأس",
+     "labelRu": "Звук в подголовнике",
+     "labelPl": "Dźwięk w zagłówku",
++    "labelId": "Suara sandaran kepala",
+     "deviceType": 1002,
+     "featureId": -1676672971,
+     "featureName": "Audio.AUDIO_HEADREST_SOUND_EFFECT_STATUS_SET",
+@@ -521,6 +539,7 @@
+     "labelAr": "نمط الصوت",
+     "labelRu": "Стиль звука",
+     "labelPl": "Styl dźwięku",
++    "labelId": "Gaya suara",
+     "deviceType": 1002,
+     "featureId": -1693450216,
+     "featureName": "Audio.AUDIO_DYNAUDIO_SOUND_FEATURES_SET",
+@@ -549,6 +568,7 @@
+     "labelAr": "صندوق السيارة",
+     "labelRu": "Багажник",
+     "labelPl": "Bagażnik",
++    "labelId": "Bagasi",
+     "deviceType": 1023,
+     "featureId": 1125122080,
+     "featureName": "Setting.SET_VOICE_CTRL_BACK_DOOR_SET",
+@@ -572,6 +592,7 @@
+     "labelAr": "تدوير الشاشة",
+     "labelRu": "Поворот экрана",
+     "labelPl": "Obrót ekranu",
++    "labelId": "Rotasi layar",
+     "invocation": {
+       "type": "namedMethod",
+       "deviceClass": "setting",
+@@ -599,6 +620,7 @@
+     "labelAr": "طي المرايا تلقائيا",
+     "labelRu": "Автоскладывание зеркал",
+     "labelPl": "Automatyczne składanie lusterek",
++    "labelId": "Lipat spion otomatis",
+     "deviceType": 1023,
+     "featureId": 1312817178,
+     "featureName": "Setting.SET_CAR_EXTREARMIR_FOLLOWUP_SWITCH_SET",
+@@ -623,6 +645,7 @@
+     "labelAr": "إمالة المرايا عند الرجوع",
+     "labelRu": "Наклон зеркал при заднем ходе",
+     "labelPl": "Pochylanie lusterek na biegu wstecznym",
++    "labelId": "Spion menunduk saat mundur",
+     "deviceType": 1023,
+     "featureId": 1312817180,
+     "featureName": "Setting.SET_CAR_REAR_VIEW_SET",
+@@ -655,6 +678,7 @@
+     "labelAr": "لون الإضاءة المحيطة",
+     "labelRu": "Цвет подсветки салона",
+     "labelPl": "Kolor oświetlenia nastrojowego",
++    "labelId": "Warna lampu ambient",
+     "deviceType": 1023,
+     "invocation": {
+       "type": "namedMethod",
+@@ -709,6 +733,7 @@
+     "labelAr": "سطوع الإضاءة المحيطة",
+     "labelRu": "Яркость подсветки салона",
+     "labelPl": "Jasność oświetlenia nastrojowego",
++    "labelId": "Kecerahan lampu ambient",
+     "deviceType": 1023,
+     "invocation": {
+       "type": "namedMethod",
+@@ -742,6 +767,7 @@
+     "labelAr": "الألوان الديناميكية",
+     "labelRu": "Динамические цвета",
+     "labelPl": "Kolory dynamiczne",
++    "labelId": "Warna dinamis",
+     "deviceType": 1004,
+     "featureId": 1276153886,
+     "featureName": "Light.LIGHT_DYNAMIC_COLORFUL_SWITHCH_STATE_SET",
+@@ -766,6 +792,7 @@
+     "labelAr": "الثلاجة",
+     "labelRu": "Холодильник",
+     "labelPl": "Lodówka",
++    "labelId": "Kulkas",
+     "deviceType": 1023,
+     "featureId": 850427920,
+     "featureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_WORKING_STATUS_SET",
+@@ -791,6 +818,7 @@
+     "labelAr": "درجة تبريد الثلاجة",
+     "labelRu": "Охлаждение холодильника",
+     "labelPl": "Chłodzenie lodówki",
++    "labelId": "Suhu pendingin kulkas",
+     "deviceType": 1023,
+     "featureId": 850427928,
+     "featureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_TEMP_REGULATION_SET",
+@@ -821,6 +849,7 @@
+     "labelAr": "تدفئة مقعد السائق",
+     "labelRu": "Подогрев сиденья водителя",
+     "labelPl": "Podgrzewanie fotela kierowcy",
++    "labelId": "Pemanas jok pengemudi",
+     "deviceType": 1023,
+     "featureId": 1125122068,
+     "featureName": "Setting.SET_DRIVER_SEAT_HEATING_STATE_SET",
+@@ -846,6 +875,7 @@
+     "labelAr": "تهوية مقعد السائق",
+     "labelRu": "Вентиляция сиденья водителя",
+     "labelPl": "Wentylacja fotela kierowcy",
++    "labelId": "Ventilasi jok pengemudi",
+     "deviceType": 1023,
+     "featureId": 1125122064,
+     "featureName": "Setting.SET_DRIVER_SEAT_VENTILATING_STATE_SET",
+@@ -871,6 +901,7 @@
+     "labelAr": "تدفئة مقعد الراكب",
+     "labelRu": "Подогрев сиденья пассажира",
+     "labelPl": "Podgrzewanie fotela pasażera",
++    "labelId": "Pemanas jok penumpang",
+     "deviceType": 1023,
+     "featureId": 1125122076,
+     "featureName": "Setting.SET_PASSENGER_SEAT_HEATING_STATE_SET",
+@@ -896,6 +927,7 @@
+     "labelAr": "تهوية مقعد الراكب",
+     "labelRu": "Вентиляция сиденья пассажира",
+     "labelPl": "Wentylacja fotela pasażera",
++    "labelId": "Ventilasi jok penumpang",
+     "deviceType": 1023,
+     "featureId": 1125122072,
+     "featureName": "Setting.SET_PASSENGER_SEAT_VENTILATING_STATE_SET",
+@@ -921,6 +953,7 @@
+     "labelAr": "تدفئة المقعد الخلفي الأيسر",
+     "labelRu": "Подогрев заднего левого сиденья",
+     "labelPl": "Podgrzewanie tylnego lewego fotela",
++    "labelId": "Pemanas jok belakang kiri",
+     "deviceType": 1023,
+     "featureId": 1125122091,
+     "featureName": "Setting.SET_REAR_LEFT_SEAT_HEATING_STATE_SET",
+@@ -946,6 +979,7 @@
+     "labelAr": "تهوية المقعد الخلفي الأيسر",
+     "labelRu": "Вентиляция заднего левого сиденья",
+     "labelPl": "Wentylacja tylnego lewego fotela",
++    "labelId": "Ventilasi jok belakang kiri",
+     "deviceType": 1023,
+     "featureId": 1125122088,
+     "featureName": "Setting.SET_REAR_LEFT_SEAT_VENTILATING_STATE_SET",
+@@ -971,6 +1005,7 @@
+     "labelAr": "تدفئة المقعد الخلفي الأيمن",
+     "labelRu": "Подогрев заднего правого сиденья",
+     "labelPl": "Podgrzewanie tylnego prawego fotela",
++    "labelId": "Pemanas jok belakang kanan",
+     "deviceType": 1023,
+     "featureId": 1125122099,
+     "featureName": "Setting.SET_REAR_RIGHT_SEAT_HEATING_STATE_SET",
+@@ -996,6 +1031,7 @@
+     "labelAr": "تهوية المقعد الخلفي الأيمن",
+     "labelRu": "Вентиляция заднего правого сиденья",
+     "labelPl": "Wentylacja tylnego prawego fotela",
++    "labelId": "Ventilasi jok belakang kanan",
+     "deviceType": 1023,
+     "featureId": 1125122096,
+     "featureName": "Setting.SET_REAR_RIGHT_SEAT_VENTILATING_STATE_SET",
+@@ -1021,6 +1057,7 @@
+     "labelAr": "تدفئة المقود",
+     "labelRu": "Подогрев руля",
+     "labelPl": "Podgrzewanie kierownicy",
++    "labelId": "Pemanas setir",
+     "deviceType": 1023,
+     "featureId": 944767029,
+     "featureName": "Setting.SET_STEERING_WHEEL_HEAT_STATE_SET",
+@@ -1045,6 +1082,7 @@
+     "labelAr": "درجة تسخين الثلاجة",
+     "labelRu": "Нагрев холодильника",
+     "labelPl": "Podgrzewanie lodówki",
++    "labelId": "Suhu penghangat kulkas",
+     "deviceType": 1023,
+     "featureId": 850427928,
+     "featureName": "Setting.SETTING_VEHICLE_REFRIGERATOR_TEMP_REGULATION_SET",
+@@ -1074,6 +1112,7 @@
+     "labelAr": "تسجيل الكاميرا",
+     "labelRu": "Запись видеорегистратора",
+     "labelPl": "Nagrywanie wideorejestratora",
++    "labelId": "Perekaman dashcam",
+     "invocation": {
+       "type": "binderCommand",
+       "serviceName": "IBYDCDRService",
+@@ -1118,6 +1157,7 @@
+     "labelAr": "صورة من الكاميرا",
+     "labelRu": "Фото с видеорегистратора",
+     "labelPl": "Zdjęcie z wideorejestratora",
++    "labelId": "Foto dashcam",
+     "invocation": {
+       "type": "binderCommand",
+       "serviceName": "IBYDCDRService",
+@@ -1161,6 +1201,7 @@
+     "labelAr": "حفظ مقطع الكاميرا",
+     "labelRu": "Сохранение клипа регистратора",
+     "labelPl": "Zapis nagrania wideorejestratora",
++    "labelId": "Simpan klip dashcam",
+     "invocation": {
+       "type": "binderCommand",
+       "serviceName": "IBYDCDRService",
+@@ -1205,6 +1246,7 @@
+     "labelAr": "صوت الكاميرا",
+     "labelRu": "Звук видеорегистратора",
+     "labelPl": "Dźwięk wideorejestratora",
++    "labelId": "Audio dashcam",
+     "invocation": {
+       "type": "binderCommand",
+       "serviceName": "IBYDCDRService",
+@@ -1249,6 +1291,7 @@
+     "labelAr": "حساسية الكاميرا",
+     "labelRu": "Чувствительность регистратора",
+     "labelPl": "Czułość wideorejestratora",
++    "labelId": "Sensitivitas dashcam",
+     "invocation": {
+       "type": "binderCommand",
+       "serviceName": "IBYDCDRService",
+@@ -1294,6 +1337,7 @@
+     "labelAr": "وضع نافذة السائق",
+     "labelRu": "Положение окна водителя",
+     "labelPl": "Położenie szyby kierowcy",
++    "labelId": "Posisi jendela pengemudi",
+     "deviceType": 1001,
+     "featureId": 1276219408,
+     "featureName": "Bodywork.BODYWORK_LF_WINDOW_TARGET_POSITION_SET",
+@@ -1322,6 +1366,7 @@
+     "labelAr": "وضع نافذة الراكب",
+     "labelRu": "Положение окна пассажира",
+     "labelPl": "Położenie szyby pasażera",
++    "labelId": "Posisi jendela penumpang",
+     "deviceType": 1001,
+     "featureId": 1276219424,
+     "featureName": "Bodywork.BODYWORK_RF_WINDOW_TARGET_POSITION_SET",
+@@ -1350,6 +1395,7 @@
+     "labelAr": "وضع النافذة الخلفية اليسرى",
+     "labelRu": "Положение заднего левого окна",
+     "labelPl": "Położenie tylnej lewej szyby",
++    "labelId": "Posisi jendela belakang kiri",
+     "deviceType": 1001,
+     "featureId": 1276219416,
+     "featureName": "Bodywork.BODYWORK_LR_WINDOW_TARGET_POSITION_SET",
+@@ -1378,6 +1424,7 @@
+     "labelAr": "وضع النافذة الخلفية اليمنى",
+     "labelRu": "Положение заднего правого окна",
+     "labelPl": "Położenie tylnej prawej szyby",
++    "labelId": "Posisi jendela belakang kanan",
+     "deviceType": 1001,
+     "featureId": 1276219432,
+     "featureName": "Bodywork.BODYWORK_RR_WINDOW_TARGET_POSITION_SET",
+@@ -1406,6 +1453,7 @@
+     "labelAr": "تدليك مقعد السائق",
+     "labelRu": "Массаж сиденья водителя",
+     "labelPl": "Masaż fotela kierowcy",
++    "labelId": "Pijat jok pengemudi",
+     "deviceType": 1023,
+     "featureId": 1276190736,
+     "featureName": "Setting.SET_MAIN_DRIVING_SEAT_MASSAGE_WORK_INTENSUTY_SET",
+@@ -1440,6 +1488,7 @@
+     "labelAr": "تدليك مقعد الراكب",
+     "labelRu": "Массаж сиденья пассажира",
+     "labelPl": "Masaż fotela pasażera",
++    "labelId": "Pijat jok penumpang",
+     "deviceType": 1023,
+     "featureId": 1276190739,
+     "featureName": "Setting.SET_CO_DRIVING_SEAT_MASSAGE_WORK_INTENSUTY_SET",
+@@ -1474,6 +1523,7 @@
+     "labelAr": "إضاءة المقصورة",
+     "labelRu": "Освещение салона",
+     "labelPl": "Oświetlenie kabiny",
++    "labelId": "Lampu kabin",
+     "deviceType": 1023,
+     "featureId": 1330643002,
+     "featureName": "Setting.SET_INSIDE_LIGHT_STATE_SET",
+@@ -1498,6 +1548,7 @@
+     "labelAr": "مصدر الهواء",
+     "labelRu": "Источник воздуха",
+     "labelPl": "Źródło powietrza",
++    "labelId": "Sumber udara (sirkulasi)",
+     "deviceType": 1000,
+     "featureId": 1077936148,
+     "invocation": {
+@@ -1542,6 +1593,7 @@
+     "labelAr": "تهوية المكيف",
+     "labelRu": "Вентиляция кондиционера",
+     "labelPl": "Wentylacja klimatyzacji",
++    "labelId": "Ventilasi AC",
+     "deviceType": 1000,
+     "featureId": 1314914314,
+     "invocation": {
+@@ -1586,6 +1638,7 @@
+     "labelAr": "تبريد المكيف",
+     "labelRu": "Охлаждение кондиционера",
+     "labelPl": "Chłodzenie klimatyzacji",
++    "labelId": "Pendinginan AC",
+     "deviceType": 1000,
+     "featureId": 1077936137,
+     "invocation": {
+@@ -1630,6 +1683,7 @@
+     "labelAr": "الوضع التلقائي للمكيف",
+     "labelRu": "Автоматический режим климата",
+     "labelPl": "Tryb automatyczny klimatyzacji",
++    "labelId": "Mode otomatis AC",
+     "deviceType": 1000,
+     "featureId": 1077936146,
+     "invocation": {
+@@ -1673,6 +1727,7 @@
+     "labelAr": "إزالة الضباب عن الزجاج الأمامي",
+     "labelRu": "Обогрев лобового стекла",
+     "labelPl": "Odmrażanie szyby przedniej",
++    "labelId": "Defrost kaca depan",
+     "deviceType": 1000,
+     "featureId": 1077936150,
+     "invocation": {
+@@ -1719,6 +1774,7 @@
+     "labelAr": "إزالة الضباب عن الزجاج الخلفي",
+     "labelRu": "Обогрев заднего стекла",
+     "labelPl": "Odmrażanie szyby tylnej",
++    "labelId": "Defrost kaca belakang",
+     "deviceType": 1000,
+     "featureId": 1128267825,
+     "invocation": {
+diff --git a/app/src/test/java/com/bydassistantng/gemini/AssistantSetupTest.kt b/app/src/test/java/com/bydassistantng/gemini/AssistantSetupTest.kt
+index c308baa..f9eb4d7 100644
+--- a/app/src/test/java/com/bydassistantng/gemini/AssistantSetupTest.kt
++++ b/app/src/test/java/com/bydassistantng/gemini/AssistantSetupTest.kt
+@@ -153,7 +153,7 @@ class AssistantSetupTest {
+ 
+     @Test
+     fun aFixedReplyLanguageIsSaidAsAFirmRuleAtTheStartAndAgainAtTheEnd() {
+-        for ((language, name) in listOf(AssistantLanguage.ARABIC to "Arabic", AssistantLanguage.ENGLISH to "English", AssistantLanguage.RUSSIAN to "Russian", AssistantLanguage.POLISH to "Polish")) {
++        for ((language, name) in listOf(AssistantLanguage.ARABIC to "Arabic", AssistantLanguage.ENGLISH to "English", AssistantLanguage.RUSSIAN to "Russian", AssistantLanguage.POLISH to "Polish", AssistantLanguage.INDONESIAN to "Indonesian")) {
+             val prompt = voiceAssistantSystemPrompt(language, conversation = true)
+             assertTrue(prompt.contains("Always reply in $name."))
+             assertTrue(prompt.endsWith("ask the user in $name to say it again."))
+@@ -187,6 +187,25 @@ class AssistantSetupTest {
+         assertNull(ReplyLanguage.matches(AssistantLanguage.RUSSIAN, "..."))
+     }
+ 
++    @Test
++    fun anIndonesianReplyIsOnlyRuledOutByAnotherScript() {
++        assertEquals(true, ReplyLanguage.matches(AssistantLanguage.INDONESIAN, "Baik, jendela pengemudi sudah dibuka."))
++        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.INDONESIAN, "Хорошо, окно открыто"))
++        assertEquals(false, ReplyLanguage.matches(AssistantLanguage.INDONESIAN, "تمام، فتحت النافذة"))
++        assertNull(ReplyLanguage.matches(AssistantLanguage.INDONESIAN, "..."))
++    }
++
++    @Test
++    fun indonesianIsAskedToSoundNaturalOnlyWhenTheAssistantMaySpeakIt() {
++        for (language in listOf(AssistantLanguage.AUTO, AssistantLanguage.INDONESIAN)) {
++            val prompt = voiceAssistantSystemPrompt(language)
++            assertTrue(prompt, prompt.contains("natural, everyday Bahasa Indonesia"))
++        }
++        for (language in listOf(AssistantLanguage.ENGLISH, AssistantLanguage.ARABIC, AssistantLanguage.RUSSIAN, AssistantLanguage.POLISH)) {
++            assertTrue(!voiceAssistantSystemPrompt(language).contains("Bahasa Indonesia"))
++        }
++    }
++
+     @Test
+     fun aPolishReplyIsOnlyRuledOutByAnotherScript() {
+         assertEquals(true, ReplyLanguage.matches(AssistantLanguage.POLISH, "Dobrze, okno jest otwarte. BYD"))
+@@ -202,8 +221,8 @@ class AssistantSetupTest {
+     @Test
+     fun theAutomaticLanguageNamesRussianAmongTheOnesItFollows() {
+         val auto = voiceAssistantSystemPrompt(AssistantLanguage.AUTO)
+-        assertTrue(auto, auto.contains("English, Arabic, Russian or Polish"))
+-        assertTrue(auto, auto.contains("speaks Arabic (in any dialect), Russian, Polish and English"))
++        assertTrue(auto, auto.contains("English, Arabic, Russian, Polish or Indonesian"))
++        assertTrue(auto, auto.contains("speaks Arabic (in any dialect), Russian, Polish, Indonesian and English"))
+     }
+ 
+     @Test
+diff --git a/app/src/test/java/com/bydassistantng/ui/StringResourcesTest.kt b/app/src/test/java/com/bydassistantng/ui/StringResourcesTest.kt
+index 75b0c1a..f82f27b 100644
+--- a/app/src/test/java/com/bydassistantng/ui/StringResourcesTest.kt
++++ b/app/src/test/java/com/bydassistantng/ui/StringResourcesTest.kt
+@@ -25,6 +25,8 @@ class StringResourcesTest {
+     private val arabic get() = strings("values-ar")
+     private val russian get() = strings("values-ru")
+     private val polish get() = strings("values-pl")
++    // values-in, not values-id: Android still reports Indonesian with its legacy code "in".
++    private val indonesian get() = strings("values-in")
+ 
+     @Test
+     fun arabicHasExactlyTheEnglishStrings() {
+@@ -44,13 +46,34 @@ class StringResourcesTest {
+         assertEquals("keys in values-pl that English lacks", emptySet<String>(), polish.keys - english.keys)
+     }
+ 
++    @Test
++    fun indonesianHasExactlyTheEnglishStrings() {
++        assertEquals("keys missing from values-in", emptySet<String>(), english.keys - indonesian.keys)
++        assertEquals("keys in values-in that English lacks", emptySet<String>(), indonesian.keys - english.keys)
++    }
++
++    @Test
++    fun indonesianStringsAreNotLeftInEnglish() {
++        // Indonesian is written in the Latin script like English, so a missed translation is told by being the English
++        // text. These are names, a bare unit, or a word the two share ("Volume", "Media", "Beta").
++        val sameAsEnglish = setOf(
++            "app_language_english", "app_language_arabic", "app_language_russian", "app_language_polish",
++            "app_language_indonesian", "channel_beta", "banner_media", "group_volume", "end_wait_value",
++            "sensitivity_value", "voice_channel_dip_value", "voice_channel_gain_value",
++        )
++        for ((name, id) in indonesian) {
++            if (name in sameAsEnglish) continue
++            assertTrue("$name is still English: $id", id != english.getValue(name))
++        }
++    }
++
+     @Test
+     fun polishStringsAreNotLeftInEnglish() {
+         // Polish is written in the Latin script like English, so a missed translation cannot be told by its letters:
+         // it is told by being the English text. These are names, a bare unit or a word the two share.
+         val sameAsEnglish = setOf(
+             "app_language_english", "app_language_arabic", "app_language_russian", "app_language_polish",
+-            "language_auto", "channel_beta", "media_stop", "end_wait_value", "sensitivity_value",
++            "app_language_indonesian", "language_auto", "channel_beta", "media_stop", "end_wait_value", "sensitivity_value",
+             "voice_channel_dip_value", "voice_channel_gain_value",
+         )
+         for ((name, pl) in polish) {
+@@ -62,7 +85,7 @@ class StringResourcesTest {
+     @Test
+     fun placeholdersMatchInEveryLanguage() {
+         for ((name, en) in english) {
+-            for ((language, translated) in listOf("Arabic" to arabic, "Russian" to russian, "Polish" to polish)) {
++            for ((language, translated) in listOf("Arabic" to arabic, "Russian" to russian, "Polish" to polish, "Indonesian" to indonesian)) {
+                 assertEquals(
+                     "$language placeholders of $name",
+                     placeholder.findAll(en).map { it.value }.sorted().toList(),
+@@ -75,7 +98,7 @@ class StringResourcesTest {
+     @Test
+     fun arabicStringsAreActuallyArabic() {
+         // Names and technical terms stay Latin, but a sentence with no Arabic letter at all is a missed translation.
+-        val keepLatin = setOf("app_language_english", "app_language_russian", "app_language_polish")
++        val keepLatin = setOf("app_language_english", "app_language_russian", "app_language_polish", "app_language_indonesian")
+         for ((name, ar) in arabic) {
+             if (name in keepLatin) continue
+             assertTrue("$name has no Arabic letters: $ar", ar.any { it in '\u0600'..'\u06FF' })
+@@ -86,7 +109,7 @@ class StringResourcesTest {
+     fun russianStringsAreActuallyRussian() {
+         // Names and technical terms stay Latin, and a bare number has no letters to translate; any other sentence
+         // with no Cyrillic letter at all is a missed translation.
+-        val keepLatin = setOf("app_language_english", "app_language_arabic", "app_language_polish", "sensitivity_value", "voice_channel_dip_value", "voice_channel_gain_value")
++        val keepLatin = setOf("app_language_english", "app_language_arabic", "app_language_polish", "app_language_indonesian", "sensitivity_value", "voice_channel_dip_value", "voice_channel_gain_value")
+         for ((name, ru) in russian) {
+             if (name in keepLatin) continue
+             assertTrue("$name has no Cyrillic letters: $ru", ru.any { it in '\u0400'..'\u04FF' })
+@@ -95,11 +118,12 @@ class StringResourcesTest {
+ 
+     @Test
+     fun appLanguageNamesAreShownInTheirOwnLanguageInEveryFile() {
+-        for (strings in listOf(english, arabic, russian, polish)) {
++        for (strings in listOf(english, arabic, russian, polish, indonesian)) {
+             assertEquals("English", strings.getValue("app_language_english"))
+             assertEquals("العربية", strings.getValue("app_language_arabic"))
+             assertEquals("Русский", strings.getValue("app_language_russian"))
+             assertEquals("Polski", strings.getValue("app_language_polish"))
++            assertEquals("Bahasa Indonesia", strings.getValue("app_language_indonesian"))
+         }
+     }
+ 
+@@ -109,10 +133,12 @@ class StringResourcesTest {
+         assertTrue("app_name must be translatable=\"false\"", Regex("""<string name="app_name"[^>]*translatable="false"""").containsMatchIn(main))
+         assertTrue("Arabic must not override app_name", !File(resDir, "values-ar/strings.xml").readText().contains("name=\"app_name\""))
+         assertTrue("Russian must not override app_name", !File(resDir, "values-ru/strings.xml").readText().contains("name=\"app_name\""))
++        assertTrue("Indonesian must not override app_name", !File(resDir, "values-in/strings.xml").readText().contains("name=\"app_name\""))
+         assertTrue("Polish must not override app_name", !File(resDir, "values-pl/strings.xml").readText().contains("name=\"app_name\""))
+         // ...and Arabic sentences that mention the app use the same Latin name.
+         assertTrue(arabic.values.none { "مساعد BYD" in it })
+         assertTrue(russian.values.none { "Ассистент BYD" in it })
+         assertTrue(polish.values.none { "Asystent BYD Assistant" in it })
++        assertTrue(indonesian.values.none { "Asisten BYD Assistant" in it })
+     }
+ }
+diff --git a/app/src/test/java/com/bydassistantng/vehicle/VehicleCommandRegistryTest.kt b/app/src/test/java/com/bydassistantng/vehicle/VehicleCommandRegistryTest.kt
+index 72d9116..61c4857 100644
+--- a/app/src/test/java/com/bydassistantng/vehicle/VehicleCommandRegistryTest.kt
++++ b/app/src/test/java/com/bydassistantng/vehicle/VehicleCommandRegistryTest.kt
+@@ -278,6 +278,10 @@ class VehicleCommandRegistryTest {
+             assertEquals(russian, c.labelFor("ru"))
+             assertTrue("${c.id} needs a Polish label", !c.labelPl.isNullOrBlank())
+             assertEquals(c.labelPl, c.labelFor("pl"))
++            assertTrue("${c.id} needs an Indonesian label", !c.labelId.isNullOrBlank())
++            assertEquals(c.labelId, c.labelFor("id"))
++            // Android reports Indonesian with its legacy code.
++            assertEquals(c.labelId, c.labelFor("in"))
+             // Any other language gets the English name.
+             assertEquals(c.label, c.labelFor("de"))
+         }
+@@ -285,7 +289,7 @@ class VehicleCommandRegistryTest {
+ 
+     @Test
+     fun aMissingTranslationFallsBackToTheEnglishDisplayName() {
+-        val bare = command("audio.volume").copy(label = null, labelAr = null, labelRu = null, labelPl = null)
++        val bare = command("audio.volume").copy(label = null, labelAr = null, labelRu = null, labelPl = null, labelId = null)
+         assertEquals(bare.displayName, bare.labelFor("ru"))
+         assertEquals(bare.displayName, bare.labelFor("ar"))
+     }
+diff --git a/docs/architecture.md b/docs/architecture.md
+index f2677c3..d45c164 100644
+--- a/docs/architecture.md
++++ b/docs/architecture.md
+@@ -151,8 +151,8 @@ started, so the activity and the banner also set their direction explicitly; wit
+ in place changes the text but leaves the layout mirrored. The back button stays on the left in right-to-left
+ languages on purpose (the driver's side).
+ 
+-Strings live in `res/values`, `res/values-ar`, `res/values-ru` and `res/values-pl`; a unit test fails if they drift apart.
+-Vehicle command names shown on the banner are in the registry (`label`, `labelAr`, `labelRu`, `labelPl`). Arabic is the
++Strings live in `res/values`, `res/values-ar`, `res/values-ru`, `res/values-pl` and `res/values-in` (Indonesian, under the legacy code Android still uses); a unit test fails if they drift apart.
++Vehicle command names shown on the banner are in the registry (`label`, `labelAr`, `labelRu`, `labelPl`, `labelId`). Arabic is the
+ only right-to-left language; Russian and Polish need nothing beyond their strings, their labels and the assistant's
+ instruction to answer in them. Polish is written in the Latin script like English, so a reply in it cannot be told from
+ English or Spanish by its letters (the reply-language check in the log can only rule out other scripts), and the app-name
+-- 
+2.43.0
+
