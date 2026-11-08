@@ -22,6 +22,10 @@ import java.lang.reflect.Method
  * the car's own permission check refuses the helper that class (a DiLink 5.0 car does), the car's native service
  * ([NativeAutoservice]). The checks above are made before either, so the route changes nothing about when a request is sent.
  * The speed is read from the Speed device class, which has no such permission check; where it cannot be read, nothing is sent.
+ *
+ * Which feature is written depends on the car's own table ([DriveModeControl.route]): the Leopard's Setting feature with every mode of
+ * the car's screen, or, on a car that does not name it, the classic Energy operation mode with Eco, Normal and Sport only
+ * ([OperationModeRoute]). Both are read and asked the same two ways, and the checks above are the same.
  */
 internal object DriveModeCommand {
     const val NAME = "drivemode"
@@ -53,7 +57,14 @@ internal object DriveModeCommand {
         }
         val value = args[1].toIntOrNull()
             ?: return VehicleDispatchResult.Failure(VehicleDispatchError.INVALID_ARGUMENT, "'${args[1]}' is not a number")
-        if (!DriveModeControl.isPermitted(DriveModeControl.DEVICE_TYPE, DriveModeControl.PRESELECT_ID, value)) {
+        // The values this build may ask for are those of the route the car is on; on a car with none, the Leopard's, as ever.
+        val route = DriveModeControl.route()
+        val permitted = if (route == DriveModeRoute.OPERATION_MODE) {
+            DriveModeControl.isPermitted(route, value)
+        } else {
+            DriveModeControl.isPermitted(DriveModeControl.DEVICE_TYPE, DriveModeControl.PRESELECT_ID, value)
+        }
+        if (!permitted) {
             return VehicleDispatchResult.Failure(VehicleDispatchError.INVALID_ARGUMENT, "$value is not a mode this build may ask for")
         }
 
@@ -62,6 +73,7 @@ internal object DriveModeCommand {
         if (!DriveModeControl.mayChangeAt(speed)) {
             return VehicleDispatchResult.Failure(VehicleDispatchError.PRECONDITION_NOT_MET, DriveModeControl.speedRefusal(speed))
         }
+        if (route == DriveModeRoute.OPERATION_MODE) return viaOperationMode(context, value, speed)
 
         val preselect = CarFeatureIds.idOf(DriveModeControl.FEATURE_GROUP, DriveModeControl.PRESELECT_NAME)
         val target = CarFeatureIds.idOf(DriveModeControl.FEATURE_GROUP, DriveModeControl.TARGET_NAME)
@@ -78,6 +90,23 @@ internal object DriveModeCommand {
             service = NativeRoute::service,
             preselect = preselect,
             target = target,
+            log = { Log.i(TAG, it) },
+        ) { device -> carryOut(device, value, speed?.toInt() ?: 0) }
+    }
+
+    /** The classic route: the Energy device's operation mode, by the names the car's table gives it. */
+    private fun viaOperationMode(context: Context, value: Int, speed: Double?): VehicleDispatchResult {
+        val control = CarFeatureIds.idOf(OperationModeRoute.GROUP, OperationModeRoute.CONTROL_NAME)
+        val state = CarFeatureIds.idOf(OperationModeRoute.GROUP, OperationModeRoute.STATE_NAME)
+        if (control == null || state == null) {
+            return VehicleDispatchResult.Failure(VehicleDispatchError.PRECONDITION_NOT_MET, "this car does not name the operation mode as expected; nothing sent")
+        }
+        return viaClassOrService(
+            mode = NativeMode.current(),
+            deviceClass = OperationModeRoute.DEVICE_CLASS,
+            kit = { OperationKitDevice(context) },
+            service = NativeRoute::service,
+            native = { OperationNativeDevice(it, control, state) },
             log = { Log.i(TAG, it) },
         ) { device -> carryOut(device, value, speed?.toInt() ?: 0) }
     }
@@ -124,6 +153,48 @@ internal object DriveModeCommand {
     }
 
     /**
+     * The car's Energy device class, through its own `getOperationMode` and `setOperationMode` (which turn the API's numbers into the
+     * drive-mode screen's, see [OperationModeRoute]). Making it can throw the car's permission refusal.
+     */
+    private class OperationKitDevice(context: Context) : Device {
+        private val device: Any = Class.forName(OperationModeRoute.DEVICE_CLASS).getMethod("getInstance", Context::class.java).invoke(null, context)!!
+        private val read: Method = device.javaClass.getMethod("getOperationMode")
+        private val write: Method = device.javaClass.getMethod("setOperationMode", Int::class.javaPrimitiveType)
+
+        override val tag = ""
+
+        override fun reportedMode(): Int? = (read.invoke(device) as? Int)
+            ?.takeIf { it >= 0 && it != DriveModeControl.NO_READING }
+            ?.let(OperationModeRoute::driveModeOf)
+
+        override fun ask(value: Int): VehicleDispatchResult {
+            val operation = OperationModeRoute.operationOf(value)
+                ?: return VehicleDispatchResult.Failure(VehicleDispatchError.INVALID_ARGUMENT, "$value is not a mode this build may ask for")
+            val code = write.invoke(device, operation) as? Int ?: 0
+            return if (code != 0) {
+                VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, "the car returned error code $code")
+            } else {
+                VehicleDispatchResult.Success()
+            }
+        }
+    }
+
+    /** The same read and request straight to the car's native service, which writes what the class would write to `ENERGY_OPERATION_MODE_SET` ([OperationModeRoute.rawOf]). */
+    internal class OperationNativeDevice(private val calls: NativeCalls, private val control: Int, private val state: Int) : Device {
+        override val tag = NativeAnswer.NATIVE_TAG
+
+        override fun reportedMode(): Int? =
+            NativeAnswer.readValue(calls.getInt(OperationModeRoute.DEVICE_TYPE, state))?.let(OperationModeRoute::driveModeOf)
+
+        override fun ask(value: Int): VehicleDispatchResult {
+            // The only line that writes to the car's service for this route: the one feature and the listed values, however it was reached.
+            check(OperationModeRoute.isPermitted(OperationModeRoute.DEVICE_TYPE, value)) { "$value is not a mode this build may ask for" }
+            val raw = OperationModeRoute.rawOf(value) ?: return VehicleDispatchResult.Failure(VehicleDispatchError.INVALID_ARGUMENT, "$value is not a mode this build may ask for")
+            return NativeAnswer.writeResult(calls.setInt(OperationModeRoute.DEVICE_TYPE, control, raw))
+        }
+    }
+
+    /**
      * The car's native service: the same read (`getInt` of the state) and the same request (`setInt` of the one feature) that the
      * device class ends in, without the class's permission check in front of them (see [NativeAutoservice]).
      */
@@ -153,9 +224,21 @@ internal object DriveModeCommand {
         target: Int,
         log: (String) -> Unit,
         work: (Device) -> VehicleDispatchResult,
+    ): VehicleDispatchResult =
+        viaClassOrService(mode, SETTING_DEVICE_CLASS, kit, service, { NativeDevice(it, preselect, target) }, log, work)
+
+    /** The same for any device class: [deviceClass] is the class whose refusal is remembered, [native] makes the device that speaks to the service. */
+    internal fun viaClassOrService(
+        mode: NativeMode,
+        deviceClass: String,
+        kit: () -> Device,
+        service: () -> NativeCalls?,
+        native: (NativeCalls) -> Device,
+        log: (String) -> Unit,
+        work: (Device) -> VehicleDispatchResult,
     ): VehicleDispatchResult {
-        if (NativeRoute.preferNative(mode, NativeRoute.isRefused(SETTING_DEVICE_CLASS))) {
-            service()?.let { return work(NativeDevice(it, preselect, target)) }
+        if (NativeRoute.preferNative(mode, NativeRoute.isRefused(deviceClass))) {
+            service()?.let { return work(native(it)) }
         }
         try {
             return work(kit())
@@ -163,9 +246,9 @@ internal object DriveModeCommand {
             val refused = PermissionRefusal.missingPermission(e) ?: throw e
             val calls = (if (NativeRoute.fallBack(mode)) service() else null)
                 ?: return VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, DriveModeControl.REFUSED_REASON)
-            NativeRoute.markRefused(SETTING_DEVICE_CLASS)
-            log("$SETTING_DEVICE_CLASS refuses this process ($refused): the drive mode goes straight to the car's service")
-            return work(NativeDevice(calls, preselect, target))
+            NativeRoute.markRefused(deviceClass)
+            log("$deviceClass refuses this process ($refused): the drive mode goes straight to the car's service")
+            return work(native(calls))
         }
     }
 

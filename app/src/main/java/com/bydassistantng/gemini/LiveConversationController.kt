@@ -47,6 +47,7 @@ import com.bydassistantng.media.PlayMediaTool
 import com.bydassistantng.media.PlaybackFollowUp
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.DriveModeRepeatGuard
+import com.bydassistantng.vehicle.DriveModeControl
 import com.bydassistantng.vehicle.DriveModeSwitch
 import com.bydassistantng.vehicle.SetDriveModeTool
 import com.bydassistantng.vehicle.DEFAULT_IDLE_CLOSE_MS
@@ -735,6 +736,7 @@ class LiveConversationController @Inject constructor(
             memoryTools = longTermForSession,
             driveModes = driveModeSwitch != null && driveModesForSession,
             clusterScreen = clusterForSession.enabled,
+            driveModeOptions = DriveModeControl.modesOf(DriveModeControl.route()),
         )
         sessionInstruction = GeminiContent(
             parts = listOf(

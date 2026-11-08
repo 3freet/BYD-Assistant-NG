@@ -34,6 +34,52 @@ internal object DriveModeControl {
     /** Whether this car's framework names the drive mode feature the way it was verified: only then is it used. */
     fun isOnThisCar(): Boolean = CarFeatureIds.idOf(FEATURE_GROUP, PRESELECT_NAME) == PRESELECT_ID
 
+    /**
+     * Where this car takes a drive mode request, from the names its own table has ([resolve] looks one up): the Leopard's way where
+     * the table gives its feature the verified id, else the classic operation mode where it names that ([OperationModeRoute]),
+     * else nowhere. A car that has both (the Leopard) keeps the way it has always used, unless [ROUTE_PROPERTY] says otherwise for a test.
+     */
+    fun route(
+        resolve: (group: String, name: String) -> Int? = CarFeatureIds::idOf,
+        preferred: String = HeadUnitProperties.read(ROUTE_PROPERTY),
+    ): DriveModeRoute {
+        val setting = resolve(FEATURE_GROUP, PRESELECT_NAME) == PRESELECT_ID
+        val operation = OperationModeRoute.isOnThisCar(resolve)
+        return when {
+            // For a test on a car that has both: never a route the car does not name.
+            operation && preferred == "operation" -> DriveModeRoute.OPERATION_MODE
+            setting -> DriveModeRoute.SETTING
+            operation -> DriveModeRoute.OPERATION_MODE
+            else -> DriveModeRoute.NONE
+        }
+    }
+
+    /** `debug.bydang.drivemode`: set to `operation` for a test, it takes the classic route on a car that has both; anything else leaves it to the car's table. */
+    const val ROUTE_PROPERTY = "debug.bydang.drivemode"
+
+
+    /** The modes [route] can ask for, which is all the assistant is told it may offer. */
+    fun modesOf(route: DriveModeRoute): List<DriveMode> = when (route) {
+        DriveModeRoute.SETTING -> DriveMode.entries
+        DriveModeRoute.OPERATION_MODE -> OperationModeRoute.MODES
+        DriveModeRoute.NONE -> emptyList()
+    }
+
+    /** What the person hears when [route] cannot be asked for the mode that was requested. */
+    fun notOfferedReason(route: DriveModeRoute): String = when (route) {
+        // About this build's way to the car, not about the car: it may have other modes that this way has no number for.
+        DriveModeRoute.OPERATION_MODE ->
+            "this app can only ask this car for ${OperationModeRoute.MODES.joinToString(", ") { it.word }}"
+        else -> "that mode is not one this build may ask for"
+    }
+
+    /** Whether [route] may be asked for the drive-mode screen's number [value]. */
+    fun isPermitted(route: DriveModeRoute, value: Int): Boolean = when (route) {
+        DriveModeRoute.SETTING -> isPermitted(DEVICE_TYPE, PRESELECT_ID, value)
+        DriveModeRoute.OPERATION_MODE -> OperationModeRoute.isPermitted(OperationModeRoute.DEVICE_TYPE, value)
+        DriveModeRoute.NONE -> false
+    }
+
     /** The reading the car gives for "no answer" on some states. */
     const val NO_READING = 65535
 

@@ -25,6 +25,7 @@ import com.bydassistantng.passenger.PassengerScreenTool
 import com.bydassistantng.vehicle.InAppVehicleController
 import com.bydassistantng.vehicle.ReadCarTool
 import com.bydassistantng.vehicle.needsCarLink
+import com.bydassistantng.vehicle.DriveMode
 import com.bydassistantng.vehicle.SetDriveModeTool
 import com.bydassistantng.cluster.ClusterOptions
 import com.bydassistantng.cluster.ClusterScreenTool
@@ -62,7 +63,8 @@ private fun mediaActionText(context: Context, action: String): String = when (ac
  * [exteriorSpeaker] offers speaking through the car's exterior speaker, in a conversation with vehicle
  * control armed and only in a build that has one; [soundEffects] are the ready-made sounds it can play.
  * [memoryTools] offers remembering and forgetting facts, in a conversation with long-term memory on.
- * [driveModes] offers changing the car's drive mode, like the exterior speaker only in a build that can.
+ * [driveModes] offers changing the car's drive mode, like the exterior speaker only in a build that can; [driveModeOptions] are the
+ * modes the car's route can be asked for (all of them on the Leopard's, Eco, Normal and Sport on the classic one).
  * [clusterScreen] offers putting an app on the instrument cluster (experimental: a car that has it, with its
  * switch on). */
 fun assistantTools(
@@ -74,6 +76,7 @@ fun assistantTools(
     memoryTools: Boolean = false,
     driveModes: Boolean = false,
     clusterScreen: Boolean = false,
+    driveModeOptions: List<DriveMode> = DriveMode.entries,
 ): List<GeminiTool> {
     val declarations = buildList {
         add(NavigationTool.declaration)
@@ -100,7 +103,7 @@ fun assistantTools(
                 if (soundEffects.isNotEmpty()) add(PlaySoundOutsideTool.declaration(soundEffects))
             }
             // Needs a build that can ask the car for a drive mode, and counts as controlling the car.
-            if (conversation && driveModes) add(SetDriveModeTool.declaration)
+            if (conversation && driveModes) add(SetDriveModeTool.declarationFor(driveModeOptions))
             // An experimental feature with its Advanced settings switch on; it turns BYD Maps on and off by itself.
             if (conversation && clusterScreen) add(ClusterScreenTool.declaration)
         }

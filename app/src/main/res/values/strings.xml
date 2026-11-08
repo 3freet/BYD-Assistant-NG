@@ -261,6 +261,7 @@
     <string name="advanced_exterior_enable_desc">Lets the assistant speak and play sounds through the car\'s exterior speaker, so people outside hear it. Off by default.</string>
     <string name="advanced_drive_modes_title">Drive mode switching</string>
     <string name="advanced_drive_modes_desc">Lets the assistant change the car\'s drive mode (snow, sand, mud, mountain, rock, auto, eco, sport) when you ask. The car still decides whether it accepts. Off by default.</string>
+    <string name="advanced_drive_modes_desc_basic">Lets the assistant ask the car for a drive mode (eco, normal, sport, snow, mud, sand) when you ask. The car still decides whether it accepts, and which of them it has. Off by default.</string>
     <string name="advanced_cluster_enable_title">Instrument cluster</string>
     <string name="advanced_cluster_enable_desc">Lets the assistant put an app on the instrument cluster behind the steering wheel and take it off again. The app is shown in the middle of the cluster, where BYD Maps shows its map, and the speed and the warning lights stay visible. Anything shown there is in the driver\'s view, so use it only while the car is parked. It turns BYD Maps on while it works. Off by default.</string>
     <string name="advanced_cluster_confirm_title">Enable the instrument cluster feature?</string>

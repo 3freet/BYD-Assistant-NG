@@ -31,6 +31,8 @@ import com.bydassistantng.update.UpdateState
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLanguageChoice
 import com.bydassistantng.util.WheelKeys
+import com.bydassistantng.vehicle.DriveModeControl
+import com.bydassistantng.vehicle.DriveModeRoute
 import com.bydassistantng.vehicle.DriveModeSwitch
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -178,6 +180,9 @@ class SettingsViewModel @Inject constructor(
 
     /** Whether this build can change the car's drive mode, and so has a switch for it. */
     val driveModesSupported: Boolean = driveModes.isPresent
+
+    /** The car takes only Eco, Normal and Sport (the classic operation mode), so the switch says so instead of listing the off-road modes. */
+    val driveModesBasic: Boolean = DriveModeControl.route() == DriveModeRoute.OPERATION_MODE
 
     /** Whether this car offers the instrument cluster feature (experimental; it turns BYD Maps on and off). */
     val clusterSupported: Boolean = ClusterScreenAvailability.isOnThisCar(context)

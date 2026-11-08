@@ -5,23 +5,29 @@
 #   tools/check-native-route.sh <adb serial, e.g. 192.168.0.20:5555>           read-only: the helper's own check of the answers
 #   tools/check-native-route.sh <adb serial> --write                           also one reversible write through the route
 #   tools/check-native-route.sh <adb serial> --drive                           also the drive mode through the route, then back
-#   (the two options can be given together)
+#   tools/check-native-route.sh <adb serial> --classic                         the same drive mode check, but through the classic Energy operation mode
+#                                                                              (Eco, Normal, Sport; docs/byd-internals/drive-modes.md), on a car that has both routes
+#   (the options can be given together)
 #
 # It needs the debug build (package com.bydassistantng.dev) on the car and `adb` connected to it. The read-only check changes
 # nothing. --write switches the driver's seat heating to low for a few seconds and back off: run it parked, with someone in the
 # car who can see the seat's switch. --drive asks for the Eco drive mode (Normal if the car is in Eco) and then for the mode the
 # car was in; it is the app's drive mode request with its checks (the listed modes, the speed limit), so it does nothing at 80 km/h
-# or more: run it parked too. Afterwards the test switch (debug.bydang.nativeroute) is put back to auto.
+# or more: run it parked too. --classic is --drive with the test switch debug.bydang.drivemode set to `operation`, which puts a car that
+# has the Energy operation mode (the Leopard 5 does) on that route instead of its own; it never puts a car on a route it does not have.
+# Afterwards the test switches (debug.bydang.nativeroute, debug.bydang.drivemode) are put back to auto.
 set -u
-SERIAL=${1:?usage: check-native-route.sh <adb serial> [--write] [--drive]}
+SERIAL=${1:?usage: check-native-route.sh <adb serial> [--write] [--drive] [--classic]}
 shift
 WRITE=0
 DRIVE=0
+CLASSIC=0
 for option in "$@"; do
   case $option in
     --write) WRITE=1 ;;
     --drive) DRIVE=1 ;;
-    *) echo "unknown option $option (--write, --drive)" >&2; exit 2 ;;
+    --classic) DRIVE=1; CLASSIC=1 ;;
+    *) echo "unknown option $option (--write, --drive, --classic)" >&2; exit 2 ;;
   esac
 done
 PKG=com.bydassistantng.dev
@@ -31,7 +37,7 @@ tool() { # <family> <json arguments>
   a shell "am broadcast -a com.bydassistantng.debug.TOOL -n $PKG/com.bydassistantng.debug.DebugToolReceiver --es tool $1 --es args '$2' --ez carlink true --ez newturn true" >/dev/null
   sleep 5
 }
-restore() { a shell setprop debug.bydang.nativeroute auto >/dev/null 2>&1; }
+restore() { a shell setprop debug.bydang.nativeroute auto >/dev/null 2>&1; a shell setprop debug.bydang.drivemode auto >/dev/null 2>&1; }
 trap restore EXIT
 
 a get-state >/dev/null 2>&1 || { echo "adb cannot reach $SERIAL: adb connect it first" >&2; exit 2; }
@@ -91,6 +97,10 @@ fi
 if [ "$DRIVE" = 1 ]; then
   echo "== the drive mode through the route: Eco (Normal if the car is in Eco), then back to the mode the car was in"
   a shell setprop debug.bydang.nativeroute always
+  if [ "$CLASSIC" = 1 ]; then
+    echo "   (on the classic route: the Energy operation mode, Eco / Normal / Sport)"
+    a shell setprop debug.bydang.drivemode operation
+  fi
   a shell "pkill -f VehicleShellHelper" >/dev/null 2>&1 || true
   mark=$(applog | wc -l)
   drive_line=""

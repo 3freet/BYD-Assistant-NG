@@ -15,22 +15,39 @@ import kotlinx.serialization.json.put
 object SetDriveModeTool {
     const val FUNCTION_NAME = "set_drive_mode"
 
-    val declaration = GeminiFunctionDeclaration(
+    /** Every mode the car's own screen can be asked for: what a car on the Leopard's route is offered. */
+    val declaration = declarationFor(DriveMode.entries)
+
+    /**
+     * The tool for a car that can be asked for [modes] ([DriveModeControl.modesOf]): the model is told only those, so a car that has
+     * Eco, Normal and Sport (the classic operation mode) is never offered "sand".
+     */
+    fun declarationFor(modes: List<DriveMode>): GeminiFunctionDeclaration = GeminiFunctionDeclaration(
         name = FUNCTION_NAME,
-        description = "Change the car's drive mode (driving mode). Use when the user asks to switch to or enter " +
-            "one: snow, sand, mud, mountain, rock or auto (the off-road modes), or normal, eco or sport; use " +
-            "exit to leave an off-road mode. Only when the user asks, never to try something out. The car " +
-            "decides: it only changes when its conditions are met, and the answer says which mode it is " +
-            "really in afterwards, so tell the user that in a few words. When the user asks for " +
-            "more than the mode (\"sand mode and play some music\"), call this and the other function in the " +
-            "same turn. Wade, warp, custom and traction modes are not available: say so plainly.",
+        description = if (modes.size == DriveMode.entries.size) {
+            "Change the car's drive mode (driving mode). Use when the user asks to switch to or enter " +
+                "one: snow, sand, mud, mountain, rock or auto (the off-road modes), or normal, eco or sport; use " +
+                "exit to leave an off-road mode. Only when the user asks, never to try something out. The car " +
+                "decides: it only changes when its conditions are met, and the answer says which mode it is " +
+                "really in afterwards, so tell the user that in a few words. When the user asks for " +
+                "more than the mode (\"sand mode and play some music\"), call this and the other function in the " +
+                "same turn. Wade, warp, custom and traction modes are not available: say so plainly."
+        } else {
+            "Change the car's drive mode (driving mode). Use when the user asks to switch to ${modes.joinToString(", ") { it.word }}. " +
+                "Only when the user asks, never to try something out. The car " +
+                "decides, and which of these modes it has is its to say: it only changes when it has the mode and its " +
+                "conditions are met, and the answer says which mode it is " +
+                "really in afterwards, so tell the user that in a few words. When the user asks for " +
+                "more than the mode (\"sport mode and play some music\"), call this and the other function in the " +
+                "same turn. Any other mode cannot be asked for here: say so plainly."
+        },
         parameters = GeminiSchema(
             type = "OBJECT",
             properties = mapOf(
                 "mode" to GeminiSchema(
                     type = "STRING",
                     description = "The drive mode to switch to.",
-                    enum = DriveMode.entries.map { it.word },
+                    enum = modes.map { it.word },
                 ),
             ),
             required = listOf("mode"),

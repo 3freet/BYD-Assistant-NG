@@ -260,6 +260,7 @@
     <string name="advanced_exterior_enable_desc">Pozwala asystentowi mówić i odtwarzać dźwięki przez zewnętrzny głośnik samochodu, żeby słyszały je osoby na zewnątrz. Domyślnie wyłączone.</string>
     <string name="advanced_drive_modes_title">Przełączanie trybów jazdy</string>
     <string name="advanced_drive_modes_desc">Pozwala asystentowi zmieniać na Twoją prośbę tryb jazdy samochodu (śnieg, piasek, błoto, góry, skały, auto, eko, sport). To samochód decyduje, czy przyjmie polecenie. Domyślnie wyłączone.</string>
+    <string name="advanced_drive_modes_desc_basic">Pozwala asystentowi prosić samochód na Twoją prośbę o tryb jazdy (eko, normalny, sport, śnieg, błoto, piasek). To samochód decyduje, czy przyjmie polecenie i które z tych trybów ma. Domyślnie wyłączone.</string>
     <string name="advanced_cluster_enable_title">Zestaw wskaźników</string>
     <string name="advanced_cluster_enable_desc">Pozwala asystentowi wyświetlić aplikację na zestawie wskaźników za kierownicą i ją stamtąd zdjąć. Aplikacja jest pokazywana na środku zestawu, tam gdzie BYD Maps pokazuje mapę, a prędkość i kontrolki pozostają widoczne. Wszystko, co tam widać, jest w polu widzenia kierowcy, więc używaj tego tylko na postoju. Na czas działania włącza BYD Maps. Domyślnie wyłączone.</string>
     <string name="advanced_cluster_confirm_title">Włączyć funkcję zestawu wskaźników?</string>

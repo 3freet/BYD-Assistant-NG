@@ -264,6 +264,7 @@
     <string name="advanced_exterior_enable_desc">Memungkinkan asisten berbicara dan memutar suara melalui speaker eksterior mobil, sehingga orang di luar dapat mendengarnya. Nonaktif secara bawaan.</string>
     <string name="advanced_drive_modes_title">Penggantian mode berkendara</string>
     <string name="advanced_drive_modes_desc">Memungkinkan asisten mengganti mode berkendara mobil (salju, pasir, lumpur, pegunungan, bebatuan, otomatis, eco, sport) saat Anda memintanya. Mobil tetap yang memutuskan apakah menerimanya. Nonaktif secara bawaan.</string>
+    <string name="advanced_drive_modes_desc_basic">Memungkinkan asisten meminta mode berkendara dari mobil (eco, normal, sport, salju, lumpur, pasir) saat Anda memintanya. Mobil tetap yang memutuskan apakah menerimanya dan mode mana yang dimilikinya. Nonaktif secara bawaan.</string>
     <string name="advanced_cluster_enable_title">Panel instrumen</string>
     <string name="advanced_cluster_enable_desc">Memungkinkan asisten menampilkan aplikasi di panel instrumen di belakang setir dan melepasnya kembali. Aplikasi ditampilkan di tengah panel, tempat BYD Maps menampilkan petanya, sementara kecepatan dan lampu peringatan tetap terlihat. Apa pun yang ditampilkan di sana berada dalam pandangan pengemudi, jadi gunakan hanya saat mobil parkir. Fitur ini menyalakan BYD Maps selama bekerja. Nonaktif secara bawaan.</string>
     <string name="advanced_cluster_confirm_title">Aktifkan fitur panel instrumen?</string>

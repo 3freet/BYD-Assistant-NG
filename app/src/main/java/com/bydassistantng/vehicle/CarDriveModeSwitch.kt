@@ -17,10 +17,11 @@ internal class CarDriveModeSwitch @Inject constructor(
     private val helper: ShellHelperVehicleController,
 ) : DriveModeSwitch {
     override suspend fun switchTo(mode: DriveMode): DriveModeOutcome {
+        val route = DriveModeControl.route()
         val value = DriveModeControl.requestFor(mode)
         // The helper checks the same things again; this is the independent first gate.
-        if (!DriveModeControl.isPermitted(DriveModeControl.DEVICE_TYPE, DriveModeControl.PRESELECT_ID, value)) {
-            return DriveModeOutcome.Refused("that mode is not one this build may ask for")
+        if (!DriveModeControl.isPermitted(route, value)) {
+            return DriveModeOutcome.Refused(DriveModeControl.notOfferedReason(route))
         }
         val started = SystemClock.elapsedRealtime()
         val result = helper.requestDriveMode(value)

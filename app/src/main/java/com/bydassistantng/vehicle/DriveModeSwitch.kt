@@ -64,7 +64,7 @@ internal object DriveModeSwitchModule {
     @Provides
     @Singleton
     fun driveModeSwitch(switch: Provider<CarDriveModeSwitch>): Optional<DriveModeSwitch> =
-        if (DriveModeControl.isOnThisCar()) {
+        if (DriveModeControl.route() != DriveModeRoute.NONE) {
             Optional.of(switch.get())
         } else {
             Optional.empty()

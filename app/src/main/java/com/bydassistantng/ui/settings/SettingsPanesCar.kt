@@ -291,7 +291,7 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
                     row {
                         SwitchSetting(
                             title = stringResource(R.string.advanced_drive_modes_title),
-                            subtitle = stringResource(R.string.advanced_drive_modes_desc),
+                            subtitle = stringResource(if (viewModel.driveModesBasic) R.string.advanced_drive_modes_desc_basic else R.string.advanced_drive_modes_desc),
                             checked = driveModesEnabled,
                             onCheckedChange = { on -> if (on) confirmDriveModes = true else viewModel.setDriveModesEnabled(false) },
                         )
