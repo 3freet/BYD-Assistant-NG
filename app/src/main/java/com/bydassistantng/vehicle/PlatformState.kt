@@ -45,7 +45,7 @@ object PlatformState {
             saved?.platform != null -> "as the vehicle helper reported it last time"
             else -> "not known yet, until the vehicle helper reports"
         }
-        AppLogger.log(TAG, "DiLink platform ${chosen.label}: $how")
+        AppLogger.log(TAG, "DiLink platform ${PlatformDetector.label(chosen, HeadUnitProperties.read("ro.vehicle.type"))}: $how")
     }
 
     /** The vehicle helper has started and says which platform it found, and which commands this car cannot do. */
@@ -54,7 +54,8 @@ object PlatformState {
         val unavailableBefore = VehicleCommandRegistry.unavailable.keys
         VehicleCommandRegistry.platform = ready.platform
         VehicleCommandRegistry.useReportedUnavailable(ready.unavailable)
-        val line = "Vehicle helper found ${ready.platform.label}" + (if (before != ready.platform) " (was ${before.label})" else "") + ": ${ready.details}"
+        val found = PlatformDetector.label(ready.platform, PlatformDetector.vehicleTypeIn(ready.details))
+        val line = "Vehicle helper found $found" + (if (before != ready.platform) " (was ${before.label})" else "") + ": ${ready.details}"
         lastReport = "${stamp()} $line"
         if (!detailsLogged || before != ready.platform || unavailableBefore != ready.unavailable) {
             detailsLogged = true

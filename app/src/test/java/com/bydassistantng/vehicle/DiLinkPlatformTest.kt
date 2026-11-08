@@ -83,6 +83,39 @@ class DiLinkPlatformTest {
     }
 
     @Test
+    fun aDiLink30UnitWithTheNewerNumbersIsCalledDiLink30InTheLogAndKeepsWhatTheNumbersSaid() {
+        // Seen in a car's log (2026-11-08): ro.vehicle.type Di3.0_3.5UI on Android 10 with the CAN-FD numbers, which the numbers and
+        // the Android level alone read as DiLink 4. What the app does follows that reading; only the words in the log change.
+        val platform = PlatformDetector.classify(29, dilink4And5)
+        assertEquals(DiLinkPlatform.DILINK_4, platform)
+        assertEquals("DiLink 3.0 (numbers read as DiLink 4)", PlatformDetector.label(platform, "Di3.0_3.5UI"))
+    }
+
+    @Test
+    fun theLogNamesTheCarsOwnPlatformWhereItAgreesWithTheNumbers() {
+        assertEquals("DiLink 5.1", PlatformDetector.label(DiLinkPlatform.DILINK_5, "Di5.1_5.0UI"))
+        assertEquals("DiLink 3.0", PlatformDetector.label(DiLinkPlatform.DILINK_3, "Di3.0_3.0UI"))
+        assertEquals("DiLink 3.0 (numbers not recognised)", PlatformDetector.label(DiLinkPlatform.UNKNOWN, "Di3.0_3.5UI"))
+    }
+
+    @Test
+    fun aPropertyThatIsNotWrittenAsAVersionLeavesTheLabelAsTheNumbersRead() {
+        assertEquals("DiLink 4", PlatformDetector.label(DiLinkPlatform.DILINK_4, "DiLink50_5.0UI"))
+        assertEquals("DiLink 5", PlatformDetector.label(DiLinkPlatform.DILINK_5, ""))
+        assertEquals("DiLink 5", PlatformDetector.label(DiLinkPlatform.DILINK_5, null))
+        assertEquals("unrecognised", PlatformDetector.label(DiLinkPlatform.UNKNOWN, "-"))
+    }
+
+    @Test
+    fun theVehicleTypeIsFoundInTheHelpersLine() {
+        val line = "sdk=29 release=10 props=vehicle.type:Di3.0_3.5UI,byd.dilink.version:-,dilink.version:-,product.model:DiLink3.0_For_BYD_AUTO numbers=AC:1"
+
+        assertEquals("Di3.0_3.5UI", PlatformDetector.vehicleTypeIn(line))
+        assertNull(PlatformDetector.vehicleTypeIn("props=vehicle.type:-,byd.dilink.version:-"))
+        assertNull(PlatformDetector.vehicleTypeIn("no properties here"))
+    }
+
+    @Test
     fun theSignatureIsTheNumbersThisRegistryWasVerifiedWith() {
         // The registry's numbers come from a DiLink 5 car; the signature's must agree with the ones it shares.
         val byId = VehicleCommandRegistry.commandsFor(DiLinkPlatform.DILINK_5).known.associateBy { it.id }

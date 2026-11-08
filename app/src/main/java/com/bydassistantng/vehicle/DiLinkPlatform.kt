@@ -94,6 +94,30 @@ internal object PlatformDetector {
         null -> DiLinkPlatform.UNKNOWN
     }
 
+    /** `Di3.0` in `Di3.0_3.5UI`: the platform part of `ro.vehicle.type` when it is written as a version. */
+    private val OWN_NAME = Regex("^Di(\\d)\\.(\\d)", RegexOption.IGNORE_CASE)
+
+    /**
+     * What the log calls the platform: [platform], as the numbers and the Android level read it, and where the car's own
+     * `ro.vehicle.type` ([vehicleType]) names its platform as a version, that name. A DiLink 3.0 head unit (`Di3.0_3.5UI`, Android
+     * 10) was seen with the numbers of the newer scheme, which the numbers and the Android level alone call DiLink 4, so the log
+     * says `DiLink 3.0 (numbers read as DiLink 4)`. Only the words change: what the app does follows [platform], and a property
+     * that is not written as a version (a unit that holds `DiLink50_5.0UI`) is left out of it, as ever.
+     */
+    fun label(platform: DiLinkPlatform, vehicleType: String?): String {
+        val own = OWN_NAME.find(vehicleType.orEmpty().trim()) ?: return platform.label
+        val name = "DiLink ${own.groupValues[1]}.${own.groupValues[2]}"
+        return when {
+            platform == DiLinkPlatform.UNKNOWN -> "$name (numbers not recognised)"
+            platform.label == "DiLink ${own.groupValues[1]}" -> name
+            else -> "$name (numbers read as ${platform.label})"
+        }
+    }
+
+    /** The `ro.vehicle.type` the helper wrote into its line (`props=vehicle.type:Di3.0_3.5UI,...`), or null. */
+    fun vehicleTypeIn(details: String): String? =
+        Regex("(?:^|[ ,=])vehicle\\.type:([^, ]+)").find(details)?.groupValues?.get(1)?.takeIf { it != "-" }
+
     /** The platform as this process can tell it from the car's numbers and the Android level. */
     fun detect(): DiLinkPlatform = classify(
         Build.VERSION.SDK_INT,
