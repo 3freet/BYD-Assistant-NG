@@ -158,17 +158,20 @@ class UpdateInstaller @Inject constructor(@ApplicationContext private val contex
      * the app had been asked to restart).
      */
     fun verify(file: File, installedVersionCode: Long) {
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) PackageManager.GET_SIGNING_CERTIFICATES else signaturesFlag()
-        val archive = packageArchive(file, flags) ?: throw UpdateFailure(UpdateFailure.Kind.CORRUPT, "not an installable package")
+        val sdk = Build.VERSION.SDK_INT
+        val archive = packageArchive(file, ApkSigners.archiveFlags(sdk)) ?: throw UpdateFailure(UpdateFailure.Kind.CORRUPT, "not an installable package")
         if (archive.packageName != context.packageName) throw UpdateFailure(UpdateFailure.Kind.WRONG_PACKAGE, archive.packageName)
         if (PackageInfoCompat.getLongVersionCode(archive) <= installedVersionCode) throw UpdateFailure(UpdateFailure.Kind.NOT_NEWER)
         val installed = try {
-            context.packageManager.getPackageInfo(context.packageName, flags)
+            context.packageManager.getPackageInfo(context.packageName, ApkSigners.installedFlags(sdk))
         } catch (e: PackageManager.NameNotFoundException) {
             throw UpdateFailure(UpdateFailure.Kind.WRONG_SIGNATURE, "installed app unreadable", e)
         }
+        // The two refusals are told apart in the log: a file the system showed no certificate for (an Android 10 head unit
+        // asked with the wrong flags) is not a file signed with another key.
         val downloadedSigners = signers(archive)
-        if (downloadedSigners.isEmpty() || downloadedSigners != signers(installed)) throw UpdateFailure(UpdateFailure.Kind.WRONG_SIGNATURE)
+        if (downloadedSigners.isEmpty()) throw UpdateFailure(UpdateFailure.Kind.WRONG_SIGNATURE, "no signing certificate could be read from the downloaded file (sdk $sdk)")
+        if (downloadedSigners != signers(installed)) throw UpdateFailure(UpdateFailure.Kind.WRONG_SIGNATURE, "the downloaded file is signed with another certificate than the installed app")
     }
 
     /**
@@ -250,15 +253,10 @@ class UpdateInstaller @Inject constructor(@ApplicationContext private val contex
     }
 
     @Suppress("DEPRECATION")
-    private fun signaturesFlag(): Int = PackageManager.GET_SIGNATURES
-
-    @Suppress("DEPRECATION")
-    private fun signers(info: PackageInfo): Set<Signature> =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            info.signingInfo?.apkContentsSigners?.toSet().orEmpty()
-        } else {
-            info.signatures?.toSet().orEmpty()
-        }
+    private fun signers(info: PackageInfo): Set<Signature> = ApkSigners.signersOf(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.signingInfo?.apkContentsSigners?.toList() else null,
+        info.signatures?.toList(),
+    )
 
     private fun looksOffline(e: IOException) = e is UnknownHostException || e is ConnectException || e is SocketTimeoutException
 }
