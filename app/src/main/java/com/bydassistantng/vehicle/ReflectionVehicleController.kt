@@ -435,6 +435,16 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             (if (differ.isEmpty()) "" else ",differ:" + differ.joinToString("+")) + ",ms:$milliseconds"
     }
 
+    /**
+     * For the log: the current numbers of the states [StatePeek] names that the car's [table] has, read straight from the car's native
+     * service (read only); null where there is no service to speak to or the car has none of them.
+     */
+    internal fun peekReport(table: Map<String, Int>?): String? {
+        if (table == null || !NativeRoute.fallBack(NativeMode.current())) return null
+        val service = nativeOrNull() ?: return null
+        return StatePeek.describe(table) { deviceType, id -> NativeAnswer.rawValue(service.getInt(deviceType, id)) }
+    }
+
     /** What the device class says of [sample]; null when it does not answer, or when the car's permission check refuses this process the class. */
     private fun readThroughClass(sample: StateSample): Int? {
         if (NativeRoute.isRefused(sample.className)) return null

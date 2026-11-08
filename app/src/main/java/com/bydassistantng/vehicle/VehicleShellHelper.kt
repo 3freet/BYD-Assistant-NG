@@ -57,7 +57,8 @@ object VehicleShellHelper {
             // What the helper saw is for the log: it must never be the reason the helper does not start.
             val permissions = runCatching { controller.permissionReport(BuildConfig.APPLICATION_ID) }.getOrNull()
             val native = runCatching { controller.nativeReport() }.getOrNull()
-            val details = runCatching { CarDiagnostics.describe(seen.readings, seen.properties, seen.table, seen.acRoute, permissions, native) }
+            val peek = runCatching { controller.peekReport(seen.table) }.getOrNull()
+            val details = runCatching { CarDiagnostics.describe(seen.readings, seen.properties, seen.table, seen.acRoute, permissions, native, peek) }
                 .getOrElse { "diagnostics unavailable: $it" }
             emit(HelperProtocol.ready(seen.platform, VehicleCommandRegistry.unavailable.keys, details))
             val input = System.`in`.bufferedReader()

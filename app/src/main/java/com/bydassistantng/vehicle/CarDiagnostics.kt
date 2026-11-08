@@ -8,11 +8,13 @@ import android.os.Build
  * needing a cable: the head unit's identification, which device classes and generic calls the car has, which system
  * services answer, how many features its own table holds, and **how the numbers this app uses compare with that table by
  * name** (see [FeatureNameCheck]): which agree, which the car numbers differently (with the car's own number) and which
- * names it does not have at all. When a window name is among the differences, the car's window features are listed too.
+ * names it does not have at all, and for those, which names of its own table resemble them (see [NearNames]). When a window name
+ * is among the differences, the car's window features are listed too.
  * Where the car has no A/C service (see [AcRoute]) the line says how the A/C is reached instead, and names the car's other
  * services that look like they have to do with its climate or its vehicle systems, to find where it lives. It also says who
  * holds the permissions that guard the car's devices (`perms=`), since a car may refuse the helper for want of one, and whether
- * the car's native service can be spoken to directly and agrees with the device classes (`native=`).
+ * the car's native service can be spoken to directly and agrees with the device classes (`native=`), and the numbers a few states hold
+ * that belong to the features the app cannot offer yet (`peek=`, see [StatePeek]; read only).
  *
  * Writing the line only looks; nothing is written to the car. (What the app makes of the comparison is [NameResolution]'s: the
  * car's own numbers are used, and a command the car lacks a name for is withheld; the line says which.) Each part is read on
@@ -34,6 +36,7 @@ internal object CarDiagnostics {
         acRoute: AcRoute? = null,
         permissions: String? = null,
         native: String? = null,
+        peek: String? = null,
     ): String {
         val results = table?.let { FeatureNameCheck.check(FeatureNameCheck.references(), it) }
         return buildString {
@@ -61,6 +64,9 @@ internal object CarDiagnostics {
             native?.let { append(" native=").append(it) }
             append(' ').append(results?.let { FeatureNameCheck.summary(it, VehicleCommandRegistry.unavailable.keys) } ?: "names=?")
             if (results != null && FeatureNameCheck.windowsDiffer(results)) append(" windows=").append(attempt { CarFeatureTable.windowFeatures() })
+            // Last, so that the fields before it stay where they were: what the car's table has in place of the names it lacks.
+            runCatching { table?.let { carTable -> results?.let { NearNames.fields(it, carTable) } } }.getOrNull()?.let { append(' ').append(it) }
+            peek?.let { append(" peek=").append(it) }
         }
     }
 
