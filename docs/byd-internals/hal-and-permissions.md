@@ -214,6 +214,7 @@ binaries, not observed on a car. To check it on a car whose device classes work 
 tools/check-native-route.sh <adb serial>            # read-only
 tools/check-native-route.sh <adb serial> --write    # also one reversible write: the driver's seat heating, low then off
 tools/check-native-route.sh <adb serial> --drive    # also the drive mode: Eco (Normal if the car is in Eco), then back
+tools/check-native-route.sh <adb serial> --classic  # the same through the classic Energy operation mode (drive-modes.md), on a car that has it
 ```
 
 The first starts the helper and reads the `native=reads:N/M,agree:A/B` field of its line: N close to M, and A equal to B (or one

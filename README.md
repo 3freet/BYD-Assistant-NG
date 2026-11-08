@@ -103,7 +103,8 @@ a car whose framework names the feature the way it was confirmed on the developm
 - **Drive modes**: "switch to sand mode" (also snow, mud, mountain, rock, auto, eco, sport, and "exit" to leave an
   off-road mode). The assistant asks the car the way the car's own screen does, then reports the mode the car says
   it is really in — the car decides, and it is refused above 80 km/h. Wade, warp, custom and traction modes are not
-  offered. It combines with other requests: "sand mode and play some music". How and why:
+  offered. It combines with other requests: "sand mode and play some music". On an older car that has only the
+  classic operation mode it offers Eco, Normal, Sport, Snow, Mud and Sand, whichever of them the car has (not tried on a car yet). How and why:
   [drive-modes.md](docs/byd-internals/drive-modes.md).
 - **Instrument cluster**: "put YouTube on the instrument cluster", "open the <title> video on YouTube on the
   cluster", "take it off the cluster". The app is shown in the middle of the display behind the steering wheel, where
@@ -124,9 +125,11 @@ a car whose framework names the feature the way it was confirmed on the developm
   been checked on a car. **DiLink 5.0** (Android 12) is known from one owner's log, from a BYD Song Plus: the assistant,
   apps, navigation, media and tyre pressure work there, but the car's controls (windows, seats, A/C, drive mode) did not
   in its first logs, because that car's software refuses the vehicle helper (it asks for a runtime permission that the ADB
-  shell cannot hold). A way round it, calling the car's own service directly, is built and being checked; it is not
-  confirmed on a car yet ([details](docs/byd-internals/platforms.md#status)). **DiLink 3 and 4** (Android 10) have not been tried
-  on a car yet.
+  shell cannot hold). A way round it, calling the car's own service directly, is built; it is not
+  confirmed on a DiLink 5.0 car yet ([details](docs/byd-internals/platforms.md#status)). **DiLink 3.0** (Android 10) is known from
+  one owner's log, and there that way worked: the car took the window, cabin-light and A/C commands, and the A/C reported its
+  new settings. The drive modes and the exterior speaker are not offered on that car, because its software has no names for
+  them. **DiLink 4** has not been tried on a car yet.
 - A **Gemini API key** from [Google AI Studio](https://aistudio.google.com/).
 - An internet connection for the head unit (for example a phone hotspot).
 - **ADB debugging** switched on in the head unit. It is used locally, over the loopback interface, to switch the

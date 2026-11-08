@@ -61,7 +61,9 @@ safeguards. A modified build, or any other program using the same ADB access, is
   connection closes, or after 60 seconds. ([details](docs/byd-internals/exterior-speaker.md))
 - *The drive-mode request*: one feature id in the setting device, with the mode numbers the car's own screen sends
   (Normal, Eco, Sport, Snow, Sand, Mud, Mountain, Rock, Auto and exit; never wade, warp, custom or traction), only
-  below 80 km/h, followed by a read-back of what the car did. ([details](docs/byd-internals/drive-modes.md))
+  below 80 km/h, followed by a read-back of what the car did. A car whose table does not name that feature has a second,
+  smaller route: the energy device's operation mode (`ENERGY_OPERATION_MODE_SET`, found by name in the car's own table),
+  with the six modes that device's class takes (Eco, Normal, Sport, Snow, Sand, Mud), under the same speed limit and read-back. ([details](docs/byd-internals/drive-modes.md))
 - *The instrument cluster*: one feature id in the instrument device (the map type, `1` for the normal gauges and `4`
   for an app on the cluster), written by a separate helper command, together with switching BYD's navigation app on
   and off for the main user and starting and stopping apps on the cluster's own display. The app is shown in the
@@ -71,7 +73,8 @@ safeguards. A modified build, or any other program using the same ADB access, is
 None of them goes through the command registry, so the model is never offered them as vehicle commands. Each is used
 only when the car's framework gives the feature name the id it was confirmed with on the development vehicle — on any
 other car, or on a phone, they are absent (the cluster feature also needs the cluster's own display and BYD's
-navigation app to be there). All three were confirmed on a single vehicle; another model may number the same names
+navigation app to be there; the drive mode's second route asks only that the car's table names its two features). All three were
+confirmed on a single vehicle, and the second drive mode route on none yet; another model may number the same names
 differently, which is what that check is for.
 
 ## Data

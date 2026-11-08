@@ -1,8 +1,9 @@
 # DiLink platforms: which numbers the car uses
 
 > As everywhere in these notes: every number for DiLink 5.1 was observed on one vehicle (a Fangchengbao Leopard 5).
-> **Nothing here has been observed on a DiLink 3 or DiLink 4 car.** What the app does there is unconfirmed until someone
-> reads it back on their own car (see [confirming a car](#confirming-a-car)).
+> **Nothing here has been observed by us on a DiLink 3 or DiLink 4 car**; one DiLink 3.0 car is known from its owner's log
+> (see [the status](#status)). What the app does elsewhere is unconfirmed until someone reads it back on their own car
+> (see [confirming a car](#confirming-a-car)).
 
 ## The short version
 
@@ -10,7 +11,8 @@
   the numbers are **not the same on every car** (see [where the numbers come from](#where-the-numbers-come-from)). The
   class picks them itself when it loads, from the car's bus protocol, so DiLink 3 cars are expected to number many
   features differently from DiLink 5 ones, with some features missing. The same number can mean a different window on
-  one car than on another.
+  one car than on another. (A DiLink 3.0 head unit has since been seen with the CAN-FD numbers of DiLink 5, so the
+  generation does not decide the numbers; the car's own table does.)
 - **The Android version cannot tell the generations apart.** DiLink 3 and DiLink 4 both run Android 10, DiLink 5.0
   runs Android 12 and DiLink 5.1 runs Android 13.
 - **So the app asks the car, by name.** Every number in the command registry has the name the car's own table gives it
@@ -37,8 +39,9 @@ example `AC_CTRL_MODE` is 1077936146 on CAN-FD, 801112082 on Toyota and 33030145
 
 Our car (DiLink 5.1) has `sys.car.protocol=CANFD` (`persist.sys.protocol.record` is empty) and the CAN-FD numbers, which
 are the "DiLink 4 and 5" column of the table below. The "DiLink 3" column is the classic CAN scheme. So what the three
-signature features measure is the numbering of the car's bus protocol, and that DiLink 3 cars are classic CAN and DiLink 4
-cars CAN-FD is only an expectation until such a car says what its property holds. Not every constant has three numbers:
+signature features measure is the numbering of the car's bus protocol. That DiLink 3 cars are classic CAN and DiLink 4
+cars CAN-FD did not hold for the one DiLink 3.0 car seen (`Di3.0_3.5UI`, Android 10): it has the CAN-FD numbers. Not every
+constant has three numbers:
 `BODYWORK_LF_WINDOW_CTRL_SET`, for one, is 589299768 on Toyota and 1125122104 on both of the others, so the window
 controls in the registry are right on CAN-FD and classic CAN and not on a Toyota-protocol car. A Toyota-protocol car
 matches neither scheme in the table below and is not recognised. Another firmware version of the class may choose
@@ -65,6 +68,12 @@ How they combine: DiLink 3 numbers → **DiLink 3**, at any Android level. DiLin
 or lower, otherwise **DiLink 5**. Numbers that no known scheme uses, or that cannot be read, leave the platform not
 recognised.
 
+That reading calls the DiLink 3.0 car above a DiLink 4 one (CAN-FD numbers, Android 10). The log therefore names a car by its
+own platform where its `ro.vehicle.type` writes one as a version (`Di3.0` in `Di3.0_3.5UI`) and keeps the other reading in
+brackets: `Vehicle helper found DiLink 3.0 (numbers read as DiLink 4)`. Only the words change. What the app does follows the
+numbers and the Android level, and a property that is not written as a version (a unit that holds `DiLink50_5.0UI`) is
+left out of the name as before.
+
 **The head unit's properties do not decide it.** `ro.vehicle.type`, `ro.byd.dilink.version`, `ro.dilink.version` and
 `ro.product.model` are read through `android.os.SystemProperties` and written to the log, so that a car's
 identification can be read from its owner's log. The properties that hold a VIN, the car's name or its region are not
@@ -78,8 +87,9 @@ read. On our car (a Leopard 5):
 
 `ro.vehicle.type` reads `<platform>_<interface>`: this car is the `Di5.1` platform showing the `5.0UI` interface, so the
 two generations are not the same thing and a unit can show an interface from another generation than its platform's.
-What it holds on DiLink 3 and 4 cars is not known: the log says (see [the log line](#the-log-line)). The numbers stay
-what decides, because they are what the app sends.
+On a DiLink 3.0 car (Android 10, from its owner's log) `ro.vehicle.type` is `Di3.0_3.5UI` and `ro.product.model` is
+`DiLink3.0_For_BYD_AUTO`; the two version properties are not set. What it holds on DiLink 4 cars is not known: the log says
+(see [the log line](#the-log-line)). The numbers stay what decides, because they are what the app sends.
 
 The **vehicle helper** (the process that runs as the ADB shell and makes the actual calls) does the reading itself and
 tells the app in its ready line. Its reading is what its own commands are checked against; the app uses it to decide
@@ -159,6 +169,9 @@ nothing is written to the car:
 | `absent=<name>(<command>)` | The car's table has **no such name**. What that costs the command is in the table above. |
 | `withheld=<id>,…` | The commands this car cannot do because of it (`none` for none). |
 | `windows` | Only when a window command's name does not have the number the app has for it: every window feature in the car's table with its number. |
+| `similar=<missing name>:<name>=<number>\|…,…` | For the names the car lacks (`absent=`), up to three names of the car's own table that share the words that say what the name is about, each with the car's number, to find a feature that sits under another name. The features the app can offer come first; at most 24 names are looked up (`,+N not looked up`). Only names and numbers of the car's table are written, and `_hal_only` copies are left out. |
+| `scan.drive=…`, `scan.speaker=…` | Only when the drive mode (`SETTING_PRESELECTED_DRIVING_MODE_SET`) or the exterior speaker (`ADAS_UE_BROADCAST_POSITION_SET`) is not in the car's table under the verified number: up to 40 names of the table that have to do with driving modes (`DRIVING_MODE`, `ENERGY_OPERATION_MODE`, `ECO_MODE`, …) or with the exterior speaker (`EXTERIOR_SPEAKER`, `AVAS`, `UE_BROADCAST`, …), with their numbers (`,+N more`). Seat massage modes, faults, prompts and factory-test entries are left out. A car that has both gets neither field. |
+| `peek=<name>:<number>,…` | The numbers a few states hold, read only and straight from the car's native service: the exterior speaker's configuration, switch status and source states (`AUDIO_EXTERIOR_SPEAKER_CONFIG`, `_SWITCH_STATUS`, `AUDIO_AVAS_AUDIO_SOURCE_TO_EXTERNAL_SPEAKER_STATUS`, …), the energy operation mode and its terrain setting (`ENERGY_ROAD_SURFACE_MODE`) and the drive mode states, for the names the car's table has (`?` where the car gave no answer). Nothing is assumed about what they mean: an owner's log taken before and after the owner moves the car's own setting shows which one moves. `-10011` is the car's own "not available" and `65535` its "no answer". |
 
 Each list is cut after 150 entries (`,+N more`), so a car that differs everywhere is still one line.
 
@@ -200,6 +213,24 @@ allowed on the head unit.
   straight to it where a class refuses ([the native route](hal-and-permissions.md#the-native-route)), the A/C included
   ([ac-service.md](ac-service.md#a-car-without-the-service)). That is built and has run in a simulator, **not on a car**: until the
   owner's next log, what works on that car is the assistant, apps, navigation, media and the tyre pressure.
+- **DiLink 3.0:** known from one owner's log (beta.5, Android 10, firmware `QKQ1.210910.001` built 2026-08-06, `vehicle.type`
+  `Di3.0_3.5UI`), not observed by us. The helper starts and reads the CAN-FD numbers (its label then said `DiLink 4`, see
+  above). The table holds 6,732 numbers (the Leopard's 13,823), all five device classes exist, and only the `autoservice`
+  answers: there is no `byd_airconditioning` service, and `airconditioning` answers as `android.os.IAirConditioningService`.
+  `names=57/76`: the car has no names for the four window target positions (so `window.<door>.position` is withheld; open and
+  close are not), the headrest and space-sound controls, the driver's seat belt (the greeting needs it and never starts), the
+  cabin temperature, **`SETTING_PRESELECTED_DRIVING_MODE_SET` (drive modes) and `ADAS_UE_BROADCAST_POSITION_SET` (exterior
+  speaker)**, and it numbers the right-rear window's percent state differently. As on DiLink 5.0 the device classes ask for
+  `BYDAUTO_<DEVICE>_COMMON` (normal level, held by the app, not by the shell), and builds before beta.4 failed every window with
+  that refusal and the A/C with "System service 'byd_airconditioning' not found". **With beta.5, through the native route, the
+  car took the window open and close and the cabin light on and off** (`HAL returned 1`, with no read-back on this car, so
+  only the owner can say the glass moved) **and the A/C power, the temperature (18 and 17) and the fan (2), which the car read
+  back**; `native=reads:5/10,agree:1/1`. The owner says the car has an exterior speaker and drive modes (perhaps only Eco,
+  Normal and Sport). The app offers neither because the table has no names for what it looks for; the car may hold them under
+  others, which the `similar=` and `scan.…=` fields of its next log will say ([roadmap](../roadmap.md#dilink-3-and-dilink-4)).
+  The in-app update also failed there, three times, with `WRONG_SIGNATURE`: on Android 10 `getPackageArchiveInfo` returns no
+  certificate for a file asked about with `GET_SIGNING_CERTIFICATES` alone (seen on a stock Android 10 emulator too), which the
+  check took for another signature. It now asks with both flags.
 - **Other cars:** not observed by us. The lookup by name was run in a simulator built from our car's own framework, with the
   class under the classic CAN and under the Toyota numbering: each time the commands were sent to the car's numbers. That a
-  table without a name withholds the command is covered by unit tests. It has not been run on a DiLink 3 or DiLink 4 car.
+  table without a name withholds the command is covered by unit tests. It has been run on one DiLink 3.0 car (above), and not on a DiLink 4 car.

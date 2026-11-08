@@ -97,7 +97,9 @@ offered to the model only when **both** of these hold, checked in this order:
 
 1. the car's own framework names the feature with the id it was confirmed with (`CarFeatureIds`, checked again in
    the helper process before anything is written) — on a phone, or another model, the feature is simply absent (for
-   the cluster, `ClusterScreenAvailability` also looks for the cluster's display and BYD's navigation app);
+   the cluster, `ClusterScreenAvailability` also looks for the cluster's display and BYD's navigation app; the drive
+   mode has a second, classic route for a car that does not name the first, `DriveModeControl.route`, which needs only
+   that the car's table names the Energy device's operation mode and its state, and offers the six modes that class takes);
 2. the user switched it on under Settings → Car → Experimental features (`OptInFeatures` holds the defaults,
    which are off), and vehicle control is on, in a conversation (not a one-shot request).
 
