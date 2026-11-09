@@ -49,7 +49,8 @@ internal object PermissionRefusal {
 
     // ── The line for the log ───────────────────────────────────────────────────────────────────
 
-    private val DEVICES = listOf("BODYWORK", "SETTING", "AC", "INSTRUMENT", "AUDIO", "LIGHT", "TYRE")
+    /** The devices the app reaches; the speed and the energy device are the ones the drive mode goes through. */
+    private val DEVICES = listOf("BODYWORK", "SETTING", "AC", "INSTRUMENT", "AUDIO", "LIGHT", "TYRE", "SPEED", "ENERGY")
     private val KINDS = listOf("COMMON", "GET", "SET")
 
     /** The permissions the line is about: three kinds for each device the app reaches. */

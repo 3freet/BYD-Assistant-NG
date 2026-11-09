@@ -13,8 +13,9 @@ import android.os.Build
  * Where the car has no A/C service (see [AcRoute]) the line says how the A/C is reached instead, and names the car's other
  * services that look like they have to do with its climate or its vehicle systems, to find where it lives. It also says who
  * holds the permissions that guard the car's devices (`perms=`), since a car may refuse the helper for want of one, and whether
- * the car's native service can be spoken to directly and agrees with the device classes (`native=`), and the numbers a few states hold
- * that belong to the features the app cannot offer yet (`peek=`, see [StatePeek]; read only).
+ * the car's native service can be spoken to directly and agrees with the device classes (`native=`), the numbers a few states hold
+ * that belong to the features the app cannot offer yet (`peek=`, see [StatePeek]; read only) and whether the car's speed can be read
+ * from here (`speed=`; the drive mode's speed gate needs it).
  *
  * Writing the line only looks; nothing is written to the car. (What the app makes of the comparison is [NameResolution]'s: the
  * car's own numbers are used, and a command the car lacks a name for is withheld; the line says which.) Each part is read on
@@ -37,6 +38,7 @@ internal object CarDiagnostics {
         permissions: String? = null,
         native: String? = null,
         peek: String? = null,
+        speed: String? = null,
     ): String {
         val results = table?.let { FeatureNameCheck.check(FeatureNameCheck.references(), it) }
         return buildString {
@@ -67,6 +69,7 @@ internal object CarDiagnostics {
             // Last, so that the fields before it stay where they were: what the car's table has in place of the names it lacks.
             runCatching { table?.let { carTable -> results?.let { NearNames.fields(it, carTable) } } }.getOrNull()?.let { append(' ').append(it) }
             peek?.let { append(" peek=").append(it) }
+            speed?.let { append(" speed=").append(it) }
         }
     }
 
@@ -91,9 +94,12 @@ internal object CarDiagnostics {
         null
     }
 
-    private fun classes(): String {
+    /** Which device classes the car has: the ones the commands go through, then the two the drive mode goes through (energy and speed). */
+    internal fun classes(): String {
         val named = ReflectionVehicleController.GENERIC_ROUTE_CLASS_BY_DOMAIN.map { (domain, name) -> domain.name.lowercase() to name } +
-            ("ac" to ReflectionVehicleController.AC_DEVICE_CLASS)
+            ("ac" to ReflectionVehicleController.AC_DEVICE_CLASS) +
+            ("energy" to OperationModeRoute.DEVICE_CLASS) +
+            ("speed" to DriveModeCommand.SPEED_DEVICE_CLASS)
         return named.joinToString(",") { (short, name) -> (if (load(name) != null) "" else "-") + short }
     }
 

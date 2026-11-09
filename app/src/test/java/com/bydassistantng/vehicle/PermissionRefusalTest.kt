@@ -92,10 +92,13 @@ class PermissionRefusalTest {
     fun theReportIsAboutThreeKindsOfPermissionForEachDeviceTheAppReaches() {
         val names = PermissionRefusal.permissionNames()
 
-        assertEquals(21, names.size)
+        assertEquals(27, names.size)
         assertTrue(names.all { it.startsWith("android.permission.BYDAUTO_") })
         assertTrue("android.permission.BYDAUTO_BODYWORK_COMMON" in names)
         assertTrue("android.permission.BYDAUTO_TYRE_GET" in names)
+        // The two devices the drive mode goes through: the speed gate and the Energy operation mode.
+        assertTrue("android.permission.BYDAUTO_SPEED_COMMON" in names)
+        assertTrue("android.permission.BYDAUTO_ENERGY_COMMON" in names)
         assertEquals(names.size, names.toSet().size)
     }
 }

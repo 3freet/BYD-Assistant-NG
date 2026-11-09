@@ -20,6 +20,8 @@ class NearNamesTest {
         "Bodywork.BODYWORK_MAIN_DRIVER_MASSAGE_SWITCH_OPERATION_MODE" to 1261437420,
         "Audio.AUDIO_AVAS_FAULT_STATUS" to 891293762,
         "Audio.AUDIO_EXTERIOR_PROMPT_TONE_SOURCE_SET" to 454033475,
+        "Audio.AUDIO_LOCK_CAR_SOUND_EFFECT_PLAYBACK_STATUS_SET" to -1442839775,
+        "Adas.ADAS_UE_BROADCAST_ENDING_FLAG_SET" to -1442839933,
         "Test.TEST_AUDIO_AVAS_SET" to -1442840316,
         "Energy.ENERGY_OPERATION_MODE" to 555745294,
         "Energy.ENERGY_OPERATION_MODE_SET" to 734003229,
@@ -116,6 +118,9 @@ class NearNamesTest {
         assertTrue(line, "Audio.AUDIO_EXTERIOR_SPEAKER_SWITCH_STATUS=891293760" in line)
         assertTrue(line, "Audio.AUDIO_EXTERIOR_SPEAKER_CONFIG=891293750" in line)
         assertTrue(line, "Audio.AUDIO_AVAS_SOURCE_TYPE=-1728052894" in line)
+        // The two names an app that plays audio outside the car writes besides the switch itself.
+        assertTrue(line, "Audio.AUDIO_LOCK_CAR_SOUND_EFFECT_PLAYBACK_STATUS_SET=-1442839775" in line)
+        assertTrue(line, "Adas.ADAS_UE_BROADCAST_ENDING_FLAG_SET=-1442839933" in line)
     }
 
     @Test

@@ -58,7 +58,8 @@ object VehicleShellHelper {
             val permissions = runCatching { controller.permissionReport(BuildConfig.APPLICATION_ID) }.getOrNull()
             val native = runCatching { controller.nativeReport() }.getOrNull()
             val peek = runCatching { controller.peekReport(seen.table) }.getOrNull()
-            val details = runCatching { CarDiagnostics.describe(seen.readings, seen.properties, seen.table, seen.acRoute, permissions, native, peek) }
+            val speed = runCatching { controller.speedReport() }.getOrNull()
+            val details = runCatching { CarDiagnostics.describe(seen.readings, seen.properties, seen.table, seen.acRoute, permissions, native, peek, speed) }
                 .getOrElse { "diagnostics unavailable: $it" }
             emit(HelperProtocol.ready(seen.platform, VehicleCommandRegistry.unavailable.keys, details))
             val input = System.`in`.bufferedReader()

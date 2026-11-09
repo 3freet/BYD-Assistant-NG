@@ -47,7 +47,7 @@ internal object NearNames {
 
     val topics: List<Topic> = listOf(
         Topic("drive", "driveMode.preselect", Regex("$NOT_A_DRIVE_MODE.*(DRIV(E|ING)_MODE|ENERGY_(OPERATION_|ROAD_SURFACE_)?MODE|ECO_MODE|SPORT_MODE|NORMAL_MODE)")),
-        Topic("speaker", "exteriorSpeaker.switch", Regex("$NOT_A_SPEAKER.*(EXTERIOR_(SPEAKER|PROMPT)|EXTERNAL_SPEAKER|UE_BROADCAST|AVAS|OUTSIDE_(CAR|VOICE|SPEAKER)|VOICE_BROADCAST)")),
+        Topic("speaker", "exteriorSpeaker.switch", Regex("$NOT_A_SPEAKER.*(EXTERIOR_(SPEAKER|PROMPT)|EXTERNAL_SPEAKER|UE_BROADCAST|LOCK_CAR_SOUND|AVAS|OUTSIDE_(CAR|VOICE|SPEAKER)|VOICE_BROADCAST)")),
     )
 
     /**

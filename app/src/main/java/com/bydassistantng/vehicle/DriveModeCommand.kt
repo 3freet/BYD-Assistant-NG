@@ -33,7 +33,7 @@ internal object DriveModeCommand {
     private const val TAG = "DriveModeCommand"
 
     internal const val SETTING_DEVICE_CLASS = "android.hardware.bydauto.setting.BYDAutoSettingDevice"
-    private const val SPEED_DEVICE_CLASS = "android.hardware.bydauto.speed.BYDAutoSpeedDevice"
+    internal const val SPEED_DEVICE_CLASS = "android.hardware.bydauto.speed.BYDAutoSpeedDevice"
     private const val ABS_DEVICE_CLASS = "android.hardware.bydauto.AbsBYDAutoDevice"
     private const val EVENT_VALUE_CLASS = "android.hardware.bydauto.BYDAutoEventValue"
 
@@ -321,12 +321,41 @@ internal object DriveModeCommand {
         }
     }
 
-    private fun speedKmh(context: Context): Double? = try {
+    private fun readSpeed(context: Context): Any? {
         val clazz = Class.forName(SPEED_DEVICE_CLASS)
         val device = clazz.getMethod("getInstance", Context::class.java).invoke(null, context)
-        clazz.getMethod("getCurrentSpeed").invoke(device) as? Double
+        return clazz.getMethod("getCurrentSpeed").invoke(device)
+    }
+
+    /** The car's speed in km/h; null where it cannot be read, and then nothing is sent (see [DriveModeControl.mayChangeAt]). */
+    private fun speedKmh(context: Context): Double? = try {
+        readSpeed(context) as? Double
     } catch (_: Exception) {
         null
+    } catch (_: LinkageError) {
+        null
+    }
+
+    /** What reading the car's speed gives, for the log (`speed=`): see [speedOutcome]. Only reads. */
+    internal fun speedReport(context: Context): String = speedOutcome { readSpeed(context) }
+
+    /**
+     * What a speed read gave, in a word for the log: `ok:<km/h>`, `none` (the car answered without a number), `refused:<permission>`
+     * (the car's permission check refused this process), `missing:<name>` (the car lacks the class or a method) or
+     * `failed:<exception>`. The drive mode's speed gate depends on this read, and where it gives no number nothing is sent, so the
+     * log says why on a car where the drive mode does not go.
+     */
+    internal fun speedOutcome(read: () -> Any?): String {
+        val failure: Throwable = try {
+            return (read() as? Double)?.let { "ok:" + String.format(java.util.Locale.ROOT, "%.1f", it) } ?: "none"
+        } catch (e: Exception) {
+            e
+        } catch (e: LinkageError) {
+            e
+        }
+        PermissionRefusal.missingPermission(failure)?.let { return "refused:$it" }
+        classUnusable(failure)?.let { return "missing:$it" }
+        return "failed:${failure.javaClass.simpleName}"
     }
 
     /** The helper this runs in has already started the system context (its HAL classes need one): reuse it. */

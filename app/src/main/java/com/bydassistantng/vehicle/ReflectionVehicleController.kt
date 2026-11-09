@@ -149,6 +149,9 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
     /** Who holds the permissions that guard the car's devices, for the log (see [PermissionRefusal.report]). */
     internal fun permissionReport(appPackage: String): String = PermissionRefusal.report(context, appPackage)
 
+    /** Whether the car's speed can be read from here, which the drive mode's gate needs, for the log (`speed=`, see [DriveModeCommand.speedOutcome]). */
+    internal fun speedReport(): String = DriveModeCommand.speedReport(context)
+
     /**
      * A typed setter. A command that names a [VehicleCommand.stateFeatureId] and a device type is confirmed
      * by reading that state back, as the generic route is: the method's argument is [value] plus
