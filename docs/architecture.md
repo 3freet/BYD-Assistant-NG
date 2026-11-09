@@ -111,6 +111,18 @@ limit); the drive-mode request is a single write and runs inside the vehicle hel
 cluster feature runs there as `cluster open|close|status|leaving`, and keeps a watcher thread in the helper that gives
 the gauges back whenever the app has left the cluster.
 
+### When a feature is switched off
+
+Some of what the assistant does needs a switch in Settings (vehicle control, the three experimental features, web search and
+long-term memory; `SwitchableFeature`). Asked for one that is off, a model that was not given the tool used to answer with
+something vague ("the system does not allow it"). So `SwitchedOffFeatures` works out, per conversation, which features **this
+car has** and the user has left **off** (and which the car does not have at all), and the system prompt names each with where to
+switch it on, written with the screens' own names in the app's language (`SettingsPaths`): the assistant is told to say, in
+one sentence, that it is switched off and where to switch it on, and not to blame the system or the car. A feature the car
+lacks is said not to be offered. The rule is the same on every car and for every way a feature reaches the car: whether a feature
+is *present* is decided where the car is asked (the drive mode is present on the Leopard's route and on the classic one alike), and
+whether it is *on* is its switch. The answer a tool gives if it is called for a feature that is off says the same, as a backstop.
+
 ### Memory
 
 `memory/` keeps two things in DataStore: *facts* (what the user asked it to remember, at most 20 of 160 characters)

@@ -144,7 +144,7 @@ uid of the process, or against the caller's uid while a Binder call is being han
 
 The app words the refusal for the person in the car ("This car's software does not let this app use the windows, doors and
 sunroof. Nothing was sent.", `PermissionRefusal`), and the helper's log line carries `perms=`: for each of the permissions of
-seven devices, how the system defines it, whether the helper holds it and whether the app does. The same car's next log
+the devices the app reaches, how the system defines it, whether the helper holds it and whether the app does. The same car's next log
 (beta 3) answered it:
 
 | Permission | Defined as | Helper (shell) holds | App holds |
@@ -190,7 +190,10 @@ checked before a request is sent does not depend on the route: the value is one 
 the verified id, and the car is below 80 km/h (an unknown speed is not). The speed is read through the Speed device class, which has
 no `…_COMMON` permission, and the four drive mode requests in the Song Plus logs all passed that check before they were refused at
 the Setting device, so the speed can be read on a DiLink 5.0 car and the limit applies there as anywhere. Where a car does not give
-its speed no request is sent, and the answer says the speed was not reported; there is no native speed read.
+its speed no request is sent, and the answer says the speed was not reported; there is no native speed read. The helper's line says
+whether the speed can be read on a car (`speed=`) and which of the classes the drive mode goes through the car has (`classes=…,energy,speed`).
+A car that lacks the Setting class, or the Energy class of the classic route, is treated like one that refuses it: nothing was sent, so
+the request goes to the native service, and where there is none the answer says that the car's software lacks what the request needs.
 
 When it is used: by default only after a device class has refused the helper (and from then on for that class); a test switch,
 `setprop debug.bydang.nativeroute always|never|auto`, prefers or forbids it, and `setprop debug.bydang.acroute service|device|none`

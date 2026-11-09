@@ -79,7 +79,8 @@ and **only when the first route is not there**: the Leopard keeps the way it has
 takes (Normal, Eco, Sport, Snow, Sand, Mud; never Mountain, Rock, Auto or exit, which the class has no number for), under the same
 80 km/h limit and with the same read-back, and the assistant is told those six. **Which of them the car has is the car's to say**:
 a request it cannot follow leaves the state where it was and is reported as unchanged, not as done. Where the car's Energy class
-refuses the helper for want of `BYDAUTO_ENERGY_COMMON` the helper goes to the native service, as for the first route.
+refuses the helper for want of `BYDAUTO_ENERGY_COMMON`, or the car has no such class (or not the method asked for), the helper goes to
+the native service, as for the first route.
 
 **Status: not confirmed on a car.** Nobody has written `ENERGY_OPERATION_MODE_SET` yet, on the Leopard or anywhere; it has only run
 in the simulator, against the car's own energy class (the class wrote 2, 3 and 1 to the feature for Eco, Sport and Normal, and 6, 5 and
