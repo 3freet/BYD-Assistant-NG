@@ -229,6 +229,11 @@ class LiveConversationController @Inject constructor(
     // The instrument cluster (experimental): its switch, and what happens to BYD Maps afterwards.
     private var clusterForSession = ClusterOptions.OFF
 
+    // What the session needs to tell a switch that is off from a feature the car does not have (see [SwitchedOffFeatures]).
+    private var clusterPresentForSession = false
+    private var clusterSwitchOnForSession = false
+    private var webSearchSwitchOnForSession = false
+
     private enum class Gate { OPEN, SILENT, BLOCKED }
 
     private var vehicleControlEnabledForSession = false
@@ -552,14 +557,17 @@ class LiveConversationController @Inject constructor(
         vehicleControlEnabledForSession = preferencesRepository.vehicleControlEnabled.first()
         dialectForSession = preferencesRepository.arabicDialect.first()
         // Off while a recent session showed the server refusing it (see [searchBlockedUntilMs]).
-        webSearchForSession = preferencesRepository.webSearchEnabled.first() && SystemClock.elapsedRealtime() >= searchBlockedUntilMs
+        webSearchSwitchOnForSession = preferencesRepository.webSearchEnabled.first()
+        webSearchForSession = webSearchSwitchOnForSession && SystemClock.elapsedRealtime() >= searchBlockedUntilMs
         voiceForSession = AssistantVoices.valid(preferencesRepository.assistantVoice.first())
         longTermForSession = preferencesRepository.longTermMemoryEnabled.first()
         shortTermForSession = preferencesRepository.shortTermMemoryEnabled.first()
         exteriorSpeakerForSession = preferencesRepository.exteriorSpeakerEnabled.first()
         driveModesForSession = preferencesRepository.driveModesEnabled.first()
+        clusterPresentForSession = ClusterScreenAvailability.isOnThisCar(context)
+        clusterSwitchOnForSession = preferencesRepository.clusterScreenEnabled.first()
         clusterForSession = ClusterOptions(
-            enabled = ClusterScreenAvailability.isOnThisCar(context) && preferencesRepository.clusterScreenEnabled.first(),
+            enabled = clusterPresentForSession && clusterSwitchOnForSession,
             keepMapsDisabled = preferencesRepository.clusterKeepMapsDisabled.first(),
         )
         musicHintForSession = preferencesRepository.musicHintEnabled.first()
@@ -725,8 +733,41 @@ class LiveConversationController @Inject constructor(
         }
     }
 
+    /**
+     * What this session knows of each feature the user switches on in Settings: whether this car has it (however it reaches the car:
+     * the drive mode has two routes) and whether its switch is on. Asked for one that is off, the assistant says where to switch it on
+     * (see [SwitchedOffFeatures]); the same on every car.
+     */
+    private fun featureStates() = SwitchedOffFeatures.states(
+        vehicleControlOn = vehicleControlEnabledForSession,
+        exteriorSpeaker = FeatureState(present = player.canSpeakOutside, on = exteriorSpeakerForSession),
+        driveModes = FeatureState(present = driveModeSwitch != null, on = driveModesForSession),
+        cluster = FeatureState(present = clusterPresentForSession, on = clusterSwitchOnForSession),
+        webSearchOn = webSearchSwitchOnForSession,
+        longTermMemoryOn = longTermForSession,
+    )
+
+    /** The answer for the model to a call for [feature], which is switched off: where the user switches it on. */
+    private fun switchedOffAnswer(feature: SwitchableFeature): JsonObject =
+        SwitchedOffFeatures.toolAnswer(SwitchedOff(feature, SettingsPaths.of(context, feature)))
+
+    /** Why the exterior speaker cannot be used, as the answer for the model (the car has none, vehicle control is off, or its own switch is); null when it can. */
+    private fun exteriorSpeakerRefusal(): JsonObject? = when {
+        !player.canSpeakOutside -> SwitchedOffFeatures.unavailableAnswer(SwitchableFeature.EXTERIOR_SPEAKER)
+        !vehicleControlEnabledForSession -> switchedOffAnswer(SwitchableFeature.VEHICLE_CONTROL)
+        !exteriorSpeakerForSession -> switchedOffAnswer(SwitchableFeature.EXTERIOR_SPEAKER)
+        else -> null
+    }
+
     /** The tools and instructions for this session, from the settings read at [start]. */
     private fun buildSession() {
+        val states = featureStates()
+        val switchedOff = SwitchedOffFeatures.switchedOff(states) { SettingsPaths.of(context, it) }
+        val notOnThisCar = SwitchedOffFeatures.absent(states)
+        // For a log: what the assistant was told it may say about the features that are off, or that the car lacks.
+        if (switchedOff.isNotEmpty() || notOnThisCar.isNotEmpty()) {
+            AppLogger.log(TAG, "Features off in Settings: ${switchedOff.joinToString { it.feature.name }.ifEmpty { "none" }}; not on this car: ${notOnThisCar.joinToString { it.name }.ifEmpty { "none" }}")
+        }
         sessionTools = assistantTools(
             vehicleControlEnabledForSession,
             conversation = true,
@@ -748,6 +789,8 @@ class LiveConversationController @Inject constructor(
                         webSearch = webSearchForSession,
                         memory = MemoryContext(tools = longTermForSession, facts = factsForSession, recent = recentForSession),
                         musicHint = musicHintForSession,
+                        switchedOff = switchedOff,
+                        notOnThisCar = notOnThisCar,
                     ),
                 ),
             ),
@@ -1108,9 +1151,7 @@ class LiveConversationController @Inject constructor(
      */
     private suspend fun speakOutside(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
         val message = SpeakOutsideTool.message(call) ?: return SpeakOutsideTool.refused("there was no message to say")
-        if (!vehicleControlEnabledForSession || !exteriorSpeakerForSession || !player.canSpeakOutside) {
-            return SpeakOutsideTool.refused("the exterior speaker is not available")
-        }
+        exteriorSpeakerRefusal()?.let { return it }
         val volume = SpeakOutsideTool.volume(call) ?: preferencesRepository.exteriorVolume.first()
         report(TurnStatus.DispatchingCommand(AppLanguage.string(context, R.string.banner_speak_outside)))
         if (!player.beginOutside(volume, waitForSwitch = !player.outsideReady)) {
@@ -1123,9 +1164,8 @@ class LiveConversationController @Inject constructor(
     /** The model asked for a sound effect outside the car: it plays on its own track, and the cabin carries on. */
     private suspend fun playSoundOutside(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
         val effects = player.soundEffects
-        if (!vehicleControlEnabledForSession || !exteriorSpeakerForSession || effects.isEmpty()) {
-            return PlaySoundOutsideTool.refused("the exterior speaker is not available")
-        }
+        exteriorSpeakerRefusal()?.let { return it }
+        if (effects.isEmpty()) return PlaySoundOutsideTool.refused("the exterior speaker has no sounds to play")
         val effect = PlaySoundOutsideTool.effect(call, effects) ?: return PlaySoundOutsideTool.refused("there is no such sound")
         val volume = PlaySoundOutsideTool.volume(call) ?: preferencesRepository.exteriorVolume.first()
         report(TurnStatus.DispatchingCommand(AppLanguage.string(context, R.string.banner_play_sound_outside)))
@@ -1153,11 +1193,11 @@ class LiveConversationController @Inject constructor(
      * or why nothing was sent (moving, no link to the car).
      */
     private suspend fun setDriveMode(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
+        // Whichever route the car has to the drive mode, the answer to a feature that is off is the same: where to switch it on.
+        val switch = driveModeSwitch ?: return SwitchedOffFeatures.unavailableAnswer(SwitchableFeature.DRIVE_MODES)
+        if (!vehicleControlEnabledForSession) return switchedOffAnswer(SwitchableFeature.VEHICLE_CONTROL)
+        if (!driveModesForSession) return switchedOffAnswer(SwitchableFeature.DRIVE_MODES)
         val mode = SetDriveModeTool.mode(call) ?: return SetDriveModeTool.refused("that is not a mode the car can be asked for")
-        val switch = driveModeSwitch
-        if (!vehicleControlEnabledForSession || !driveModesForSession || switch == null) {
-            return SetDriveModeTool.refused("drive modes are not available")
-        }
         // The model sometimes asks again straight after a success: answer from the first result, without the car.
         driveModeRepeats.repeatOf(mode, SystemClock.elapsedRealtime())?.let { first ->
             AppLogger.log(TAG, "Drive mode ${mode.word}: asked again within moments — answered from the first result")
@@ -1195,7 +1235,7 @@ class LiveConversationController @Inject constructor(
     }
 
     private suspend fun remember(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
-        if (!longTermForSession) return RememberTool.refused()
+        if (!longTermForSession) return switchedOffAnswer(SwitchableFeature.LONG_TERM_MEMORY)
         val fact = RememberTool.fact(call) ?: return RememberTool.answer(AddOutcome.Empty)
         report(TurnStatus.DispatchingCommand(AppLanguage.string(context, R.string.banner_remember)))
         val outcome = memory.addFact(fact)
@@ -1204,7 +1244,7 @@ class LiveConversationController @Inject constructor(
     }
 
     private suspend fun forgetMemory(call: GeminiFunctionCall, report: suspend (TurnStatus) -> Unit): JsonObject {
-        if (!longTermForSession) return ForgetMemoryTool.refused()
+        if (!longTermForSession) return switchedOffAnswer(SwitchableFeature.LONG_TERM_MEMORY)
         val match = ForgetMemoryTool.match(call) ?: return ForgetMemoryTool.answer(0)
         report(TurnStatus.DispatchingCommand(AppLanguage.string(context, R.string.banner_forget)))
         val removed = memory.forget(match)

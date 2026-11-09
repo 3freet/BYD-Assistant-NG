@@ -9,6 +9,10 @@ import com.bydassistantng.apps.InstalledApp
 import com.bydassistantng.gemini.GeminiFunctionCall
 import com.bydassistantng.gemini.GeminiFunctionDeclaration
 import com.bydassistantng.gemini.GeminiSchema
+import com.bydassistantng.gemini.SettingsPaths
+import com.bydassistantng.gemini.SwitchableFeature
+import com.bydassistantng.gemini.SwitchedOff
+import com.bydassistantng.gemini.SwitchedOffFeatures
 import com.bydassistantng.media.YouTubeLibrary
 import com.bydassistantng.media.YouTubeVideoFinder
 import com.bydassistantng.util.AppLanguage
@@ -115,8 +119,10 @@ object ClusterScreenTool {
         options: ClusterOptions,
         onDispatching: suspend (String) -> Unit,
     ): JsonObject {
-        if (!vehicleControlEnabled) return error("Vehicle features are switched off in the app's settings.")
-        if (!options.enabled) return error("The cluster screen is switched off in the app's Advanced settings.")
+        // The same answers as for every feature that is off in Settings: where to switch it on (see SwitchedOffFeatures).
+        if (!ClusterScreenAvailability.isOnThisCar(context)) return SwitchedOffFeatures.unavailableAnswer(SwitchableFeature.CLUSTER_SCREEN)
+        if (!vehicleControlEnabled) return SwitchedOffFeatures.toolAnswer(SwitchedOff(SwitchableFeature.VEHICLE_CONTROL, SettingsPaths.of(context, SwitchableFeature.VEHICLE_CONTROL)))
+        if (!options.enabled) return SwitchedOffFeatures.toolAnswer(SwitchedOff(SwitchableFeature.CLUSTER_SCREEN, SettingsPaths.of(context, SwitchableFeature.CLUSTER_SCREEN)))
         val action = ClusterAction.from((call.args["action"] as? JsonPrimitive)?.content)
             ?: return error("Unknown action. Use one of: ${ClusterAction.entries.joinToString { it.word }}.")
         val app = (call.args["app"] as? JsonPrimitive)?.content?.trim().orEmpty().take(MAX_TEXT)

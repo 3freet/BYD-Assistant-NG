@@ -51,11 +51,6 @@ object RememberTool {
             put("error", "Memory is full (${MemoryLimits.MAX_FACTS} items). Ask the user what to forget first.")
         }
     }
-
-    fun refused(): JsonObject = buildJsonObject {
-        put("status", "error")
-        put("error", "Long-term memory is switched off in the settings.")
-    }
 }
 
 /** "Forget my work address": removes the stored facts that mention it. */
@@ -87,6 +82,4 @@ object ForgetMemoryTool {
     } else {
         buildJsonObject { put("status", "error"); put("error", "Nothing remembered matched that.") }
     }
-
-    fun refused(): JsonObject = RememberTool.refused()
 }

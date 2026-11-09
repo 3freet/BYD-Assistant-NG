@@ -19,7 +19,6 @@ import com.bydassistantng.media.PlayMediaTool
 import com.bydassistantng.navigation.NavigationTool
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
-import com.bydassistantng.vehicle.LoggingVehicleController
 import com.bydassistantng.vehicle.VolumeTool
 import com.bydassistantng.passenger.PassengerScreenTool
 import com.bydassistantng.vehicle.InAppVehicleController
@@ -215,7 +214,8 @@ object VehicleFunctionDispatcher {
                 // A plain Android call: no ADB link and no vehicle-control switch involved.
                 !command.needsCarLink -> InAppVehicleController(context)
                 vehicleControlEnabled -> reflectionController
-                else -> LoggingVehicleController
+                // Only reachable if the model calls a command it was not given: nothing is sent, and the answer says where to switch it on.
+                else -> return SwitchedOffFeatures.toolAnswer(SwitchedOff(SwitchableFeature.VEHICLE_CONTROL, SettingsPaths.of(context, SwitchableFeature.VEHICLE_CONTROL)))
             }
             repeatGuard.dispatch(command.id, resolvedValue) {
                 try {
@@ -252,12 +252,7 @@ object VehicleFunctionDispatcher {
             ReadCarTool.What.AIR_QUALITY -> R.string.banner_air_quality
         }
         onDispatching(AppLanguage.string(context, banner))
-        if (!vehicleControlEnabled) {
-            return buildJsonObject {
-                put("status", "error")
-                put("error", "Vehicle features are switched off in the app's settings.")
-            }
-        }
+        if (!vehicleControlEnabled) return SwitchedOffFeatures.toolAnswer(SwitchedOff(SwitchableFeature.VEHICLE_CONTROL, SettingsPaths.of(context, SwitchableFeature.VEHICLE_CONTROL)))
         return when (val result = controller.query(what.query)) {
             is VehicleDispatchResult.Success -> {
                 AppLogger.log(TAG, "read_car ${what.word} -> ${result.note}")
@@ -303,7 +298,10 @@ private val endConversationDeclaration = GeminiFunctionDeclaration(
 
 /** Shared system prompt for both the classic and Live conversation paths. [conversation] is the Live
  * path, where the assistant keeps listening after every reply until told to stop. [dialect] only matters
- * when the assistant answers in Arabic; [webSearch] says Google Search is available this session. */
+ * when the assistant answers in Arabic; [webSearch] says Google Search is available this session.
+ * [switchedOff] are the features this car has and the user has left off in Settings, with where to switch each on, and
+ * [notOnThisCar] those the car does not have at all: asked for one, the assistant says so instead of a vague refusal
+ * (see [SwitchedOffFeatures]); the same on every car and for every way a feature reaches it. */
 fun voiceAssistantSystemPrompt(
     language: AssistantLanguage,
     conversation: Boolean = false,
@@ -311,6 +309,8 @@ fun voiceAssistantSystemPrompt(
     webSearch: Boolean = false,
     memory: MemoryContext = MemoryContext(),
     musicHint: Boolean = false,
+    switchedOff: List<SwitchedOff> = emptyList(),
+    notOnThisCar: List<SwitchableFeature> = emptyList(),
 ): String {
     // A fixed language is a firm rule and is said twice (here and again at the very end): a model that listens in many
     // languages, and was told only once, tends to answer in whichever it heard, which an unclear word can make the wrong one.
@@ -387,6 +387,8 @@ fun voiceAssistantSystemPrompt(
         MemoryFacts.promptSection(memory.facts)?.let { append(" $it") }
         RecentExchanges.promptSection(memory.recent)?.let { append(" $it") }
     }
+    // Features the user can switch on in Settings, and those the car does not have: what to say when asked for one.
+    val switchedOffInstruction = SwitchedOffFeatures.promptSection(switchedOff, notOnThisCar).orEmpty()
     // Opt-in: music with singing can reach the microphone, and the model takes sung words for someone speaking to it.
     val musicInstruction = if (musicHint) {
         " Music may be playing in the car. Sung words and other music are not the driver speaking to you: ignore them, and " +
@@ -398,8 +400,9 @@ fun voiceAssistantSystemPrompt(
         "open_app, and to close or quit an app, call close_app; for play, pause, next or previous on the music, " +
         "call media_control. When the user asks you to " +
         "control something in the car and a matching function is available, call that function instead " +
-        "of describing the action in words. If no matching function is available, say so plainly rather " +
-        "than pretending to have done it.$searchInstruction$memoryInstruction$musicInstruction" +
+        "of describing the action in words. If no matching function is available, say plainly that you cannot do " +
+        "that rather than pretending to have done it, and do not say that the system or the car does not allow it." +
+        "$searchInstruction$memoryInstruction$musicInstruction$switchedOffInstruction" +
         (
             if (conversation) {
                 " This is an ongoing conversation: after you answer, the user may keep talking, so answer " +

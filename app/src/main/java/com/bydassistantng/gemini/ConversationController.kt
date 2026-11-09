@@ -104,7 +104,14 @@ class ConversationController @Inject constructor(
             }
             AppLogger.log(TAG, "[turn $turnId] encoded audio in ${SystemClock.elapsedRealtime() - encodeStartMs}ms (${audioBase64.length} base64 chars, vehicleControl=$vehicleControlEnabled)")
 
-            val systemInstruction = GeminiContent(parts = listOf(GeminiPart(text = voiceAssistantSystemPrompt(language))))
+            // A turn without a conversation has no experimental features, web search or memory to switch on; vehicle control is the one
+            // switch that matters here, and when it is off the assistant says where to switch it on.
+            val switchedOff = if (vehicleControlEnabled) {
+                emptyList()
+            } else {
+                listOf(SwitchedOff(SwitchableFeature.VEHICLE_CONTROL, SettingsPaths.of(context, SwitchableFeature.VEHICLE_CONTROL)))
+            }
+            val systemInstruction = GeminiContent(parts = listOf(GeminiPart(text = voiceAssistantSystemPrompt(language, switchedOff = switchedOff))))
             val history = mutableListOf(
                 GeminiContent(role = "user", parts = listOf(GeminiPart(inlineData = GeminiInlineData(mimeType, audioBase64)))),
             )
