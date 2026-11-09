@@ -240,16 +240,43 @@ internal object DriveModeCommand {
         if (NativeRoute.preferNative(mode, NativeRoute.isRefused(deviceClass))) {
             service()?.let { return work(native(it)) }
         }
-        try {
+        val failure: Throwable = try {
             return work(kit())
         } catch (e: Exception) {
-            val refused = PermissionRefusal.missingPermission(e) ?: throw e
-            val calls = (if (NativeRoute.fallBack(mode)) service() else null)
-                ?: return VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, DriveModeControl.REFUSED_REASON)
-            NativeRoute.markRefused(deviceClass)
-            log("$deviceClass refuses this process ($refused): the drive mode goes straight to the car's service")
-            return work(native(calls))
+            e
+        } catch (e: LinkageError) {
+            e
         }
+        // The class refused this process, or the car has no such class (or not the method asked for): nothing was sent either way, so
+        // doing it through the car's service cannot do it twice. Any other failure is not this function's to explain.
+        val refused = PermissionRefusal.missingPermission(failure)
+        val unusable = if (refused == null) classUnusable(failure) else null
+        if (refused == null && unusable == null) throw failure
+        val calls = (if (NativeRoute.fallBack(mode)) service() else null)
+            ?: return if (refused != null) {
+                VehicleDispatchResult.Failure(VehicleDispatchError.SECURITY_DENIED, DriveModeControl.REFUSED_REASON)
+            } else {
+                VehicleDispatchResult.Failure(VehicleDispatchError.NOT_AVAILABLE_ON_THIS_CAR, DriveModeControl.MISSING_REASON)
+            }
+        NativeRoute.markRefused(deviceClass)
+        log("$deviceClass ${if (refused != null) "refuses this process ($refused)" else "cannot be used on this car ($unusable)"}: the drive mode goes straight to the car's service")
+        return work(native(calls))
+    }
+
+    /**
+     * Why a device class cannot be used on this car, when that is the failure: the class is not there (`ClassNotFoundException`, or one that
+     * does not link) or lacks the method asked for (`NoSuchMethodException`), looked for through the exceptions that wrap it; null for any
+     * other failure. Cars differ in which classes their framework has, and a car that has a feature may lack the class an older car reaches
+     * it through.
+     */
+    internal fun classUnusable(failure: Throwable?): String? {
+        var current = failure
+        var depth = 0
+        while (current != null && depth++ < 8) {
+            if (current is ClassNotFoundException || current is NoSuchMethodException || current is LinkageError) return current.javaClass.simpleName
+            current = (current as? InvocationTargetException)?.targetException ?: current.cause
+        }
+        return null
     }
 
     // ── The request ─────────────────────────────────────────────────────────────────────────────────

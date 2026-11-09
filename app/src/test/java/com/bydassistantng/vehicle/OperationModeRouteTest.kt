@@ -373,6 +373,46 @@ class OperationModeRouteTest {
     }
 
     @Test
+    fun aCarWithoutTheEnergyClassIsSpokenToDirectlyAndTheClassIsNotTriedAgain() {
+        for (failure in listOf<Throwable>(ClassNotFoundException(OperationModeRoute.DEVICE_CLASS), NoSuchMethodException("getOperationMode"), NoClassDefFoundError("x"))) {
+            NativeRoute.forgetRefusals()
+            var used: DriveModeCommand.Device? = null
+            val log = ArrayList<String>()
+
+            val result = viaClassOrService(NativeMode.AUTO, ClassicCar(3), { throw failure }, log) { used = it; VehicleDispatchResult.Success() }
+
+            assertTrue("${failure.javaClass.simpleName}: $result", result is VehicleDispatchResult.Success)
+            assertTrue("${failure.javaClass.simpleName}", used is DriveModeCommand.OperationNativeDevice)
+            assertTrue(NativeRoute.isRefused(OperationModeRoute.DEVICE_CLASS))
+            assertTrue(log.toString(), "cannot be used on this car" in log.single() && failure.javaClass.simpleName in log.single())
+        }
+    }
+
+    @Test
+    fun aMissingClassIsFoundThroughTheExceptionsThatWrapIt() {
+        val wrapped = InvocationTargetException(RuntimeException("outer", ClassNotFoundException("x")))
+
+        assertEquals("ClassNotFoundException", DriveModeCommand.classUnusable(wrapped))
+        assertNull(DriveModeCommand.classUnusable(IllegalStateException("something else")))
+        assertNull(DriveModeCommand.classUnusable(null))
+    }
+
+    @Test
+    fun aMissingClassWithNoServiceIsToldInWordsAndIsNotCalledARefusal() {
+        val result = viaClassOrService(NativeMode.AUTO, null, { throw ClassNotFoundException("x") })
+
+        assertEquals(VehicleDispatchError.NOT_AVAILABLE_ON_THIS_CAR, (result as VehicleDispatchResult.Failure).error)
+        assertEquals(DriveModeControl.MISSING_REASON, result.detail)
+    }
+
+    @Test
+    fun aFailureThatIsNeitherARefusalNorAMissingClassIsStillThrown() {
+        assertThrows(IllegalStateException::class.java) {
+            viaClassOrService(NativeMode.AUTO, ClassicCar(3), { throw IllegalStateException("a bug") })
+        }
+    }
+
+    @Test
     fun aCarWhoseEnergyClassRefusesAndWhichHasNoServiceIsToldSoInWords() {
         val result = viaClassOrService(NativeMode.AUTO, null, { throw refusal })
 

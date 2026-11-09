@@ -255,6 +255,17 @@ class DriveModeNativeTest {
     }
 
     @Test
+    fun aCarWithoutTheSettingClassIsSpokenToDirectlyToo() {
+        val calls = FakeCalls()
+        var used: DriveModeCommand.Device? = null
+
+        val result = route(NativeMode.AUTO, kit = { throw ClassNotFoundException(DriveModeCommand.SETTING_DEVICE_CLASS) }, service = { calls }) { used = it; VehicleDispatchResult.Success() }
+
+        assertTrue(result is VehicleDispatchResult.Success)
+        assertTrue(used is DriveModeCommand.NativeDevice)
+    }
+
+    @Test
     fun aRefusalWhenTheClassIsFirstReadIsTheSameAndNothingWasSentBefore() {
         // The sim's car refuses at the first call and the real one when the class is made: both arrive as the same exception.
         val calls = FakeCalls()

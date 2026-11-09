@@ -123,6 +123,9 @@ internal object DriveModeControl {
     /** What the person hears when the car's own permission check refuses the helper and the car's service cannot be used instead. */
     const val REFUSED_REASON = "this car's software does not let this app do that, so nothing was sent"
 
+    /** What the person hears when the car lacks the device class this goes through and its service cannot be used instead. */
+    const val MISSING_REASON = "this car's software does not have what that needs, so nothing was sent"
+
     /** The car's own name for a mode number. */
     fun nameOf(value: Int): String = when (value) {
         1 -> "Normal"
