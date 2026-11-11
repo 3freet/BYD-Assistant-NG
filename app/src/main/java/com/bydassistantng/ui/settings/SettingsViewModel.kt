@@ -190,6 +190,8 @@ class SettingsViewModel @Inject constructor(
     /** The experimental car features are off until the user switches them on (see [OptInFeatures]). */
     val exteriorSpeakerEnabled: StateFlow<Boolean> = preferencesRepository.exteriorSpeakerEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.EXTERIOR_SPEAKER_DEFAULT)
+    val liveBroadcastEnabled: StateFlow<Boolean> = preferencesRepository.liveBroadcastEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.LIVE_BROADCAST_DEFAULT)
     val driveModesEnabled: StateFlow<Boolean> = preferencesRepository.driveModesEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OptInFeatures.DRIVE_MODES_DEFAULT)
     val clusterScreenEnabled: StateFlow<Boolean> = preferencesRepository.clusterScreenEnabled
@@ -201,6 +203,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setExteriorSpeakerEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setExteriorSpeakerEnabled(enabled) }
+    }
+    fun setLiveBroadcastEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setLiveBroadcastEnabled(enabled) }
     }
     fun setDriveModesEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setDriveModesEnabled(enabled) }

@@ -24,12 +24,41 @@ class ExteriorSpeakerSwitchTest {
         assertFalse(ExteriorSpeakerSwitch.isPermitted(device, feature, 2))
         assertFalse(ExteriorSpeakerSwitch.isPermitted(device, feature, -1))
         assertFalse(ExteriorSpeakerSwitch.isPermitted(device, feature, 255))
-        // The neighbouring ADAS ids and other devices stay out of reach.
-        assertFalse(ExteriorSpeakerSwitch.isPermitted(device, 0xAA000283L.toInt(), 1))
-        assertFalse(ExteriorSpeakerSwitch.isPermitted(device, 0xAA000321L.toInt(), 1))
-        assertFalse(ExteriorSpeakerSwitch.isPermitted(device, ExteriorSpeakerSwitch.MUTE_STATE_ID, 1))
-        assertFalse(ExteriorSpeakerSwitch.isPermitted(1001, feature, 1))
-        assertFalse(ExteriorSpeakerSwitch.isPermitted(1000, feature, 0))
+        // The neighbouring ADAS ids and other devices stay out of reach (and the media route's feature, where that route is off).
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(device, 0xAA000283L.toInt(), 1, mediaRoute = false))
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(device, 0xAA000321L.toInt(), 1, mediaRoute = false))
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(1000, 0xAA000321L.toInt(), 1, mediaRoute = false))
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(device, ExteriorSpeakerSwitch.MUTE_STATE_ID, 1, mediaRoute = false))
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(1001, feature, 1, mediaRoute = false))
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(1000, feature, 0, mediaRoute = false))
+    }
+
+    @Test
+    fun theMediaRouteIsPermittedOnlyWhereItIsOnAndOnlyForItsOneFeatureWithZeroOrOne() {
+        val media = ExteriorSpeakerSwitch.MEDIA_FEATURE_ID
+        assertEquals(0xAA000321L.toInt(), media)
+
+        for (device in ExteriorSpeakerSwitch.MEDIA_DEVICE_TYPES) {
+            assertTrue(ExteriorSpeakerSwitch.isPermitted(device, media, 0, mediaRoute = true))
+            assertTrue(ExteriorSpeakerSwitch.isPermitted(device, media, 1, mediaRoute = true))
+            assertFalse("where the route is off", ExteriorSpeakerSwitch.isPermitted(device, media, 1, mediaRoute = false))
+            assertFalse(ExteriorSpeakerSwitch.isPermitted(device, media, 2, mediaRoute = true))
+            assertFalse(ExteriorSpeakerSwitch.isPermitted(device, media, -1, mediaRoute = true))
+        }
+        // No other device type, and nothing next to it, comes with it.
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(1001, media, 1, mediaRoute = true))
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(1002, 0xAA000283L.toInt(), 1, mediaRoute = true))
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(1002, 0xAA000320L.toInt(), 1, mediaRoute = true))
+        assertFalse(ExteriorSpeakerSwitch.isPermitted(1002, ExteriorSpeakerSwitch.MUTE_STATE_ID, 1, mediaRoute = true))
+    }
+
+    @Test
+    fun theMediaRouteIsInEveryBuild() {
+        assertTrue(ExteriorSpeakerSwitch.MEDIA_ROUTE_ENABLED)
+        val media = ExteriorSpeakerSwitch.MEDIA_FEATURE_ID
+        assertTrue(ExteriorSpeakerSwitch.isPermitted(ExteriorSpeakerSwitch.DEVICE_TYPE, media, 1))
+        assertTrue(ExteriorSpeakerSwitch.isPermitted(ExteriorSpeakerSwitch.DEVICE_TYPE, media, 0))
+        assertFalse("still only 0 and 1", ExteriorSpeakerSwitch.isPermitted(ExteriorSpeakerSwitch.DEVICE_TYPE, media, 2))
     }
 }
 
@@ -69,5 +98,10 @@ class ExteriorSpeakerSwitchCarTest {
     @Test
     fun withoutTheCarsFrameworkTheExteriorSpeakerIsNotThere() {
         assertFalse(ExteriorSpeakerSwitch.isOnThisCar())
+    }
+
+    @Test
+    fun withoutTheCarsFrameworkTheMediaRouteIsNotThereEither() {
+        assertFalse(ExteriorSpeakerSwitch.isMediaRouteOnThisCar())
     }
 }

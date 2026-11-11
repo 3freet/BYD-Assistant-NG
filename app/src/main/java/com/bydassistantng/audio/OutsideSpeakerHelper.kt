@@ -18,6 +18,7 @@ import java.lang.reflect.InvocationTargetException
  * car's HAL refuses the app's own process. It speaks one line per command on stdin:
  *
  *  - `on`     switch the exterior speaker on (and report how the cabin mute state moved)
+ *  - `on media`  the same over the media route (the music output outside, see [ExteriorSpeakerSwitch.MEDIA_FEATURE_ID])
  *  - `hold`   heartbeat; the switch is switched off by this process if none arrives for a few seconds
  *  - `off`    switch it off
  *  - `state`  read the cabin mute state, write nothing
@@ -31,8 +32,16 @@ object OutsideSpeakerHelper {
     private const val NOTE_PREFIX = "BYDNOTE "
     private const val WATCH_INTERVAL_MS = 250L
 
+    // How long the car is given, after the media route is written, to show that it took it, and how often it is looked at meanwhile: the
+    // answer comes back as soon as the state has moved (it usually has within a few tens of milliseconds), not after the whole wait.
+    private const val MEDIA_CONFIRM_MS = 150L
+    private const val MEDIA_POLL_MS = 15L
+
     private val lock = Any()
     private var on = false
+
+    /** The device type the media route took when it was switched on; 0 while the first route (or none) is in use. */
+    private var mediaDevice = 0
     private var onSince = 0L
     private var lastHeartbeat = 0L
 
@@ -74,14 +83,17 @@ object OutsideSpeakerHelper {
         val set = findMethod(device.javaClass, "set", Int::class.javaPrimitiveType!!, IntArray::class.java, IntArray::class.java)
         val get = findMethod(device.javaClass, "get", Int::class.javaPrimitiveType!!, Int::class.javaPrimitiveType!!)
 
-        val write: (Int) -> Int = { value ->
-            check(ExteriorSpeakerSwitch.isPermitted(ExteriorSpeakerSwitch.DEVICE_TYPE, ExteriorSpeakerSwitch.FEATURE_ID, value))
-            set.invoke(
-                device,
-                ExteriorSpeakerSwitch.DEVICE_TYPE,
-                intArrayOf(ExteriorSpeakerSwitch.FEATURE_ID),
-                intArrayOf(value),
-            ) as? Int ?: 0
+        // The only line that writes to the car: the checked one. Nothing else in this process calls `set`.
+        val put: (Int, Int, Int) -> Int = { deviceType, featureId, value ->
+            check(ExteriorSpeakerSwitch.isPermitted(deviceType, featureId, value))
+            set.invoke(device, deviceType, intArrayOf(featureId), intArrayOf(value)) as? Int ?: 0
+        }
+        val write: (Int) -> Int = { value -> put(ExteriorSpeakerSwitch.DEVICE_TYPE, ExteriorSpeakerSwitch.FEATURE_ID, value) }
+        // Puts back whichever route is on: the first route's feature, and the media route's (with the device type it was switched on with) when that is in use.
+        val switchOff: () -> Int = {
+            val code = if (mediaDevice != 0) put(mediaDevice, ExteriorSpeakerSwitch.MEDIA_FEATURE_ID, ExteriorSpeakerSwitch.OFF) else write(ExteriorSpeakerSwitch.OFF)
+            mediaDevice = 0
+            code
         }
         val read: () -> Int? = {
             (get.invoke(device, ExteriorSpeakerSwitch.DEVICE_TYPE, ExteriorSpeakerSwitch.MUTE_STATE_ID) as? Int)
@@ -94,7 +106,7 @@ object OutsideSpeakerHelper {
                 synchronized(lock) {
                     val reason = ExteriorSpeakerGuard.mustSwitchOff(on, now(), onSince, lastHeartbeat)
                     if (reason != null) {
-                        val code = runCatching { write(ExteriorSpeakerSwitch.OFF) }.getOrNull()
+                        val code = runCatching { switchOff() }.getOrNull()
                         on = false
                         forcedOff = "switched off by the helper ($reason), HAL returned $code"
                         emit("$NOTE_PREFIX$forcedOff")
@@ -112,7 +124,7 @@ object OutsideSpeakerHelper {
                 val command = line.trim()
                 if (command.isEmpty()) continue
                 val result = try {
-                    synchronized(lock) { handle(command, write, read) }
+                    synchronized(lock) { handle(command, write, put, switchOff, read) }
                 } catch (e: InvocationTargetException) {
                     VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, e.targetException?.toString())
                 } catch (t: Throwable) {
@@ -123,13 +135,20 @@ object OutsideSpeakerHelper {
         } finally {
             // The app is gone or its ADB stream closed: never leave the car sending sound outside.
             synchronized(lock) {
-                if (on) runCatching { write(ExteriorSpeakerSwitch.OFF) }
+                if (on) runCatching { switchOff() }
                 on = false
             }
         }
     }
 
-    private fun handle(command: String, write: (Int) -> Int, read: () -> Int?): VehicleDispatchResult = when (command) {
+    private fun handle(
+        command: String,
+        write: (Int) -> Int,
+        put: (Int, Int, Int) -> Int,
+        switchOff: () -> Int,
+        read: () -> Int?,
+    ): VehicleDispatchResult = when (command) {
+        "on media" -> switchOnMedia(put, read)
         "on" -> {
             val before = read()
             val code = write(ExteriorSpeakerSwitch.ON)
@@ -153,7 +172,7 @@ object OutsideSpeakerHelper {
         }
         "off" -> {
             val before = read()
-            val code = write(ExteriorSpeakerSwitch.OFF)
+            val code = switchOff()
             on = false
             if (code < 0) {
                 VehicleDispatchResult.Failure(VehicleDispatchError.INVOCATION_FAILED, "HAL returned error code $code")
@@ -165,6 +184,48 @@ object OutsideSpeakerHelper {
             "cabin mute state ${read() ?: "?"}, switch ${if (on) "on" else "off"}" + (forcedOff?.let { "; earlier: $it" } ?: ""),
         )
         else -> VehicleDispatchResult.Failure(VehicleDispatchError.INVALID_ARGUMENT, "unknown command '$command'")
+    }
+
+    /**
+     * The media route: the Audio group's lock-sound feature, written with the device types in [ExteriorSpeakerSwitch.MEDIA_DEVICE_TYPES] in turn
+     * until the cabin mute state shows the car took it (it moves from 1 to 2 for either route); one the car did not take is put back at once.
+     */
+    private fun switchOnMedia(put: (Int, Int, Int) -> Int, read: () -> Int?): VehicleDispatchResult {
+        if (!ExteriorSpeakerSwitch.isMediaRouteOnThisCar()) {
+            return VehicleDispatchResult.Failure(VehicleDispatchError.PRECONDITION_NOT_MET, "the media route is not offered by this build or this car; nothing sent")
+        }
+        val before = read()
+        var code = -1
+        for (deviceType in ExteriorSpeakerSwitch.MEDIA_DEVICE_TYPES) {
+            code = put(deviceType, ExteriorSpeakerSwitch.MEDIA_FEATURE_ID, ExteriorSpeakerSwitch.ON)
+            if (code < 0) continue
+            val deadline = now() + MEDIA_CONFIRM_MS
+            var after: Int?
+            do {
+                Thread.sleep(MEDIA_POLL_MS)
+                after = read()
+            } while (!(before != null && after != null && after != before) && now() < deadline)
+            // The state moving from 1 to 2 is how the car shows that it took the route. It cannot move when it already reads 2, which it does while
+            // the media bus is busy (music was playing a moment ago, or an interrupted broadcast left it so): the write's own answer is all there
+            // is to go on then, and it is accepted (a route that did not take would be heard in the cabin, never outside).
+            val moved = before != null && after != null && after != before
+            val alreadyOn = before == ExteriorSpeakerSwitch.MUTE_STATE_ROUTE_ON && after == ExteriorSpeakerSwitch.MUTE_STATE_ROUTE_ON
+            if (moved || alreadyOn) {
+                mediaDevice = deviceType
+                on = true
+                forcedOff = null
+                onSince = now()
+                lastHeartbeat = onSince
+                return VehicleDispatchResult.Success(
+                    "accepted ($code) on device $deviceType; cabin mute state $before -> $after" + if (alreadyOn && !moved) " (it already read 2: taken on the write's answer)" else "",
+                )
+            }
+            put(deviceType, ExteriorSpeakerSwitch.MEDIA_FEATURE_ID, ExteriorSpeakerSwitch.OFF)
+        }
+        return VehicleDispatchResult.Failure(
+            VehicleDispatchError.INVOCATION_FAILED,
+            "the car did not take the media route (last answer $code, cabin mute state ${before ?: "?"} -> ${read() ?: "?"})",
+        )
     }
 
     private fun now(): Long = System.nanoTime() / 1_000_000L

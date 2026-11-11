@@ -59,6 +59,14 @@
     <string name="banner_cluster_close">Mengembalikan panel instrumen</string>
     <string name="banner_cluster_status">Memeriksa panel instrumen</string>
     <string name="banner_speak_outside">Berbicara di luar mobil</string>
+    <string name="banner_live">Siaran langsung di luar mobil</string>
+    <string name="banner_live_press_to_stop">Tekan tombol mikrofon untuk berhenti</string>
+    <string name="live_err_route">Tidak dapat beralih ke speaker eksterior</string>
+    <string name="live_err_feedback">Dihentikan: mikrofon menangkap suara speaker eksterior.</string>
+    <string name="live_choice_music_paused">Dijeda</string>
+    <string name="live_choice_music_outside">Di luar</string>
+    <string name="live_choice_music_inside">Di dalam</string>
+    <string name="live_stopped_time">Siaran langsung berhenti setelah satu menit</string>
     <string name="banner_play_sound_outside">Memutar suara di luar mobil</string>
     <string name="banner_drive_mode">Mode berkendara: %1$s</string>
     <string name="banner_remember">Mengingat hal itu</string>
@@ -262,6 +270,8 @@
     <string name="advanced_experimental_note">Fungsi-fungsi ini bersifat eksperimental. Fungsi ini memakai fitur mobil yang tidak dirancang untuk aplikasi ini, baru dicoba pada satu model mobil, dan bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Gunakan dengan risiko Anda sendiri.</string>
     <string name="advanced_exterior_enable_title">Speaker eksterior</string>
     <string name="advanced_exterior_enable_desc">Memungkinkan asisten berbicara dan memutar suara melalui speaker eksterior mobil, sehingga orang di luar dapat mendengarnya. Nonaktif secara bawaan.</string>
+    <string name="advanced_live_title">Siaran langsung mikrofon</string>
+    <string name="advanced_live_desc">Tahan tombol mikrofon di setir selama 1 detik untuk berbicara melalui speaker eksterior, sehingga orang di luar mendengar Anda secara langsung. Tekan lagi untuk berhenti. Nonaktif secara bawaan.</string>
     <string name="advanced_drive_modes_title">Penggantian mode berkendara</string>
     <string name="advanced_drive_modes_desc">Memungkinkan asisten mengganti mode berkendara mobil (salju, pasir, lumpur, pegunungan, bebatuan, otomatis, eco, sport) saat Anda memintanya. Mobil tetap yang memutuskan apakah menerimanya. Nonaktif secara bawaan.</string>
     <string name="advanced_drive_modes_desc_basic">Memungkinkan asisten meminta mode berkendara dari mobil (eco, normal, sport, salju, lumpur, pasir) saat Anda memintanya. Mobil tetap yang memutuskan apakah menerimanya dan mode mana yang dimilikinya. Nonaktif secara bawaan.</string>
@@ -298,6 +308,8 @@
     <string name="voice_channel_gain_reset">Kembali ke 0</string>
     <string name="advanced_exterior_confirm_title">Aktifkan speaker eksterior?</string>
     <string name="advanced_exterior_confirm_body">Ini adalah fitur eksperimental. Fitur ini mengeluarkan suara dan bunyi asisten ke luar mobil, yang dapat mengejutkan atau mengganggu orang di sekitar, dan bekerja melalui fungsi mobil yang tidak dirancang untuk aplikasi ini. Fitur ini baru dicoba pada satu model mobil dan bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas cara dan tempat penggunaannya.</string>
+    <string name="advanced_live_confirm_title">Aktifkan siaran langsung mikrofon?</string>
+    <string name="advanced_live_confirm_body">Ini adalah fitur eksperimental. Saat aktif, semua yang dikatakan di dalam mobil diputar langsung melalui speaker eksterior, sehingga orang di luar dapat mendengar percakapan Anda, sampai Anda menekan tombol lagi (siaran juga berhenti sendiri setelah satu menit). Hal ini dapat mengejutkan atau mengganggu orang di sekitar, dan jika suaranya terlalu keras, mikrofon dapat menangkapnya dan menimbulkan bunyi mendengking. Fitur ini bekerja melalui fungsi mobil yang tidak dirancang untuk aplikasi ini, baru dicoba pada satu model mobil dan bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas cara dan tempat penggunaannya.</string>
     <string name="advanced_drive_modes_confirm_title">Aktifkan penggantian mode berkendara?</string>
     <string name="advanced_drive_modes_confirm_body">Ini adalah fitur eksperimental. Mengganti mode berkendara mengubah cara mobil menyalurkan tenaga, menangani jalan, dan mengerem, dan bekerja melalui fungsi mobil yang tidak dirancang untuk aplikasi ini. Fitur ini baru dicoba pada satu model mobil; mungkin tidak berfungsi, atau bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Gunakan hanya saat aman. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas pengoperasian mobil Anda dengan aman.</string>
     <string name="advanced_exterior_title">Volume speaker eksterior</string>

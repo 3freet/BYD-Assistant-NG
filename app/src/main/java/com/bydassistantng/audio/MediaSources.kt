@@ -45,6 +45,38 @@ class MediaSources @Inject constructor(@ApplicationContext private val context: 
     fun playingPackages(): Set<String> = playing
 
     /**
+     * Asks the sessions that are playing to pause, for a player that did not give way to an audio focus request; returns their package names, for
+     * [resume]. The assistant's own and the phone's are left alone.
+     */
+    fun pausePlaying(): Set<String> {
+        val paused = HashSet<String>()
+        synchronized(callbacks) {
+            for (controller in callbacks.keys) {
+                val name = controller.packageName
+                if (name == context.packageName || name in IGNORED_PACKAGES) continue
+                val state = controller.playbackState?.state
+                if (state != PlaybackState.STATE_PLAYING && state != PlaybackState.STATE_BUFFERING) continue
+                if (runCatching { controller.transportControls.pause() }.isSuccess) paused += name
+            }
+        }
+        if (paused.isNotEmpty()) AppLogger.log(TAG, "Asked to pause: ${paused.joinToString()}")
+        return paused
+    }
+
+    /** Lets the apps [pausePlaying] paused play again (those still paused: one the user started again meanwhile is left alone). */
+    fun resume(packages: Set<String>) {
+        if (packages.isEmpty()) return
+        synchronized(callbacks) {
+            for (controller in callbacks.keys) {
+                if (controller.packageName in packages && controller.playbackState?.state == PlaybackState.STATE_PAUSED) {
+                    runCatching { controller.transportControls.play() }
+                }
+            }
+        }
+        AppLogger.log(TAG, "Asked to play again: ${packages.joinToString()}")
+    }
+
+    /**
      * Starts listening to the sessions (once). The system shows them only to an app with notification access, which is
      * granted once with `cmd notification allow_listener` over the loopback ADB connection, like the other permissions the
      * app gives itself (writing the setting directly was not enough on this unit). It stays granted across restarts and

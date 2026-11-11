@@ -54,14 +54,14 @@ private const val CHUNK_SIZE_BYTES = 1_600 // 50ms of 16kHz mono 16-bit PCM
 // What was written to the exterior speaker takes a moment to leave the mixer (the track's own latency is about
 // a quarter of a second): the car's switch stays on this much longer than the last sample's expected end, so
 // the tail of a sentence is not cut off.
-private const val OUTSIDE_TAIL_MS = 450L
+internal const val OUTSIDE_TAIL_MS = 450L
 
 // The exterior switch stays on this long after its track is stopped or flushed. What is already in the mixer and
 // the amplifier's buffers still plays for a moment (the navi output was seen to stop about 0.3 s after the track
 // did), and with the switch already off that tail came out of the cabin's navigation speaker.
-private const val OUTSIDE_RELEASE_GRACE_MS = 500L
+internal const val OUTSIDE_RELEASE_GRACE_MS = 500L
 // How long the switch itself takes to go off, once the grace is over (the route counts as in use until it has).
-private const val OUTSIDE_RELEASE_SWITCH_MS = 100L
+internal const val OUTSIDE_RELEASE_SWITCH_MS = 100L
 // What a reply's tail is given, past the last sample, before the exterior switch may go on (the headrest's stream is shared).
 private const val HEADREST_TAIL_MS = 300L
 
@@ -269,7 +269,8 @@ class LivePcmPlayer @Inject constructor(
      */
     val exteriorInUse: Boolean
         get() = speakingOutside || effectsOutside.get() > 0 ||
-            SystemClock.elapsedRealtime() < outsideReleaseUntilMs || SystemClock.elapsedRealtime() < effectEndsAtMs
+            SystemClock.elapsedRealtime() < outsideReleaseUntilMs || SystemClock.elapsedRealtime() < effectEndsAtMs ||
+            LiveBroadcastRoute.busy()
 
     /** True from [beginOutside] until the reply has been heard (or cut off): new audio goes outside. */
     @Volatile var speakingOutside = false

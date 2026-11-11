@@ -352,6 +352,7 @@ private fun searchIndex(viewModel: SettingsViewModel, hasCarVoice: Boolean): Lis
     if (hasCarVoice) add(SettingsCategory.CAR, R.string.car_voice_title)
     if (DilinkAutoStart.isDilink()) add(SettingsCategory.CAR, R.string.autostart_title)
     if (viewModel.exteriorSpeakerSupported) add(SettingsCategory.CAR, R.string.advanced_exterior_enable_title)
+    if (viewModel.exteriorSpeakerSupported) add(SettingsCategory.CAR, R.string.advanced_live_title)
     if (viewModel.driveModesSupported) add(SettingsCategory.CAR, R.string.advanced_drive_modes_title)
     if (viewModel.clusterSupported) add(SettingsCategory.CAR, R.string.advanced_cluster_enable_title)
     add(SettingsCategory.APP, R.string.app_language_title)

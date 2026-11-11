@@ -1,5 +1,7 @@
 package com.bydassistantng.audio
 
+import android.media.AudioAttributes
+import android.media.AudioFormat
 import android.media.AudioTrack
 import dagger.Module
 import dagger.Provides
@@ -54,14 +56,53 @@ interface ExteriorSpeaker {
      * Switches the car over and gets it ready. False when that could not be done, in which case nothing is
      * left switched on. Every successful [open] is ended by one [close]. How loud it is made is up to the
      * track's loudness boost ([ExteriorVolume.boostMb]), not to this.
+     *
+     * It returns once the route has had its [routeSettleMs] to take effect, unless [settle] is false: then it returns as soon as the car has
+     * taken the switch, and the caller, who has other things to get ready meanwhile, waits the settling out itself before the first sound.
      */
-    suspend fun open(): Boolean
+    suspend fun open(settle: Boolean = true): Boolean
+
+    /** How long after the switch is taken the route needs before a sound is certain to come out of it (what [open] waits, unless told not to). */
+    val routeSettleMs: Long get() = 300L
 
     /** A track whose sound comes out of the exterior speaker only; valid while it is open. */
     fun newTrack(sampleRate: Int, bufferSizeBytes: Int): AudioTrack
 
+    /** Whether the media route (the music stream sent outside, a much faster path than the navigation stream's) can be used on this car and build. */
+    val hasMediaRoute: Boolean get() = false
+
+    /**
+     * Like [open], over the media route: what is played on the **music** stream ([MusicAudio.attributes]) is heard outside. False when it cannot
+     * be made, in which case nothing is left on. Closed by the same [close].
+     */
+    suspend fun openMedia(settle: Boolean = true): Boolean = false
+
+    /**
+     * A track for live audio (the microphone as it is said): the exterior speaker's like [newTrack], but asking the platform for its
+     * lowest-latency path ([lowLatency]) and for no more buffer than [bufferFactor] times the least it gives, since every stretch of buffer
+     * is a delay between speaking and being heard. [attributes] say which stream it is on; the default is the navigation stream the
+     * assistant's replies use. [startThresholdMs] is how much sound must be waiting in the track before it starts playing (0: the
+     * platform's own choice, which is all of its buffer); where the platform has it (Android 12 and later) a smaller one starts sooner
+     * and, after the sound has run dry, starts again sooner. [minBufferBytes] is the least the buffer may be (0: [bufferFactor] times the platform's).
+     */
+    fun newLiveTrack(
+        sampleRate: Int,
+        attributes: AudioAttributes = NaviAudio.attributes(),
+        lowLatency: Boolean = true,
+        bufferFactor: Int = 1,
+        startThresholdMs: Int = 0,
+        minBufferBytes: Int = 0,
+    ): AudioTrack = newTrack(sampleRate, AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT) * bufferFactor)
+
     /** Puts the car back as it was, once every [open] has been closed. Safe to call at any time. */
     fun close()
+
+    /**
+     * Tells [listener] when the route that [open] switched on can no longer be relied on (the helper that holds it stopped answering,
+     * so it is about to switch itself off, or has): whoever is playing into it must stop, or its sound comes out of the cabin.
+     * One listener at a time; null removes it. Not called for a [close].
+     */
+    fun setRouteLostListener(listener: (() -> Unit)?) {}
 
     /** The sound effects this speaker can play, by name. */
     val soundEffects: List<SoundEffect> get() = emptyList()

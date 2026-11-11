@@ -53,6 +53,13 @@
             </intent-filter>
         </receiver>
         <receiver
+            android:name="com.bydassistantng.debug.DebugBroadcastReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.bydassistantng.debug.BROADCAST" />
+            </intent-filter>
+        </receiver>
+        <receiver
             android:name="com.bydassistantng.debug.DebugVoiceChannelReceiver"
             android:exported="true">
             <intent-filter>

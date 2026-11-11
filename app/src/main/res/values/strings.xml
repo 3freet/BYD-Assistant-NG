@@ -56,6 +56,14 @@
     <string name="banner_cluster_close">Giving the instrument cluster back</string>
     <string name="banner_cluster_status">Checking the instrument cluster</string>
     <string name="banner_speak_outside">Speaking outside the car</string>
+    <string name="banner_live">Live outside the car</string>
+    <string name="banner_live_press_to_stop">Press the microphone button to stop</string>
+    <string name="live_err_route">Could not switch to the exterior speaker</string>
+    <string name="live_err_feedback">Stopped: the microphone picked up the exterior speaker.</string>
+    <string name="live_choice_music_paused">Paused</string>
+    <string name="live_choice_music_outside">Outside</string>
+    <string name="live_choice_music_inside">Inside</string>
+    <string name="live_stopped_time">The live broadcast stopped after a minute</string>
     <string name="banner_play_sound_outside">Playing a sound outside the car</string>
     <string name="banner_drive_mode">Drive mode: %1$s</string>
     <string name="banner_remember">Remembering that</string>
@@ -259,6 +267,8 @@
     <string name="advanced_experimental_note">These functions are experimental. They use car functions this app was not designed for, have only been tried on one car model, and may stop working after a car software update. Use them at your own risk.</string>
     <string name="advanced_exterior_enable_title">Exterior speaker</string>
     <string name="advanced_exterior_enable_desc">Lets the assistant speak and play sounds through the car\'s exterior speaker, so people outside hear it. Off by default.</string>
+    <string name="advanced_live_title">Live microphone broadcast</string>
+    <string name="advanced_live_desc">Hold the microphone button on the steering wheel for 1 second to speak through the exterior speaker, so people outside hear you live. Press it again to stop. Off by default.</string>
     <string name="advanced_drive_modes_title">Drive mode switching</string>
     <string name="advanced_drive_modes_desc">Lets the assistant change the car\'s drive mode (snow, sand, mud, mountain, rock, auto, eco, sport) when you ask. The car still decides whether it accepts. Off by default.</string>
     <string name="advanced_drive_modes_desc_basic">Lets the assistant ask the car for a drive mode (eco, normal, sport, snow, mud, sand) when you ask. The car still decides whether it accepts, and which of them it has. Off by default.</string>
@@ -295,6 +305,8 @@
     <string name="voice_channel_gain_reset">Back to 0</string>
     <string name="advanced_exterior_confirm_title">Enable the exterior speaker?</string>
     <string name="advanced_exterior_confirm_body">This is an experimental feature. It sends the assistant\'s voice and sounds out of the car, which can startle or disturb people nearby, and it works through a car function this app was not made for. It has only been tried on one car model and may stop working after a car software update. You use it entirely at your own risk and remain responsible for how and where it is used.</string>
+    <string name="advanced_live_confirm_title">Enable the live microphone broadcast?</string>
+    <string name="advanced_live_confirm_body">This is an experimental feature. While it is on, everything said in the car is played live through the exterior speaker, so people outside can hear your conversations, until you press the button again (it also stops by itself after a minute). It can startle or disturb people nearby, and if it is too loud the microphone can pick up the sound and make it squeal. It works through a car function this app was not made for, has only been tried on one car model and may stop working after a car software update. You use it entirely at your own risk and remain responsible for how and where it is used.</string>
     <string name="advanced_drive_modes_confirm_title">Enable drive mode switching?</string>
     <string name="advanced_drive_modes_confirm_body">This is an experimental feature. Changing the drive mode changes how the car delivers power, handles and brakes, and it works through a car function this app was not made for. It has only been tried on one car model; it may not work, or may stop working after a car software update. Only use it when it is safe to do so. You use it entirely at your own risk and remain responsible for the safe operation of your car.</string>
     <string name="advanced_exterior_title">Exterior speaker volume</string>

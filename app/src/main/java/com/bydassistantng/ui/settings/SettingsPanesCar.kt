@@ -57,6 +57,7 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
     val keyMessage by viewModel.keyMessage.collectAsState()
     val exteriorEnabled by viewModel.exteriorSpeakerEnabled.collectAsState()
     val exteriorVolume by viewModel.exteriorVolume.collectAsState()
+    val liveEnabled by viewModel.liveBroadcastEnabled.collectAsState()
     val driveModesEnabled by viewModel.driveModesEnabled.collectAsState()
     val clusterEnabled by viewModel.clusterScreenEnabled.collectAsState()
     val clusterKeepMapsDisabled by viewModel.clusterKeepMapsDisabled.collectAsState()
@@ -65,6 +66,7 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
     var showVehicleControlWarning by remember { mutableStateOf(false) }
     var showVolumeChoice by remember { mutableStateOf(false) }
     var confirmExterior by remember { mutableStateOf(false) }
+    var confirmLive by remember { mutableStateOf(false) }
     var confirmDriveModes by remember { mutableStateOf(false) }
     var confirmCluster by remember { mutableStateOf(false) }
 
@@ -115,6 +117,14 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
             body = R.string.advanced_exterior_confirm_body,
             onEnable = { viewModel.setExteriorSpeakerEnabled(true) },
             onDismiss = { confirmExterior = false },
+        )
+    }
+    if (confirmLive) {
+        EnableDialog(
+            title = R.string.advanced_live_confirm_title,
+            body = R.string.advanced_live_confirm_body,
+            onEnable = { viewModel.setLiveBroadcastEnabled(true) },
+            onDismiss = { confirmLive = false },
         )
     }
     if (confirmDriveModes) {
@@ -277,6 +287,15 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
                     }
                     // Nothing about the exterior speaker is shown while it is off.
                     if (exteriorEnabled) {
+                        // Under the exterior speaker's own switch: the wheel's microphone button, held, speaks through it live.
+                        row(nested = true) {
+                            SwitchSetting(
+                                title = stringResource(R.string.advanced_live_title),
+                                subtitle = stringResource(R.string.advanced_live_desc),
+                                checked = liveEnabled,
+                                onCheckedChange = { on -> if (on) confirmLive = true else viewModel.setLiveBroadcastEnabled(false) },
+                            )
+                        }
                         row(nested = true) {
                             ChoiceSetting(
                                 title = stringResource(R.string.advanced_exterior_title),

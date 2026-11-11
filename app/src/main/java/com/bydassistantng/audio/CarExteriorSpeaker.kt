@@ -1,6 +1,8 @@
 package com.bydassistantng.audio
 
 import android.content.Context
+import android.os.Build
+import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
@@ -51,6 +53,11 @@ internal class CarExteriorSpeaker @Inject constructor(
     private var savedVolume: Int? = null
     private var switchedOn = false
 
+    // The helper command that switched the route on ("on" or "on media"): a second user can only share the same route.
+    private var routeCommand: String? = null
+
+    @Volatile private var routeLost: (() -> Unit)? = null
+
     // Announcements and effects can overlap: the switch goes off with the last of them.
     private var users = 0
 
@@ -69,10 +76,22 @@ internal class CarExteriorSpeaker @Inject constructor(
         }
     }
 
-    override suspend fun open(): Boolean = state.withLock {
+    override val hasMediaRoute: Boolean get() = ExteriorSpeakerSwitch.isMediaRouteOnThisCar()
+
+    override val routeSettleMs: Long get() = SETTLE_MS
+
+    override suspend fun open(settle: Boolean): Boolean = openWith("on", settle)
+
+    override suspend fun openMedia(settle: Boolean): Boolean = hasMediaRoute && openWith("on media", settle)
+
+    private suspend fun openWith(command: String, settle: Boolean): Boolean = state.withLock {
         idleJob?.cancel()
         if (switchedOn) {
-            // Already on for another announcement or effect.
+            // Already on for another announcement or effect, if it is the same route.
+            if (routeCommand != command) {
+                AppLogger.log(TAG, "Exterior speaker is on the other route; '$command' not made")
+                return@withLock false
+            }
             users++
             return@withLock true
         }
@@ -89,32 +108,36 @@ internal class CarExteriorSpeaker @Inject constructor(
                 savedVolume = navi
                 audio.setStreamVolume(NaviAudio.STREAM_NAVI, 1, 0)
             }
-            val on = commands.withLock { helper.command("on") }
-            AppLogger.log(TAG, "Exterior speaker on (navi volume $navi): $on")
+            val on = commands.withLock { helper.command(command) }
+            AppLogger.log(TAG, "Exterior speaker $command (navi volume $navi): $on")
             if (on !is VehicleDispatchResult.Success) {
                 if (on is VehicleDispatchResult.Failure && on.error == VehicleDispatchError.HELPER_UNAVAILABLE) dropSession()
                 restoreVolume(audio)
                 return@withLock false
             }
             switchedOn = true
+            routeCommand = command
             users = 1
-            delay(SETTLE_MS)
             heartbeat = scope.launch {
                 while (isActive) {
                     delay(HEARTBEAT_MS)
                     val answer = commands.withLock { helper.command("hold") }
                     if (answer !is VehicleDispatchResult.Success) {
                         AppLogger.log(TAG, "Exterior speaker heartbeat stopped: $answer")
+                        routeLost?.invoke()
                         break
                     }
                 }
             }
+            // The first sound waits for the route to take effect; a caller with other things to do meanwhile waits it out itself.
+            if (settle) delay(SETTLE_MS)
             true
         } catch (t: Throwable) {
             AppLogger.logError(TAG, "Could not switch to the exterior speaker", t)
             runCatching { commands.withLock { helper.command("off") } }
             restoreVolume(audio)
             switchedOn = false
+            routeCommand = null
             users = 0
             false
         }
@@ -134,8 +157,33 @@ internal class CarExteriorSpeaker @Inject constructor(
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
 
+    override fun newLiveTrack(sampleRate: Int, attributes: AudioAttributes, lowLatency: Boolean, bufferFactor: Int, startThresholdMs: Int, minBufferBytes: Int): AudioTrack {
+        val minBuffer = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        val builder = AudioTrack.Builder()
+            .setAudioAttributes(attributes)
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .build(),
+            )
+            .setBufferSizeInBytes(maxOf(minBuffer * bufferFactor, minBufferBytes, 640))
+            .setTransferMode(AudioTrack.MODE_STREAM)
+        if (lowLatency && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) builder.setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+        val track = builder.build()
+        if (startThresholdMs > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            runCatching { track.setStartThresholdInFrames(maxOf(1, sampleRate * startThresholdMs / 1000)) }
+        }
+        return track
+    }
+
     override fun close() {
         scope.launch { closeNow() }
+    }
+
+    override fun setRouteLostListener(listener: (() -> Unit)?) {
+        routeLost = listener
     }
 
     private suspend fun closeNow() = withContext(NonCancellable) {
@@ -150,6 +198,7 @@ internal class CarExteriorSpeaker @Inject constructor(
                 AppLogger.log(TAG, "Exterior speaker off: $off")
             }
             switchedOn = false
+            routeCommand = null
             restoreVolume(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
             armIdleClose()
         }

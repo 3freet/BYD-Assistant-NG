@@ -8,6 +8,14 @@ package com.bydassistantng.data
  */
 object OptInFeatures {
     const val EXTERIOR_SPEAKER_DEFAULT = false
+
+    /**
+     * The live microphone broadcast: holding the steering-wheel microphone button sends what the cabin microphone hears out
+     * of the exterior speaker until the button is pressed again. It is a way of using the exterior speaker, so it has no effect
+     * while that is off.
+     */
+    const val LIVE_BROADCAST_DEFAULT = false
+
     const val DRIVE_MODES_DEFAULT = false
 
     /** Putting an app on the instrument cluster (experimental). */

@@ -1,6 +1,7 @@
 package com.bydassistantng.audio
 
 import android.media.AudioAttributes
+import android.media.AudioManager
 import com.bydassistantng.util.AppLogger
 
 /**
@@ -39,4 +40,16 @@ internal object NaviAudio {
             target.javaClass.getDeclaredField(name).apply { isAccessible = true }.setInt(target, value)
         }.onFailure { AppLogger.log("NaviAudio", "Could not set $name: $it") }
     }
+}
+
+/**
+ * The audio attributes of the music stream, the one the exterior speaker's media route sends outside (see [ExteriorSpeakerSwitch.MEDIA_FEATURE_ID]):
+ * an ordinary media track, whose output path on this car is far shorter than the navigation stream's.
+ */
+internal object MusicAudio {
+    fun attributes(): AudioAttributes = AudioAttributes.Builder()
+        .setLegacyStreamType(AudioManager.STREAM_MUSIC)
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+        .build()
 }

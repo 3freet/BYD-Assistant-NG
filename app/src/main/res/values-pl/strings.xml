@@ -55,6 +55,14 @@
     <string name="banner_cluster_close">Oddaję zestaw wskaźników</string>
     <string name="banner_cluster_status">Sprawdzam zestaw wskaźników</string>
     <string name="banner_speak_outside">Mówię na zewnątrz samochodu</string>
+    <string name="banner_live">Na żywo na zewnątrz samochodu</string>
+    <string name="banner_live_press_to_stop">Naciśnij przycisk mikrofonu, aby zatrzymać</string>
+    <string name="live_err_route">Nie udało się przełączyć na głośnik zewnętrzny</string>
+    <string name="live_err_feedback">Zatrzymano: mikrofon wychwycił dźwięk z głośnika zewnętrznego.</string>
+    <string name="live_choice_music_paused">Pauza</string>
+    <string name="live_choice_music_outside">Na zewnątrz</string>
+    <string name="live_choice_music_inside">Wewnątrz</string>
+    <string name="live_stopped_time">Transmisja na żywo zatrzymała się po minucie</string>
     <string name="banner_play_sound_outside">Odtwarzam dźwięk na zewnątrz samochodu</string>
     <string name="banner_drive_mode">Tryb jazdy: %1$s</string>
     <string name="banner_remember">Zapamiętuję</string>
@@ -258,6 +266,8 @@
     <string name="advanced_experimental_note">Te funkcje są eksperymentalne. Korzystają z funkcji samochodu, do których ta aplikacja nie była przeznaczona, były wypróbowane tylko na jednym modelu i mogą przestać działać po aktualizacji oprogramowania samochodu. Używasz ich na własną odpowiedzialność.</string>
     <string name="advanced_exterior_enable_title">Głośnik zewnętrzny</string>
     <string name="advanced_exterior_enable_desc">Pozwala asystentowi mówić i odtwarzać dźwięki przez zewnętrzny głośnik samochodu, żeby słyszały je osoby na zewnątrz. Domyślnie wyłączone.</string>
+    <string name="advanced_live_title">Transmisja na żywo z mikrofonu</string>
+    <string name="advanced_live_desc">Przytrzymaj przycisk mikrofonu na kierownicy przez 1 sekundę, aby mówić przez zewnętrzny głośnik, tak by osoby na zewnątrz słyszały Cię na żywo. Naciśnij go ponownie, aby zatrzymać. Domyślnie wyłączone.</string>
     <string name="advanced_drive_modes_title">Przełączanie trybów jazdy</string>
     <string name="advanced_drive_modes_desc">Pozwala asystentowi zmieniać na Twoją prośbę tryb jazdy samochodu (śnieg, piasek, błoto, góry, skały, auto, eko, sport). To samochód decyduje, czy przyjmie polecenie. Domyślnie wyłączone.</string>
     <string name="advanced_drive_modes_desc_basic">Pozwala asystentowi prosić samochód na Twoją prośbę o tryb jazdy (eko, normalny, sport, śnieg, błoto, piasek). To samochód decyduje, czy przyjmie polecenie i które z tych trybów ma. Domyślnie wyłączone.</string>
@@ -294,6 +304,8 @@
     <string name="voice_channel_gain_reset">Wróć do 0</string>
     <string name="advanced_exterior_confirm_title">Włączyć głośnik zewnętrzny?</string>
     <string name="advanced_exterior_confirm_body">To funkcja eksperymentalna. Wysyła głos i dźwięki asystenta na zewnątrz samochodu, co może wystraszyć lub zakłócić spokój osób w pobliżu, i działa przez funkcję samochodu, do której ta aplikacja nie była przeznaczona. Wypróbowano ją tylko na jednym modelu samochodu i może przestać działać po aktualizacji oprogramowania samochodu. Używasz jej całkowicie na własną odpowiedzialność i sam odpowiadasz za to, jak i gdzie jest używana.</string>
+    <string name="advanced_live_confirm_title">Włączyć transmisję na żywo z mikrofonu?</string>
+    <string name="advanced_live_confirm_body">To funkcja eksperymentalna. Gdy jest włączona, wszystko, co mówi się w samochodzie, jest odtwarzane na żywo przez zewnętrzny głośnik, więc osoby na zewnątrz słyszą Twoje rozmowy, dopóki ponownie nie naciśniesz przycisku (po minucie zatrzymuje się też samoczynnie). Może to wystraszyć lub zakłócić spokój osób w pobliżu, a jeśli dźwięk jest zbyt głośny, mikrofon może go wychwycić i wywołać piski. Działa przez funkcję samochodu, do której ta aplikacja nie była przeznaczona, wypróbowano ją tylko na jednym modelu samochodu i może przestać działać po aktualizacji oprogramowania samochodu. Używasz jej całkowicie na własną odpowiedzialność i sam odpowiadasz za to, jak i gdzie jest używana.</string>
     <string name="advanced_drive_modes_confirm_title">Włączyć przełączanie trybów jazdy?</string>
     <string name="advanced_drive_modes_confirm_body">To funkcja eksperymentalna. Zmiana trybu jazdy zmienia sposób, w jaki samochód dostarcza moc, prowadzi się i hamuje, i działa przez funkcję samochodu, do której ta aplikacja nie była przeznaczona. Wypróbowano ją tylko na jednym modelu samochodu; może nie działać albo przestać działać po aktualizacji oprogramowania samochodu. Używaj jej tylko wtedy, gdy jest to bezpieczne. Używasz jej całkowicie na własną odpowiedzialność i sam odpowiadasz za bezpieczną obsługę swojego samochodu.</string>
     <string name="advanced_exterior_title">Głośność głośnika zewnętrznego</string>

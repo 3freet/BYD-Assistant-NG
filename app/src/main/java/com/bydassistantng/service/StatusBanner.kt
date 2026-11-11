@@ -37,6 +37,9 @@ enum class BannerMode(@StringRes val labelRes: Int, val accent: Int) {
     THINKING(R.string.banner_thinking, Color.parseColor("#FFC857")),
     SPEAKING(R.string.banner_speaking, Color.parseColor("#7CF0C4")),
     ERROR(R.string.banner_error, Color.parseColor("#FF6B4A")),
+
+    /** A live broadcast through the exterior speaker is on: what the microphone hears is going out of the car. */
+    BROADCASTING(R.string.banner_live, Color.parseColor("#FF9F43")),
 }
 
 /**
@@ -100,7 +103,7 @@ class StatusBanner(private val context: Context) {
         icon?.apply {
             setImageResource(
                 when (mode) {
-                    BannerMode.SPEAKING -> R.drawable.ic_banner_speaker
+                    BannerMode.SPEAKING, BannerMode.BROADCASTING -> R.drawable.ic_banner_speaker
                     BannerMode.ERROR -> R.drawable.ic_banner_warning
                     BannerMode.THINKING, BannerMode.CONNECTING -> R.drawable.ic_banner_dots
                     BannerMode.LISTENING -> R.drawable.ic_banner_mic
@@ -112,7 +115,7 @@ class StatusBanner(private val context: Context) {
         // ("working"); the others are still.
         setAnimation(
             when (mode) {
-                BannerMode.LISTENING -> Pulse.SWELL
+                BannerMode.LISTENING, BannerMode.BROADCASTING -> Pulse.SWELL
                 BannerMode.THINKING, BannerMode.CONNECTING -> Pulse.FADE
                 else -> Pulse.NONE
             },

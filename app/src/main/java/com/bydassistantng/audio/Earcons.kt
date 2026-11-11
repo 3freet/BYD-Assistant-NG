@@ -24,8 +24,8 @@ private const val BLOCKED_POLL_MS = 50L
 
 /** What the assistant is telling the user without words. Each has its own shape so they can be told
  * apart without looking: up = "go ahead", a quiet pair of ticks = "got it, working", down = "all
- * done", low = "that failed". */
-enum class Earcon { LISTENING, THINKING, DONE, ERROR, OFFLINE }
+ * done", low = "that failed", a quick bright chirp = "the exterior speaker is live". */
+enum class Earcon { LISTENING, THINKING, DONE, ERROR, OFFLINE, LIVE }
 
 /**
  * Short synthesized tones, played on the same audio path as the assistant's voice. Each play gets a
@@ -48,6 +48,8 @@ class Earcons @Inject constructor() {
             Earcon.ERROR to sequence(Note(293.66, 150, amplitude = 0.4), Note(220.0, 260, amplitude = 0.4)),
             // Two short blips then a long low note: "can't reach the internet" — not the plain error tone.
             Earcon.OFFLINE to sequence(Note(392.0, 90, amplitude = 0.4), Note(0.0, 60), Note(392.0, 90, amplitude = 0.4), Note(0.0, 60), Note(261.63, 320, amplitude = 0.4)),
+            // Higher and quicker than "listening", a hand's width of time: "you are live".
+            Earcon.LIVE to sequence(Note(880.0, 60, amplitude = 0.75), Note(1318.51, 110, amplitude = 0.75)),
         )
     }
 
@@ -66,52 +68,71 @@ class Earcons @Inject constructor() {
      */
     @Volatile var blocked: () -> Boolean = { false }
 
+    /** Whether the tones' stream is the exterior speaker's right now: the conversation says so, or a live broadcast has the route. */
+    private fun routeBusy(): Boolean = blocked() || (voiceChannel && speaker == VoiceSpeaker.HEADREST && LiveBroadcastRoute.busy())
+
     /** Fire and forget: returns immediately, the tone plays on a background thread. */
     fun play(earcon: Earcon) {
         scope.launch {
             runCatching {
                 // Up to a couple of seconds, so that the "listening" tone after an announcement made outside still comes.
                 var waited = 0L
-                while (blocked() && waited < BLOCKED_WAIT_MS) {
+                while (routeBusy() && waited < BLOCKED_WAIT_MS) {
                     delay(BLOCKED_POLL_MS)
                     waited += BLOCKED_POLL_MS
                 }
-                if (blocked()) {
+                if (routeBusy()) {
                     AppLogger.log(TAG, "$earcon not played: the exterior speaker is still on")
                     return@launch
                 }
                 val pcm = tones.getValue(earcon)
-                val track = AudioTrack.Builder()
-                    .setAudioAttributes(
-                        if (voiceChannel) {
-                            VoiceChannel.attributes(speaker)
-                        } else {
-                            AudioAttributes.Builder()
-                                // Same usage as the spoken replies, which are known to be audible on this unit.
-                                .setUsage(AudioAttributes.USAGE_ASSISTANT)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                                .build()
-                        },
-                    )
-                    .setAudioFormat(
-                        AudioFormat.Builder()
-                            .setSampleRate(SAMPLE_RATE)
-                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                            .build(),
-                    )
-                    .setBufferSizeInBytes(pcm.size * 2)
-                    .setTransferMode(AudioTrack.MODE_STATIC)
-                    .build()
-                try {
-                    if (voiceChannel) track.setVolume(voiceLevel())
-                    track.write(pcm, 0, pcm.size)
-                    track.play()
-                    delay(pcm.size * 1000L / SAMPLE_RATE + 80)
-                } finally {
-                    track.release()
-                }
+                playPcm(pcm, if (voiceChannel) VoiceChannel.attributes(speaker) else plainAttributes(), if (voiceChannel) voiceLevel() else null)
             }.onFailure { AppLogger.logError(TAG, "Could not play $earcon", it) }
+        }
+    }
+
+    /**
+     * The tone that says a live broadcast has started, heard in the cabin only: it is played on the stream that the exterior speaker's route does **not**
+     * take. The fast route sends outside what the car's mixer has on its music output, and the plain tones (the assistant's usage, and the system's
+     * click sounds) are on that very output (measured on the car: the same output thread as the music stream), so with that route the tone goes on
+     * the navigation stream's output; the slow route takes the navigation stream's output, so with it the tone goes on the plain path. It does not
+     * wait for the route or for a conversation's voice channel: it is not a conversation's tone.
+     */
+    fun playLive(onNavigationStream: Boolean) {
+        scope.launch {
+            runCatching {
+                playPcm(tones.getValue(Earcon.LIVE), if (onNavigationStream) NaviAudio.attributes() else plainAttributes(), null)
+            }.onFailure { AppLogger.logError(TAG, "Could not play the live tone", it) }
+        }
+    }
+
+    // Same usage as the spoken replies, which are known to be audible on this unit.
+    private fun plainAttributes(): AudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_ASSISTANT)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build()
+
+    /** Plays [pcm] once on a brand-new track with [attributes] (at [volume] when given), and releases it. */
+    private suspend fun playPcm(pcm: ShortArray, attributes: AudioAttributes, volume: Float?) {
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(attributes)
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setSampleRate(SAMPLE_RATE)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .build(),
+            )
+            .setBufferSizeInBytes(pcm.size * 2)
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .build()
+        try {
+            if (volume != null) track.setVolume(volume)
+            track.write(pcm, 0, pcm.size)
+            track.play()
+            delay(pcm.size * 1000L / SAMPLE_RATE + 80)
+        } finally {
+            track.release()
         }
     }
 

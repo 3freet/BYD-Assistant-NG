@@ -55,6 +55,14 @@
     <string name="banner_cluster_close">جارٍ إعادة لوحة العدادات</string>
     <string name="banner_cluster_status">جارٍ فحص لوحة العدادات</string>
     <string name="banner_speak_outside">جارٍ التحدث خارج السيارة</string>
+    <string name="banner_live">بث مباشر خارج السيارة</string>
+    <string name="banner_live_press_to_stop">اضغط زر الميكروفون للإيقاف</string>
+    <string name="live_err_route">تعذّر التحويل إلى السماعة الخارجية</string>
+    <string name="live_err_feedback">توقّف البث: التقط الميكروفون صوت السماعة الخارجية.</string>
+    <string name="live_choice_music_paused">متوقفة</string>
+    <string name="live_choice_music_outside">في الخارج</string>
+    <string name="live_choice_music_inside">في الداخل</string>
+    <string name="live_stopped_time">توقّف البث المباشر بعد دقيقة</string>
     <string name="banner_play_sound_outside">جارٍ تشغيل صوت خارج السيارة</string>
     <string name="banner_drive_mode">وضع القيادة: %1$s</string>
     <string name="banner_remember">جارٍ تذكّر ذلك</string>
@@ -258,6 +266,8 @@
     <string name="advanced_experimental_note">هذه الوظائف تجريبية. تعتمد على وظائف في السيارة لم يُصمَّم التطبيق لها، وقد جُرّبت على طراز واحد فقط من السيارات، وقد تتوقف عن العمل بعد تحديث برنامج السيارة. استخدمها على مسؤوليتك الخاصة.</string>
     <string name="advanced_exterior_enable_title">السماعة الخارجية</string>
     <string name="advanced_exterior_enable_desc">تسمح للمساعد بالتحدث وتشغيل الأصوات عبر السماعة الخارجية للسيارة ليسمعها من هم خارجها. معطّلة افتراضيًا.</string>
+    <string name="advanced_live_title">البث المباشر عبر الميكروفون</string>
+    <string name="advanced_live_desc">اضغط مطولًا لمدة ثانية على زر الميكروفون في المقود لتتحدث عبر السماعة الخارجية، فيسمعك من هم خارج السيارة مباشرةً. اضغط عليه مرة أخرى للإيقاف. معطّل افتراضيًا.</string>
     <string name="advanced_drive_modes_title">تبديل وضع القيادة</string>
     <string name="advanced_drive_modes_desc">تسمح للمساعد بتغيير وضع القيادة (ثلج، رمل، طين، جبل، صخور، تلقائي، اقتصادي، رياضي) عندما تطلب ذلك. وتبقى السيارة هي التي تقرر قبوله. معطّلة افتراضيًا.</string>
     <string name="advanced_drive_modes_desc_basic">تسمح للمساعد بأن يطلب من السيارة وضع قيادة (اقتصادي، عادي، رياضي، ثلج، طين، رمل) عندما تطلب ذلك. وتبقى السيارة هي التي تقرر قبوله، وأيّها تملك. معطّلة افتراضيًا.</string>
@@ -294,6 +304,8 @@
     <string name="voice_channel_gain_reset">العودة إلى 0</string>
     <string name="advanced_exterior_confirm_title">تفعيل السماعة الخارجية؟</string>
     <string name="advanced_exterior_confirm_body">هذه ميزة تجريبية. تُخرج صوت المساعد وأصواتًا أخرى من السيارة، وقد يُفزع ذلك من حولك أو يزعجهم، وتعمل عبر وظيفة في السيارة لم يُصمَّم التطبيق لها. جُرّبت على طراز واحد فقط من السيارات وقد تتوقف عن العمل بعد تحديث برنامج السيارة. تستخدمها على مسؤوليتك الخاصة بالكامل وتبقى مسؤولًا عن كيفية استخدامها ومكانها.</string>
+    <string name="advanced_live_confirm_title">تفعيل البث المباشر عبر الميكروفون؟</string>
+    <string name="advanced_live_confirm_body">هذه ميزة تجريبية. أثناء تشغيلها يُبَثّ كل ما يُقال داخل السيارة مباشرةً عبر السماعة الخارجية، فيسمع من هم في الخارج محادثاتك، إلى أن تضغط الزر مرة أخرى (وتتوقف من تلقاء نفسها بعد دقيقة). قد يُفزع ذلك من حولك أو يزعجهم، وإذا كان الصوت مرتفعًا جدًا فقد يلتقطه الميكروفون ويُحدث صفيرًا. تعمل عبر وظيفة في السيارة لم يُصمَّم التطبيق لها، وجُرّبت على طراز واحد فقط من السيارات وقد تتوقف عن العمل بعد تحديث برنامج السيارة. تستخدمها على مسؤوليتك الخاصة بالكامل وتبقى مسؤولًا عن كيفية استخدامها ومكانها.</string>
     <string name="advanced_drive_modes_confirm_title">تفعيل تبديل وضع القيادة؟</string>
     <string name="advanced_drive_modes_confirm_body">هذه ميزة تجريبية. تغيير وضع القيادة يغيّر طريقة توصيل القدرة والتحكم والفرملة في السيارة، وتعمل عبر وظيفة في السيارة لم يُصمَّم التطبيق لها. جُرّبت على طراز واحد فقط من السيارات، وقد لا تعمل أو قد تتوقف عن العمل بعد تحديث برنامج السيارة. استخدمها فقط عندما يكون ذلك آمنًا. تستخدمها على مسؤوليتك الخاصة بالكامل وتبقى مسؤولًا عن التشغيل الآمن لسيارتك.</string>
     <string name="advanced_exterior_title">مستوى صوت السماعة الخارجية</string>

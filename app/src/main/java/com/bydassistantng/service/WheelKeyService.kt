@@ -6,13 +6,16 @@ import androidx.annotation.StringRes
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import com.bydassistantng.audio.AudioRecorder
 import com.bydassistantng.audio.Earcon
 import com.bydassistantng.audio.Earcons
+import com.bydassistantng.audio.LiveBroadcast
 import com.bydassistantng.audio.VoiceSpeaker
 import com.bydassistantng.audio.TextToSpeechEngine
+import com.bydassistantng.data.CoreFeatures
 import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.gemini.ConversationController
 import com.bydassistantng.gemini.LiveConversationController
@@ -34,7 +37,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -44,6 +51,17 @@ private const val TAG = "WheelKeyService"
 private const val RECORDED_AUDIO_MIME_TYPE = "audio/m4a"
 private const val CLASSIC_ANSWER_SHOWN_MS = 8_000L
 private const val OFFLINE_SHOWN_MS = 8_000L
+
+// With the live broadcast armed, the helper that holds the exterior switch is started this long into a press, in case it becomes a hold.
+private const val PREPARE_BROADCAST_AFTER_MS = 300L
+
+// While the live broadcast is armed the exterior speaker's helper is kept ready: it takes a second to start, this unit sends the hold as one event
+// at its mark (nothing earlier to start it on), and the helper switches nothing until a broadcast starts. It closes itself after three idle minutes.
+private const val KEEP_HELPER_READY_MS = 150_000L
+
+// The banner of a broadcast stays up for the longest one (the banner's own stale timeout is shorter), and a note after it a moment.
+private const val BROADCAST_BANNER_MS = 65_000L
+private const val NOTE_SHOWN_MS = 4_000L
 
 /**
  * Starts and stops a voice turn from the steering-wheel mic button, and hosts that turn.
@@ -67,13 +85,26 @@ class WheelKeyService : AccessibilityService(), GreetingHost {
     @Inject lateinit var liveConversationController: LiveConversationController
     @Inject lateinit var ttsEngine: TextToSpeechEngine
     @Inject lateinit var earcons: Earcons
+    @Inject lateinit var liveBroadcast: LiveBroadcast
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val handler = Handler(Looper.getMainLooper())
     internal val banner by lazy { StatusBanner(this) }
+    private val broadcastChoices by lazy { BroadcastChoices(this) }
+    private val broadcastMeter by lazy { BroadcastMeter(this) }
     private var startJob: Job? = null
 
     @Volatile private var triggerKeyCode = WheelKeys.MIC_SHORT_PRESS
+
+    // What decides whether holding the mic button broadcasts (see [liveArmed]).
+    private val holdDetector = MicHoldDetector()
+    @Volatile private var liveSettingOn = false
+    @Volatile private var exteriorSettingOn = false
+    @Volatile private var vehicleControlOn = CoreFeatures.VEHICLE_CONTROL_DEFAULT
+    private val prepareBroadcast = Runnable { if (holdDetector.inProgress && liveArmed) liveBroadcast.prepare() }
+    private val holdElapsed = Runnable {
+        if (holdDetector.onTimer(SystemClock.uptimeMillis()) == MicHoldDetector.Outcome.HOLD) startBroadcast()
+    }
 
     // The status banner and the messages follow the app language, which can differ from the device's.
     override fun attachBaseContext(newBase: Context) {
@@ -87,6 +118,26 @@ class WheelKeyService : AccessibilityService(), GreetingHost {
         super.onServiceConnected()
         instance = this
         scope.launch { preferencesRepository.triggerKeyCode.collect { triggerKeyCode = it } }
+        scope.launch { preferencesRepository.liveBroadcastEnabled.collect { liveSettingOn = it } }
+        scope.launch { preferencesRepository.exteriorSpeakerEnabled.collect { exteriorSettingOn = it } }
+        scope.launch { preferencesRepository.vehicleControlEnabled.collect { vehicleControlOn = it } }
+        scope.launch { liveBroadcast.events.collect { handleBroadcastEvent(it) } }
+        // Where the music goes and how loud the voice is during a broadcast are remembered between broadcasts, and the choices that hover over the
+        // screen show what is in effect.
+        scope.launch { preferencesRepository.liveBroadcastMusicMode.collect { liveBroadcast.setMusicMode(it) } }
+        scope.launch { preferencesRepository.liveBroadcastLoudness.collect { liveBroadcast.setLoudness(it) } }
+        scope.launch { combine(liveBroadcast.musicShown, liveBroadcast.loudness) { music, loudness -> music to loudness }.collect { broadcastChoices.update(it.first, it.second) } }
+        // What the last four seconds of the broadcast were like, for the card under the banner.
+        scope.launch { liveBroadcast.levels.collect { broadcastMeter.push(it) } }
+        scope.launch {
+            combine(preferencesRepository.liveBroadcastEnabled, preferencesRepository.exteriorSpeakerEnabled, preferencesRepository.vehicleControlEnabled) { a, b, c -> a && b && c }
+                .collectLatest { armed ->
+                    while (armed && isActive) {
+                        if (liveArmed && !liveBroadcast.isActive) liveBroadcast.prepare()
+                        delay(KEEP_HELPER_READY_MS)
+                    }
+                }
+        }
         AppLogger.log(TAG, "Connected, watching key $triggerKeyCode")
     }
 
@@ -106,6 +157,11 @@ class WheelKeyService : AccessibilityService(), GreetingHost {
             return true
         }
 
+        // While the live broadcast is armed, the mic button is told apart as a short press or a hold (see [MicHoldDetector]).
+        if (liveArmed && (event.keyCode == WheelKeys.MIC_SHORT_PRESS || event.keyCode == WheelKeys.MIC_LONG_PRESS)) {
+            return onMicButtonKey(event)
+        }
+
         if (event.keyCode != triggerKeyCode) return false
         // Consumed on both down and up so nothing else reacts to half of the press; only the
         // initial down starts something (holding the button would otherwise auto-repeat).
@@ -119,8 +175,11 @@ class WheelKeyService : AccessibilityService(), GreetingHost {
     override fun onDestroy() {
         if (instance === this) instance = null
         keyCaptureListener = null
+        liveBroadcast.stop()
         handler.removeCallbacksAndMessages(null)
         banner.release()
+        broadcastChoices.hide()
+        broadcastMeter.hide()
         audioRecorder.cancel()
         liveConversationController.close()
         scope.cancel()
@@ -130,7 +189,7 @@ class WheelKeyService : AccessibilityService(), GreetingHost {
     // ── Greeting ─────────────────────────────────────────────────────────────────────────────
 
     override val busy: Boolean
-        get() = liveConversationController.inConversation || audioRecorder.isRecording || startJob?.isActive == true
+        get() = liveConversationController.inConversation || audioRecorder.isRecording || startJob?.isActive == true || liveBroadcast.isActive
 
     /**
      * Opens a conversation with the assistant speaking first (see [com.bydassistantng.greeting.GreetingCoordinator]).
@@ -156,6 +215,169 @@ class WheelKeyService : AccessibilityService(), GreetingHost {
     }
 
     // ── Voice turn ───────────────────────────────────────────────────────────────────────────
+
+    // ── Live broadcast ───────────────────────────────────────────────────────────────────────
+
+    /**
+     * Whether holding the mic button broadcasts. It needs the setting, the exterior speaker (on this car and switched on) and
+     * vehicle control, and the assistant's trigger to be the mic button's short press (the default): the hold is then the
+     * same button's other gesture. With the long press as the assistant's trigger the hold has no meaning left.
+     */
+    private val liveArmed: Boolean
+        get() = liveSettingOn && exteriorSettingOn && vehicleControlOn && liveBroadcast.isAvailable &&
+            triggerKeyCode == WheelKeys.MIC_SHORT_PRESS
+
+    /** A key event of the mic button while the broadcast is armed. Always consumed: the unit's other handlers must not see half a gesture. */
+    private fun onMicButtonKey(event: KeyEvent): Boolean {
+        val down = event.action == KeyEvent.ACTION_DOWN
+        val now = SystemClock.uptimeMillis()
+        // The raw timeline is logged (a button press is rare): how the unit sends a hold decides how the detector has to read it.
+        AppLogger.log(TAG, "Mic button key ${event.keyCode} ${if (down) "down" else "up"}, repeat ${event.repeatCount}, held ${event.eventTime - event.downTime} ms")
+
+        if (liveBroadcast.isActive) {
+            // A press ends a broadcast; while it is being put away (its tail and the route's release) a press is swallowed.
+            if (down && event.repeatCount == 0 && liveBroadcast.isBroadcasting) liveBroadcast.stop()
+            holdDetector.reset()
+            cancelHoldTimers()
+            return true
+        }
+
+        holdDetector.expireStale(now)
+        when (holdDetector.onKey(event.keyCode, down, event.repeatCount, now)) {
+            MicHoldDetector.Outcome.PRESS -> {
+                cancelHoldTimers()
+                onTriggerPressed()
+            }
+            MicHoldDetector.Outcome.HOLD -> {
+                cancelHoldTimers()
+                startBroadcast()
+            }
+            MicHoldDetector.Outcome.NONE -> {
+                if (down && event.repeatCount == 0 && holdDetector.inProgress) {
+                    // The helper that holds the exterior switch is started while the button is still down, so that it is ready at the mark.
+                    handler.removeCallbacks(prepareBroadcast)
+                    handler.removeCallbacks(holdElapsed)
+                    handler.postDelayed(prepareBroadcast, PREPARE_BROADCAST_AFTER_MS)
+                    handler.postDelayed(holdElapsed, MicHoldDetector.HOLD_MS)
+                } else if (!down) {
+                    cancelHoldTimers()
+                }
+            }
+        }
+        return true
+    }
+
+    private fun cancelHoldTimers() {
+        handler.removeCallbacks(prepareBroadcast)
+        handler.removeCallbacks(holdElapsed)
+    }
+
+    /** The button has been held: start broadcasting, unless the assistant is in the middle of something. */
+    private fun startBroadcast() {
+        AppLogger.log(TAG, "Mic button held for ${MicHoldDetector.HOLD_MS} ms — live broadcast")
+        if (liveConversationController.inConversation || audioRecorder.isRecording || startJob?.isActive == true) {
+            AppLogger.log(TAG, "Live broadcast not started: the assistant is in a turn")
+            return
+        }
+        // Nothing to connect to: the banner is the broadcast's own from the first moment.
+        banner.show(BannerMode.BROADCASTING, detail = text(R.string.banner_live_press_to_stop), shownMs = BROADCAST_BANNER_MS)
+        when (liveBroadcast.start()) {
+            null -> Unit
+            LiveBroadcast.Refusal.NO_MIC_PERMISSION -> signalFailure(text(R.string.err_mic_off))
+            LiveBroadcast.Refusal.BUSY -> {
+                AppLogger.log(TAG, "Live broadcast not started: one is still being put away")
+                banner.hide()
+            }
+            LiveBroadcast.Refusal.NOT_ON_THIS_CAR -> banner.hide()
+        }
+    }
+
+    /** Debug builds: shows (or hides) the choices without a broadcast, to look at them and to try a tap. Nothing is played. */
+    internal fun showChoicesForDebug(show: Boolean, musicChoice: Boolean) {
+        if (show) showChoices(musicChoice) else broadcastChoices.hide()
+    }
+
+    /**
+     * Debug builds: shows the level meter for [seconds] with made-up levels (a voice in bursts, an echo that follows it, and at the end a squeal), to
+     * look at it. Nothing is played and nothing is switched.
+     */
+    internal fun showMeterDemoForDebug(seconds: Int) {
+        scope.launch {
+            banner.show(BannerMode.BROADCASTING, detail = text(R.string.banner_live_press_to_stop), shownMs = seconds * 1000L + 1500L)
+            broadcastMeter.show()
+            val random = java.util.Random(7)
+            var voice = -90f
+            var echo = -90f
+            var burstLeft = 0
+            var pauseLeft = 6
+            val frames = seconds * 10
+            for (i in 0 until frames) {
+                if (burstLeft > 0) {
+                    burstLeft--
+                    voice = -34f + random.nextFloat() * 14f
+                    if (burstLeft == 0) pauseLeft = 3 + random.nextInt(8)
+                } else {
+                    pauseLeft--
+                    voice = -62f - random.nextFloat() * 8f
+                    if (pauseLeft <= 0) burstLeft = 3 + random.nextInt(9)
+                }
+                echo = if (voice > -50f) -66f + random.nextFloat() * 6f else (echo * 0.9f - 7f).coerceAtLeast(-85f)
+                val mic = if (voice > -50f) voice + 17f else -60f
+                val squeal = i > frames - 14
+                broadcastMeter.push(LiveBroadcast.LevelFrame(mic, voice, if (squeal) -42f else echo, !(voice > -50f), squeal))
+                delay(100)
+            }
+            broadcastMeter.hide()
+            banner.hide()
+        }
+    }
+
+    /** The small choices under the meter, with what is in effect picked. */
+    private fun showChoices(musicChoice: Boolean) {
+        broadcastChoices.show(
+            musicChoice,
+            liveBroadcast.musicShown.value,
+            liveBroadcast.loudness.value,
+            onMusic = { mode ->
+                liveBroadcast.setMusicMode(mode)
+                scope.launch { preferencesRepository.setLiveBroadcastMusicMode(mode) }
+            },
+            onLoudness = { level ->
+                liveBroadcast.setLoudness(level)
+                scope.launch { preferencesRepository.setLiveBroadcastLoudness(level) }
+            },
+        )
+    }
+
+    private fun handleBroadcastEvent(event: LiveBroadcast.Event) {
+        if (event is LiveBroadcast.Event.Stopped) {
+            broadcastChoices.hide()
+            broadcastMeter.hide()
+        }
+        when (event) {
+            is LiveBroadcast.Event.Live -> {
+                banner.show(BannerMode.BROADCASTING, detail = text(R.string.banner_live_press_to_stop), shownMs = BROADCAST_BANNER_MS)
+                broadcastMeter.show()
+                showChoices(event.musicChoice)
+            }
+            // The user's own end is answered at once, not when the car has been put back: what the broadcast showed goes away with the press.
+            is LiveBroadcast.Event.Ending -> if (event.reason == LiveBroadcast.StopReason.USER || event.reason == LiveBroadcast.StopReason.SETTINGS_OFF) {
+                banner.hide()
+                broadcastChoices.hide()
+                broadcastMeter.hide()
+            }
+            is LiveBroadcast.Event.Stopped -> when (event.reason) {
+                LiveBroadcast.StopReason.USER, LiveBroadcast.StopReason.SETTINGS_OFF -> banner.hide()
+                LiveBroadcast.StopReason.TIME_LIMIT ->
+                    banner.show(BannerMode.CONNECTING, labelOverride = text(R.string.live_stopped_time), shownMs = NOTE_SHOWN_MS)
+                LiveBroadcast.StopReason.FEEDBACK -> banner.show(BannerMode.ERROR, detail = text(R.string.live_err_feedback))
+                LiveBroadcast.StopReason.ROUTE_LOST, LiveBroadcast.StopReason.ROUTE_FAILED ->
+                    banner.show(BannerMode.ERROR, detail = text(R.string.live_err_route))
+                LiveBroadcast.StopReason.MIC_LOST, LiveBroadcast.StopReason.MIC_FAILED ->
+                    banner.show(BannerMode.ERROR, detail = text(R.string.err_cant_record))
+            }
+        }
+    }
 
     /**
      * A press starts a conversation, or ends the one in progress — whatever the assistant is doing at

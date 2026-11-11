@@ -10,8 +10,10 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bydassistantng.audio.EndOfSpeechWait
+import com.bydassistantng.audio.BroadcastLoudness
 import com.bydassistantng.audio.ExteriorVolume
 import com.bydassistantng.audio.MusicDuck
+import com.bydassistantng.audio.MusicMode
 import com.bydassistantng.audio.VoiceChannelOptions
 import com.bydassistantng.audio.VoiceSensitivity
 import com.bydassistantng.audio.VoiceSpeaker
@@ -69,6 +71,10 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val SHORT_TERM_MEMORY = booleanPreferencesKey("short_term_memory_enabled")
         val LONG_TERM_MEMORY = booleanPreferencesKey("long_term_memory_enabled")
         val EXTERIOR_SPEAKER_ENABLED = booleanPreferencesKey("exterior_speaker_enabled")
+        val LIVE_BROADCAST_ENABLED = booleanPreferencesKey("live_broadcast_enabled")
+        val LIVE_BROADCAST_MUSIC_OUTSIDE = booleanPreferencesKey("live_broadcast_music_outside")
+        val LIVE_BROADCAST_MUSIC_MODE = stringPreferencesKey("live_broadcast_music_mode")
+        val LIVE_BROADCAST_LOUDNESS = stringPreferencesKey("live_broadcast_loudness")
         val DRIVE_MODES_ENABLED = booleanPreferencesKey("drive_modes_enabled")
         val CLUSTER_SCREEN_ENABLED = booleanPreferencesKey("cluster_screen_enabled")
         val CLUSTER_KEEP_MAPS_DISABLED = booleanPreferencesKey("cluster_keep_maps_disabled")
@@ -211,6 +217,36 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         dataStore.data.map { it[Keys.EXTERIOR_SPEAKER_ENABLED] ?: OptInFeatures.EXTERIOR_SPEAKER_DEFAULT }
     suspend fun setExteriorSpeakerEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.EXTERIOR_SPEAKER_ENABLED] = enabled }
+    }
+
+    /**
+     * Whether holding the steering-wheel microphone button broadcasts the cabin microphone through the exterior speaker (see
+     * [com.bydassistantng.audio.LiveBroadcast]). Off by default, and only of use while the exterior speaker itself is on.
+     */
+    val liveBroadcastEnabled: Flow<Boolean> =
+        dataStore.data.map { it[Keys.LIVE_BROADCAST_ENABLED] ?: OptInFeatures.LIVE_BROADCAST_DEFAULT }
+    suspend fun setLiveBroadcastEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.LIVE_BROADCAST_ENABLED] = enabled }
+    }
+
+    /**
+     * Where the music goes during a live broadcast (see [MusicMode]): paused (the default), out of the car with the voice, or left playing in the cabin
+     * over the slow route. Changed by the small choices that hover over the screen during a broadcast. Before there were three, the choice was only
+     * "music outside or not" (an on/off setting, still read when the three-way one was never set).
+     */
+    val liveBroadcastMusicMode: Flow<MusicMode> = dataStore.data.map {
+        MusicMode.fromSaved(it[Keys.LIVE_BROADCAST_MUSIC_MODE], it[Keys.LIVE_BROADCAST_MUSIC_OUTSIDE])
+    }
+    suspend fun setLiveBroadcastMusicMode(mode: MusicMode) {
+        dataStore.edit { it[Keys.LIVE_BROADCAST_MUSIC_MODE] = mode.word }
+    }
+
+    /** How loud the voice of a live broadcast is made on the exterior speaker (see [BroadcastLoudness]); the middle level by default. */
+    val liveBroadcastLoudness: Flow<ExteriorVolume> = dataStore.data.map { prefs ->
+        ExteriorVolume.from(prefs[Keys.LIVE_BROADCAST_LOUDNESS]) ?: BroadcastLoudness.DEFAULT
+    }
+    suspend fun setLiveBroadcastLoudness(level: ExteriorVolume) {
+        dataStore.edit { it[Keys.LIVE_BROADCAST_LOUDNESS] = level.word }
     }
 
     /**
