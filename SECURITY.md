@@ -56,9 +56,15 @@ safeguards. A modified build, or any other program using the same ADB access, is
 **There are three deliberate, narrow exceptions**, all experimental and all **off until the user switches them on**
 (Settings → Advanced → Experimental features, each behind a confirmation):
 
-- *The exterior speaker switch*: one feature id in the driver-assistance group, the values `0` and `1`, written by a
-  separate helper process that switches it off again by itself if the app stops sending a heartbeat, the
-  connection closes, or after 60 seconds. ([details](docs/byd-internals/exterior-speaker.md))
+- *The exterior speaker switch*: the car's feature that sends audio to the exterior speaker (two of them, one for the
+  navigation stream and one in the audio group for the music output, which the live broadcast uses), the values `0` and
+  `1` only, written by a separate helper process that switches it off again by itself if the app stops sending a
+  heartbeat, the connection closes, or after 60 seconds. ([details](docs/byd-internals/exterior-speaker.md)) The same
+  switch is used, with its own opt-in under the exterior speaker's, by the *live microphone broadcast*: while it is on,
+  what the cabin microphone hears is played out of the exterior speaker, nothing is recorded and nothing leaves the car
+  over a network. It starts only by holding the steering-wheel microphone button for a second, ends with the next press
+  and after 55 seconds, and the same helper switches the route off if the app stops. Anyone in earshot outside hears what
+  is said in the cabin while it is on.
 - *The drive-mode request*: one feature id in the setting device, with the mode numbers the car's own screen sends
   (Normal, Eco, Sport, Snow, Sand, Mud, Mountain, Rock, Auto and exit; never wade, warp, custom or traction), only
   below 80 km/h, followed by a read-back of what the car did. A car whose table does not name that feature has a second,

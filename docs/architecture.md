@@ -111,6 +111,11 @@ limit); the drive-mode request is a single write and runs inside the vehicle hel
 cluster feature runs there as `cluster open|close|status|leaving`, and keeps a watcher thread in the helper that gives
 the gauges back whenever the app has left the cluster.
 
+A fourth use is not a model tool at all: the **live microphone broadcast** (`LiveBroadcast`) plays the cabin microphone out of the
+exterior speaker, started by holding the wheel's mic button (`MicHoldDetector` in `WheelKeyService` tells a hold from a press). It
+shares the exterior speaker's route and helper, has its own opt-in under that switch, and is described with the exterior speaker in
+[byd-internals/exterior-speaker.md](byd-internals/exterior-speaker.md#the-live-microphone-broadcast).
+
 ### When a feature is switched off
 
 Some of what the assistant does needs a switch in Settings (vehicle control, the three experimental features, web search and

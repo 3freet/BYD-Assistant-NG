@@ -30,6 +30,20 @@ Things that behave differently from what you would expect:
 - Running `uiautomator dump` temporarily **unbinds every other accessibility service** (they log "Connected"
   again afterwards). Do not dump the UI while waiting for a button press.
 
+## Holding the button
+
+With the live broadcast switched on (see [exterior-speaker.md](exterior-speaker.md#the-live-microphone-broadcast)) the button has a
+second gesture: **held for 1 second it starts the broadcast**, and any press ends it. It is armed only while the setting, the exterior
+speaker and vehicle control are all on and the assistant's trigger is the button's short press (the default); otherwise the button
+behaves exactly as before. With the hold armed, a **short press acts when the button comes up**, not when it goes down, because a hold
+cannot be told from a press until then (the assistant is not started by a press that turns into a hold).
+
+`MicHoldDetector` reads the two key codes (320 and 328) without relying on when the unit sends which: a press seen going down is timed by
+the service, and the unit's own long-press code counts as a hold too, at once when no press was seen going down and at the one-second mark
+when one was. Each key event of the button is logged while the hold is armed (`Mic button key 320 down, repeat 0, held 0 ms`), which is
+where to read how the unit really sends a hold. A hold during a conversation does nothing, and while a broadcast is being put away
+(its last half second) presses are swallowed rather than starting the assistant.
+
 ## Staying alive across sleep and wake
 
 "Waking" the head unit is a **quick-boot**, not a reboot: uptime keeps counting, but boot broadcasts are sent

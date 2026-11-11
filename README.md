@@ -100,6 +100,7 @@ a car whose framework names the feature the way it was confirmed on the developm
   (doorbell, chime, bell, beeps, alarm, horn, whistle, bird, cat). Three volume levels (low, medium, high), set in
   *Settings → Car* or asked for by voice ("say it loudly"). How and why:
   [exterior-speaker.md](docs/byd-internals/exterior-speaker.md).
+- **Live microphone broadcast**: hold the microphone button on the steering wheel for a second and what you say in the cabin comes out of the exterior speaker, live, so you can talk to people outside; press the button again to stop (it also stops by itself after 55 seconds). A small card under the status pill shows how loud the voice going out is, and how much feedback there is, over the last four seconds; small choices under it let you pick where the music goes (paused, outside with you, or inside the cabin over the slower route) and how loud the exterior speaker is. It has its own switch under the exterior speaker's, with its own confirmation. How it works and what keeps it from squealing: [exterior-speaker.md](docs/byd-internals/exterior-speaker.md#the-live-microphone-broadcast).
 - **Drive modes**: "switch to sand mode" (also snow, mud, mountain, rock, auto, eco, sport, and "exit" to leave an
   off-road mode). The assistant asks the car the way the car's own screen does, then reports the mode the car says
   it is really in — the car decides, and it is refused above 80 km/h. Wade, warp, custom and traction modes are not
