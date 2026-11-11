@@ -48,6 +48,16 @@ android {
         version = release(37)
     }
 
+    // The echo canceller of the live microphone broadcast is C code (app/src/main/cpp). The NDK and CMake versions are pinned, so that a
+    // build fetches exactly these where they are missing.
+    ndkVersion = "27.2.12479018"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.bydassistantng"
         minSdk = 24
