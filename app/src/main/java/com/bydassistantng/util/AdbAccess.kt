@@ -23,7 +23,16 @@ internal class AdbAccess(
     private val lock = Mutex()
 
     @Volatile private var allowed = false
-    private var declinedAt = NEVER
+    @Volatile private var declinedAt = NEVER
+
+    /**
+     * True when the last word on the prompt was a no: it was declined or left unanswered, and nobody has allowed it since. Something that
+     * runs by itself (keeping the exterior speaker's helper ready) should not put the prompt up again then, or it comes back every few
+     * minutes for as long as the driver does not want it. A person asking for something (a press of the button, a command) is not held back
+     * by this: [await] asks again for them once the cooldown is over, and a yes ends the refusal. ADB that cannot be reached at all (debugging
+     * switched off) is not a refusal: nothing is put up on the screen then.
+     */
+    val refused: Boolean get() = !allowed && declinedAt != NEVER
 
     /** Something went wrong with a connection that had worked: look again before the next one. */
     fun forget() {

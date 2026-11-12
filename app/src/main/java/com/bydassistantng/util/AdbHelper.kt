@@ -42,6 +42,12 @@ object AdbHelper {
         log = { AppLogger.log(TAG, it) },
     )
 
+    /**
+     * The car's "Allow USB debugging?" prompt was declined or left unanswered, and nobody has allowed it since: what runs by itself should not
+     * put it up again (see [AdbAccess.refused]); what a person asked for still may.
+     */
+    val isRefused: Boolean get() = access.refused
+
     /** `pm grant <ourPackage> <permission>` over ADB. [timeoutMs] should be short for a retry
      * attempted synchronously mid-voice-turn (a dead ADB connection must fail fast, not stall the
      * turn), and can be longer for an onboarding flow with its own "connecting…" UI. */

@@ -26,6 +26,7 @@ import com.bydassistantng.greeting.GreetingHost
 import com.bydassistantng.ui.EXTRA_REQUEST_MIC_PERMISSION
 import com.bydassistantng.ui.MainActivity
 import com.bydassistantng.R
+import com.bydassistantng.util.AdbHelper
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.util.WheelKeys
@@ -133,7 +134,9 @@ class WheelKeyService : AccessibilityService(), GreetingHost {
             combine(preferencesRepository.liveBroadcastEnabled, preferencesRepository.exteriorSpeakerEnabled, preferencesRepository.vehicleControlEnabled) { a, b, c -> a && b && c }
                 .collectLatest { armed ->
                     while (armed && isActive) {
-                        if (liveArmed && !liveBroadcast.isActive) liveBroadcast.prepare()
+                        // Not once the car's "Allow USB debugging?" prompt was declined or left unanswered: asking again by itself would put it
+                        // up on the screen every few minutes. The next press of the button asks (and a yes starts this up again).
+                        if (liveArmed && !liveBroadcast.isActive && !AdbHelper.isRefused) liveBroadcast.prepare()
                         delay(KEEP_HELPER_READY_MS)
                     }
                 }

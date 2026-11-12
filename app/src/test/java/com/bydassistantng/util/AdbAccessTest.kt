@@ -130,4 +130,40 @@ class AdbAccessTest {
         assertTrue(answers.all { it })
         assertEquals(1, rig.tries)
     }
+
+    @Test
+    fun nothingIsRefusedBeforeAnyoneHasBeenAsked() {
+        assertFalse(Rig(Try(120, true)).access.refused)
+    }
+
+    @Test
+    fun aPromptThatWasDeclinedOrIgnoredIsRefusedUntilSomeoneAllowsIt() = runBlocking {
+        // Sixty seconds of the prompt being left up, then nothing: what runs by itself must not put it up again.
+        val rig = Rig(Try(AdbAccess.ANSWER_WAIT_MS, false), Try(3_000, true))
+        assertFalse(rig.access.await(8_000))
+        assertTrue(rig.access.refused)
+
+        // A person asks again (a press of the button) once the cooldown is over, and this time the car says yes.
+        rig.clock += AdbAccess.DECLINED_COOLDOWN_MS
+        assertTrue(rig.access.await(8_000))
+        assertFalse(rig.access.refused)
+    }
+
+    @Test
+    fun adbThatCannotBeReachedIsNotARefusal() = runBlocking {
+        // Debugging switched off: every connection is refused in a moment, and no prompt is put up that could be put up again.
+        val rig = Rig(Try(50, false))
+        assertFalse(rig.access.await(2_000))
+        assertFalse(rig.access.refused)
+    }
+
+    @Test
+    fun aConnectionThatHadWorkedAndFailsIsNotARefusal() = runBlocking {
+        val rig = Rig(Try(120, true))
+        assertTrue(rig.access.await(8_000))
+
+        rig.access.forget()
+
+        assertFalse(rig.access.refused)
+    }
 }
