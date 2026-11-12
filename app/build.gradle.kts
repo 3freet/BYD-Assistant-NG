@@ -1,3 +1,4 @@
+import com.android.build.api.artifact.SingleArtifact
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Properties
@@ -40,6 +41,29 @@ val betaNumber = betaTags.map { tags ->
         .maxOrNull()
         ?.plus(1)
         ?: 1
+}
+
+// The debug tools (app/src/debug: receivers that drive the car's tools, play sound outside the car and start the live
+// broadcast) belong to the debug build alone. They live in the debug source set, so a beta or release build cannot have them;
+// this check says so out loud if that ever stops being true (a receiver added to the main manifest, a source set shared by
+// mistake), before an APK is built.
+abstract class CheckNoDebugComponents : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val manifest: RegularFileProperty
+
+    @get:OutputFile
+    abstract val result: RegularFileProperty
+
+    @TaskAction
+    fun check() {
+        val text = manifest.get().asFile.readText()
+        val found = Regex("""android:name="(com\.bydassistantng\.debug\.[^"]*)"""").findAll(text).map { it.groupValues[1] }.toList()
+        if (found.isNotEmpty()) {
+            throw GradleException("The manifest of this build has debug-only components (${found.joinToString()}). Beta and release builds must not.")
+        }
+        result.get().asFile.writeText("no debug components\n")
+    }
 }
 
 android {
@@ -136,6 +160,14 @@ android {
 
 androidComponents {
     onVariants { variant ->
+        if (variant.buildType != "debug") {
+            val capitalised = variant.name.replaceFirstChar { it.uppercase() }
+            val check = tasks.register<CheckNoDebugComponents>("check${capitalised}NoDebugComponents") {
+                manifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
+                result.set(layout.buildDirectory.file("intermediates/no-debug-components/${variant.name}.txt"))
+            }
+            tasks.matching { it.name == "assemble$capitalised" }.configureEach { dependsOn(check) }
+        }
         variant.outputs.forEach { output ->
             if (variant.buildType == "beta") output.versionCode.set(versionCodeFor(betaNumber.get()))
             val date = SimpleDateFormat("ddMMyyyyHHmmss").format(Date())

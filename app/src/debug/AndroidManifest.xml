@@ -1,88 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
-        <!-- Debug builds only: lets `adb shell am broadcast` show/hide the status banner so its look can
-             be checked on the real screen without a steering-wheel press. -->
+        <!-- Debug builds only (this file is not part of the beta and release builds, and their build checks that no
+             component of this package is in their manifest, see CheckNoDebugComponents in app/build.gradle.kts).
+             Every receiver here needs the DUMP permission, which `adb shell` holds and no ordinary app can be given, so
+             that another app on the car cannot send these broadcasts: they drive the car's tools, play sound outside
+             the car and spend the API key.
+             The first one lets `adb shell am broadcast` show/hide the status banner so its look can be checked on the
+             real screen without a steering-wheel press. -->
         <receiver
             android:name="com.bydassistantng.debug.DebugBannerReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.BANNER" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugAdbPromptReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.ADB_PROMPT" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugRebindReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.REBIND" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugEchoTestReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.ECHO_TEST" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugOfflineReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.OFFLINE" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugToolReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.TOOL" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugOutsideReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.OUTSIDE" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugBroadcastReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.BROADCAST" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugVoiceChannelReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.VOICE_CHANNEL" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugOnboardingReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.ONBOARDING" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugUpdateReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.UPDATE" />
             </intent-filter>
         </receiver>
         <receiver
             android:name="com.bydassistantng.debug.DebugModelReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.bydassistantng.debug.MODEL_CHECK" />
             </intent-filter>
