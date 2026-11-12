@@ -114,9 +114,12 @@ the app running well before the driver sat down, the first word came 2.1 s after
 the helper starting (about 1 s), the service binding, and the model's first word (1 to 1.7 s). Also possible: sending the
 words before the headrest route and the cabin-noise reading are done (about 0.4 s), holding the audio until they are.
 
-A greeting that cannot start (no connection to the server yet, with the phone's hotspot still coming up) is tried again every
-four seconds for up to 90 seconds after the driver is ready; a first version stopped after ten tries, 45 seconds, and one
-morning that was not enough.
+A greeting that cannot start (no connection to the server yet, with the phone's hotspot still coming up, a slow or a refused
+connection) is tried again every four seconds, for one minute at most from its first try after the wake, and then given up for that
+wake. The minute is counted once: a flicker of the seat or door reading does not start it again, and a try that could still be going
+on after it is not begun. A first version stopped after ten tries, 45 seconds, and one morning that was not enough; the next kept
+trying for 90 seconds from the driver being ready, and started the time again at every flicker, so that on a car with no connection
+the "connecting" banner came back on the screen for as long as the reading flickered.
 
 To check: the delay from the wake broadcast after a night's sleep, whether the broadcast always comes before the driver is
 ready, and a driver arriving 10 to 30 minutes after a remote unlock.
@@ -134,8 +137,9 @@ which ECUs), whether the car checks gear, speed or ignition before it accepts on
 or rate-limited, or whether it only works in a factory mode.
 
 **Where it stands in this project.** It is not a feature and it is not planned as one. Nothing in the app can reach
-it: the vehicle helper runs only registry commands, the registry holds the audio, bodywork, climate, light and
-setting groups and nothing from the test group, the drive, brake, radar, security and power groups are blocked
+it: the vehicle helper runs the registry's commands, three command sets of its own (the drive mode, the passenger screen and the
+instrument cluster: each a fixed list of actions, none of them a raw message) and read-only queries; the registry holds the audio, bodywork,
+climate, light and setting groups and nothing from the test group, the drive, brake, radar, security and power groups are blocked
 outright, and anything that does not resolve to a known group fails closed. That stays as it is:
 - no tool for the assistant, no helper command and no registry entry that sends a raw message, whatever the use;
 - no raw message sent from a car that is driven, and none at all without a reason that is written down first;

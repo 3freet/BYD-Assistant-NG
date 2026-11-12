@@ -94,7 +94,8 @@ the car's table names, runs the drive mode check and puts the switch back to `au
 ## Scope
 
 The write is in the motor/engine class of features that the app otherwise keeps unreachable. It is a **single,
-deliberate exception** (with its second route for older cars, one more device, one more feature, three values): one device, one
-feature id, fixed values, and it is only available when the car names the feature (as verified, on the first route), and the user has switched it on under
+deliberate exception** (with its second route for older cars: one more device and one more feature, with the six values of that
+device's own class, 1 to 6: Normal, Eco, Sport, Snow, Sand and Mud): one device, one feature id, fixed values, and it is only available when
+the car names the feature (as verified, on the first route; the second route's feature is found by name in the car's table), and the user has switched it on under
 *Settings → Advanced → Experimental features* (off by default). Changing the drive mode changes how the car
 delivers power, handles and brakes; the screen's own conditions still apply, but use it only when it is safe.

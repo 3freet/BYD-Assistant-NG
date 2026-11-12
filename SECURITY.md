@@ -59,11 +59,13 @@ safeguards. A modified build, or any other program using the same ADB access, is
 - *The exterior speaker switch*: the car's feature that sends audio to the exterior speaker (two of them, one for the
   navigation stream and one in the audio group for the music output, which the live broadcast uses), the values `0` and
   `1` only, written by a separate helper process that switches it off again by itself if the app stops sending a
-  heartbeat, the connection closes, or after 60 seconds. ([details](docs/byd-internals/exterior-speaker.md)) The same
+  heartbeat, closes the stream in order, or after 60 seconds. If the app is killed abruptly the system ends the helper with it
+  and it cannot switch anything off, so the app remembers that a route was on and has a fresh helper switch it off the next time
+  it runs. ([details](docs/byd-internals/exterior-speaker.md)) The same
   switch is used, with its own opt-in under the exterior speaker's, by the *live microphone broadcast*: while it is on,
   what the cabin microphone hears is played out of the exterior speaker, nothing is recorded and nothing leaves the car
   over a network. It starts only by holding the steering-wheel microphone button for a second, ends with the next press
-  and after 55 seconds, and the same helper switches the route off if the app stops. Anyone in earshot outside hears what
+  and after 55 seconds, and the same helper switches the route off if the app stops sending its heartbeat. Anyone in earshot outside hears what
   is said in the cabin while it is on.
 - *The drive-mode request*: one feature id in the setting device, with the mode numbers the car's own screen sends
   (Normal, Eco, Sport, Snow, Sand, Mud, Mountain, Rock, Auto and exit; never wade, warp, custom or traction), only
@@ -97,11 +99,14 @@ differently, which is what that check is for.
   Keystore. Android backup is switched off for the app (`allowBackup="false"`), so neither the encrypted key nor
   the settings are copied to a cloud backup or to a new device. Cleartext network traffic is permitted only to
   the loopback addresses.
-- **Logs** stay on the device (`app_log.txt`, `crash_log.txt`) and leave it only when you press *Share* or
-  *Save to Downloads*. The application log currently records what the assistant heard and the places you asked to
-  navigate to. When a log is shown, shared or saved, what you said and asked for, places, keys, e-mail addresses,
-  phone numbers and network addresses are replaced by default (the log on the device is not changed); a switch on
-  that screen shows the whole log. The masking is rule-based, so read a log before you send it to anyone.
+- **Logs** stay on the device (`app_log.txt`, `crash_log.txt`) and leave it only when you press *Share* or *Save
+  to Downloads*. The published builds keep the application log only in the app's private folder; a debug build
+  (never published) also keeps a copy in the app's folder in shared storage for a developer to pull over `adb`,
+  and the app deletes the copy that earlier builds left there. The application log currently records what the
+  assistant heard and the places you asked to navigate to. When a log is shown, shared or saved, what you said and
+  asked for, places, keys, e-mail addresses, phone numbers and network addresses are replaced by default (the log
+  on the device is not changed); a switch on that screen shows the whole log. The masking is rule-based, so read a
+  log before you send it to anyone.
 - **No analytics, telemetry or advertising** of any kind.
 - **Updates** are only checked when the build was told which GitHub repository publishes them
   (`assistant.updateRepo`), and only ever downloaded from that repository's release assets. Before an update is

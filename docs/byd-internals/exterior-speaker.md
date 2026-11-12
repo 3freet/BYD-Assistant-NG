@@ -66,8 +66,17 @@ write is therefore made by a small helper process running as the ADB shell user 
 else in these notes), which **owns the switch**:
 
 - the app sends a heartbeat every 0.5 s while something plays;
-- if no heartbeat arrives for 4 s, or the app's end of the connection closes, or the route has been on for 60 s,
-  the helper writes `0` by itself.
+- if no heartbeat arrives for 4 s, or the app closes the stream in order, or the route has been on for 60 s, the
+  helper writes `0` by itself;
+- a switch-off that the car did not take is tried again (for about 5 s) and not forgotten.
+
+All of that works **while the helper lives**. When the connection is cut abruptly (the app is killed, crashes, or is
+replaced by an update), the system ends the helper without letting it clean up, and then nothing writes `0` (measured on
+the simulator: the shell process is gone and the route stays on). So the app also **remembers** that a route was switched on
+(`ExteriorRouteMemory`: written before the route is asked for, and cleared once the switch-off was seen to be taken) and,
+when it next runs, or when the helper dies while the app lives, a fresh helper is sent `reset`, which writes `0` to both
+routes' features (the media feature on each of its device types). Until then the route stays on: that is the one case the
+guard cannot cover.
 
 The helper is separate from the vehicle helper on purpose: this switch is a held state with a time limit, the
 vehicle helper is a plain request-and-answer loop, and the exterior speaker is one of the two features that are
@@ -109,14 +118,16 @@ and 60 s limit). **It sends the whole music output outside**, whatever is playin
 The cabin microphone (the voice-processed source at 16 kHz, with the unit's own gain control **left on**, two channels averaged where
 the unit gives two, the audio mode "in communication" while it is on) goes through `TalkChain`, one chunk of 10 ms at a time, and a
 track of at least 160 ms (the least that does not run dry when a chunk comes late). It is the recipe of the exterior sound apps that do
-this well, copied step by step and with **no gain added**: the voice goes out at the level the microphone gave it and the car's volume
-makes it loud.
+this well, copied step by step. The loudness level (Low, Medium, High) is a plain gain on the voice on the media route (x1, x2 and x4: 0, +6
+and +12 dB, never past what the soft clip takes) and the platform's loudness boost on the track on the navigation route (+15, +30 and
++45 dB, see below); the car's volume does the rest.
 
 1. a peak limit at 22000 (16-bit units);
 2. the audio processing module's own high-pass (80 Hz) and **WebRTC's mobile echo canceller** (`EchoCanceller`, the native library in
    `app/src/main/cpp`, see `NOTICE.md`): its reference is what was sent out two chunks ago, and it is told the echo arrives 150 ms later
-   (a start-up hint, which it refines; it must stay below the real delay, and it follows delays up to about 600 ms: the navigation
-   route's is beyond that, so it works on the media route only);
+   (a start-up hint, which it refines; it must stay below the real delay, and it follows delays up to about 600 ms, so it works on both
+   routes: the hint is 150 ms on the media route and 400 ms on the navigation route, whose way round is longer, and the car's log shows
+   it taking 23 to 26 dB out of the echo of loud speech on that route too);
 3. a dry mix: when the canceller left less than 0.42 of a loud chunk, up to 18 % of the untouched chunk is mixed back;
 4. a hum high-pass at 200 Hz, a whistle low-pass at 3200 Hz (3000 Hz more while the chunk is loud) and a soft clip above 80 % of full
    scale;
@@ -137,7 +148,8 @@ share of its cause.
 
 A **feedback guard** (`FeedbackGuard`) watches the microphone for the one thing that makes this kind of path dangerous, a squeal: a
 second of a signal that is loud, steady and tonal (speech comes in bursts and has sharp peaks, a crest factor of 3 and more, against
-1.4 for a pure tone) mutes the sound for one second and takes 10 dB off the voice; a second squeal within 15 s ends the broadcast. It was
+1.4 for a pure tone) mutes the sound for one second and takes 10 dB off the voice; a second squeal ends the broadcast (the first leaves
+the voice at 0.316 of its gain and a second would take it below the floor of 0.12, so it ends it whenever it comes). It was
 half a second until a very loud shout (flattened by the unit's gain control and the peak limit into a "tone" for 0.5 s, then falling by
 14 dB) was taken for a squeal in the car and cost the rest of the broadcast 10 dB; the shout does not stay steady for a second, a squeal does.
 
@@ -163,7 +175,7 @@ choice is also a choice of route: the fast media route sends the **whole music s
 | --- | --- | --- |
 | Paused | fast (media) | stopped first, and let go on after the broadcast |
 | Outside | fast (media) | goes out of the car with the voice |
-| Inside | slow (navigation, 0.5 to 0.7 s round trip) | keeps playing in the cabin; nothing of it is sent (the unit's own echo cancellation on the voice-processed source is what keeps the cabin's music from being picked up and sent) |
+| Inside | slow (navigation, 0.5 to 0.7 s round trip) | keeps playing in the cabin; what the microphone hears of it goes out with the voice, held back by the background rule below (the unit's own echo cancellation does not take the music out) |
 
 **Music inside and the microphone.** The cabin's music reaches the microphone (at an RMS of about 200 to 500 on this unit), and what the microphone
 hears is what goes out: on the slow route, boosted by the loudness level (30 dB at the default) and half a second late, which is heard in the cabin
@@ -182,7 +194,8 @@ an echo canceller and a chain made for it (what one learned of the other route's
 second, and the microphone and the speech-level learning go on meanwhile. Where the car has only the navigation route (every release
 car without the media route) the music group is left out, since the music is always inside.
 
-**Stopping the music first.** On *Paused* the route is switched only once the music has actually stopped:
+**Stopping the music first.** On *Paused* the route is switched once the music has stopped, or after at most 1.5 s if it has not (the broadcast
+then goes on with the music still playing, and the log says so):
 
 1. The audio focus is asked for (so that nothing starts the music again meanwhile) and the media sessions that are playing are asked to
    **pause at once** (`MediaSources.pausePlaying`, which needs the notification access the assistant already has for seeing what is

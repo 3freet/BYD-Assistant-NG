@@ -107,7 +107,7 @@ Hilt supplies the first as `Optional<ExteriorSpeaker>` / `Optional<DriveModeSwit
 cluster feature asks `ClusterScreenAvailability` directly), and the controller reads the switches when a
 conversation starts. None of them goes through the command registry. The
 exterior speaker has its own helper process because it *holds* a state (the route, with a heartbeat and a time
-limit); the drive-mode request is a single write and runs inside the vehicle helper as `drivemode set <n>`; the
+limit, and a memory the app keeps, so that a route left on by a helper that was killed is put back at the next run); the drive-mode request is a single write and runs inside the vehicle helper as `drivemode set <n>`; the
 cluster feature runs there as `cluster open|close|status|leaving`, and keeps a watcher thread in the helper that gives
 the gauges back whenever the app has left the cluster.
 

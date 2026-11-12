@@ -126,7 +126,9 @@ The reads the app makes outside the registry (the headrest sound, whether the dr
 the cabin temperature) take the car's number for their names the same way, and give no reading where the car lacks the name.
 The three features that **write** to the car and were verified on one car only (the drive mode, the exterior speaker, the
 instrument cluster) are different: each stays off unless the car's table gives its name exactly the verified number
-(`isOnThisCar`), since each is guarded by a check of the exact id.
+(`isOnThisCar`), since each is guarded by a check of the exact id. The one exception to that is the drive mode's second route (the energy
+device's operation mode, for a car that does not have the first): its feature is found by name in the car's table and used with the number the
+car gives it, and what guards it is the fixed list of six values, the speed limit and the read-back.
 
 ### Windows on a car that is not a recognised DiLink 5
 
