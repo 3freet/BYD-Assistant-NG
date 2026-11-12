@@ -202,7 +202,12 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExteriorVolume.DEFAULT)
 
     fun setExteriorSpeakerEnabled(enabled: Boolean) {
-        viewModelScope.launch { preferencesRepository.setExteriorSpeakerEnabled(enabled) }
+        viewModelScope.launch {
+            preferencesRepository.setExteriorSpeakerEnabled(enabled)
+            // The live broadcast is a way of using the exterior speaker and has its own confirmation: switching the speaker off takes that
+            // consent with it, so that switching it on again later does not arm a broadcast the user has not been asked about again.
+            if (!enabled) preferencesRepository.setLiveBroadcastEnabled(false)
+        }
     }
     fun setLiveBroadcastEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setLiveBroadcastEnabled(enabled) }

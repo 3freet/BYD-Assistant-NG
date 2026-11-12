@@ -74,6 +74,10 @@ private const val NAV_TRACK_START_MS = 120
 // in the cabin, where it belongs, before the route is switched.
 private const val MUSIC_POLL_MS = 20L
 private const val MUSIC_STOP_WAIT_MS = 1_500L
+
+// A microphone that gives no chunk for this long has been lost (the record died without saying so): looked at this often while live.
+private const val MIC_WATCH_MS = 500L
+private const val MIC_SILENT_MS = 2_000L
 private const val MUSIC_DRAIN_MS = 200L
 
 // How long the route is held after the voice is cut at the end, for what is already in the car's mixer and amplifier to come out (the cut itself
@@ -270,6 +274,11 @@ class LiveBroadcast @Inject constructor(
         speaker?.prepare()
     }
 
+    /** Puts back a route that an earlier run left on (see [ExteriorSpeaker.recoverLeftRoute]); nothing happens when none was. */
+    fun recoverLeftRoute() {
+        speaker?.recoverLeftRoute()
+    }
+
     /**
      * Starts a broadcast; null when it is under way, or why it cannot be. Returns at once: [events] says when it is live.
      */
@@ -341,6 +350,9 @@ class LiveBroadcast @Inject constructor(
         /** The players that were asked to pause through their sessions (and are asked to play at the end). */
         @Volatile var pausedSessions: Set<String> = emptySet()
 
+        /** When the sessions in [pausedSessions] were asked to pause: one is not certain to have paused until MUSIC_STOP_WAIT_MS after. */
+        @Volatile var pausedAtMs = 0L
+
         /** The route in use: the fast one (the music stream), or not (the navigation stream's). */
         @Volatile var media = false
 
@@ -362,7 +374,7 @@ class LiveBroadcast @Inject constructor(
         var chunks = 0
 
         // How the microphone's chunks come: the time the last one came, the longest wait for one, and how many waits were over 30 ms, since the last line of levels.
-        var lastChunkAtNs = 0L
+        @Volatile var lastChunkAtNs = 0L
         var longestWaitMs = 0L
         var lateChunks = 0
         var trackLogAtChunk = 0
@@ -421,6 +433,7 @@ class LiveBroadcast @Inject constructor(
             setupTrack(s)
             setupChain(s)
             val capture = BroadcastCapture(agcOff = microphoneGainControlOff, stereo = stereoCapture)
+            capture.onLost = { stop(StopReason.MIC_LOST) }
             s.capture = capture
             if (!capture.start { samples, _ -> onChunk(s, samples) }) {
                 reason = StopReason.MIC_FAILED
@@ -462,6 +475,19 @@ class LiveBroadcast @Inject constructor(
                         .first { !it }
                     stop(StopReason.SETTINGS_OFF)
                 }
+                // A microphone that stops giving sound without saying so (the audio server restarted under it, say) would leave the route open
+                // and the broadcast "live" and silent until the time limit: no chunk for a couple of seconds ends it.
+                val micWatch = launch {
+                    while (true) {
+                        delay(MIC_WATCH_MS)
+                        val last = s.lastChunkAtNs
+                        if (last != 0L && (SystemClock.elapsedRealtimeNanos() - last) / 1_000_000L > MIC_SILENT_MS) {
+                            AppLogger.log(TAG, "No sound from the microphone for $MIC_SILENT_MS ms — it is lost")
+                            stop(StopReason.MIC_LOST)
+                            break
+                        }
+                    }
+                }
                 // Changes of where the music goes, made while it is live, one at a time.
                 val changer = launch {
                     for (mode in s.changes) {
@@ -472,6 +498,7 @@ class LiveBroadcast @Inject constructor(
                 reason = s.stop.await()
                 limit.cancel()
                 watch.cancel()
+                micWatch.cancel()
                 changer.cancel()
             }
         } catch (e: CancellationException) {
@@ -749,7 +776,10 @@ class LiveBroadcast @Inject constructor(
             return
         }
         val began = SystemClock.elapsedRealtime()
-        if (sessions) s.pausedSessions = mediaSources.pausePlaying()
+        if (sessions) {
+            s.pausedSessions = mediaSources.pausePlaying()
+            s.pausedAtMs = SystemClock.elapsedRealtime()
+        }
 
         fun playing() = if (sessions) mediaSources.anyPlaying() else isMusicPlayerStarted(audio, own)
 
@@ -798,7 +828,7 @@ class LiveBroadcast @Inject constructor(
     }
 
     /** Lets the music go on: the focus is given up, and the players that were asked to pause through their sessions are asked to play. */
-    private fun giveBackMusic(s: Session) {
+    private suspend fun giveBackMusic(s: Session) {
         val request = s.focus
         s.focus = null
         if (request != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -807,7 +837,13 @@ class LiveBroadcast @Inject constructor(
         }
         val paused = s.pausedSessions
         s.pausedSessions = emptySet()
-        if (paused.isNotEmpty()) mediaSources.resume(paused)
+        if (paused.isEmpty()) return
+        // The car's media centre reports a pause up to half a second after it was asked for. A press that ends the broadcast inside that time finds the
+        // session still saying it plays, and "play" to it would be followed by the pause: the music would stay off. So a session still playing is waited
+        // for, until the time a pause is given, and only then asked to play.
+        val until = s.pausedAtMs + MUSIC_STOP_WAIT_MS
+        while (SystemClock.elapsedRealtime() < until && mediaSources.stillPlaying(paused)) delay(MUSIC_POLL_MS)
+        mediaSources.resume(paused)
     }
 
     // ── Changing the music arrangement while live ─────────────────────────────────────────────

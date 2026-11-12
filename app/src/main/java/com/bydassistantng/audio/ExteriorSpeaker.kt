@@ -98,6 +98,14 @@ interface ExteriorSpeaker {
     fun close()
 
     /**
+     * Switches a route off that an earlier run may have left on: the app was killed, or the helper holding the route died, in the middle of
+     * a broadcast, and the car goes on sending its music output (or the navigation stream) outside until something writes 0. The app remembers
+     * that a route was switched on until it has seen the switch-off taken; this looks at that and, when it says a route may be on, has a fresh
+     * helper switch both off. Does nothing when there is nothing to put back, or while a route is in use. Safe to call at any time.
+     */
+    fun recoverLeftRoute() {}
+
+    /**
      * Tells [listener] when the route that [open] switched on can no longer be relied on (the helper that holds it stopped answering,
      * so it is about to switch itself off, or has): whoever is playing into it must stop, or its sound comes out of the cabin.
      * One listener at a time; null removes it. Not called for a [close].

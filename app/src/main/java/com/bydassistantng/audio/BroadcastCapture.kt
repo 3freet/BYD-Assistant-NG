@@ -52,6 +52,12 @@ internal class BroadcastCapture(
     /** The record's audio session, for effects; 0 when nothing is recording. */
     val sessionId: Int get() = record?.audioSessionId ?: 0
 
+    /**
+     * Called, from the capture thread, when the capture ends by itself while it was meant to go on: the record failed (an error from `read`, for
+     * example when the audio server restarted) or the thread's work threw. Not called for a [stop]. Set before [start].
+     */
+    @Volatile var onLost: (() -> Unit)? = null
+
     @Volatile var sourceName = ""
         private set
 
@@ -137,28 +143,38 @@ internal class BroadcastCapture(
             var anchorFrames = -1L
             var anchorNanos = 0L
             var sinceAnchor = 0
-            while (record === audioRecord) {
-                val n = audioRecord.read(buffer, 0, buffer.size)
-                if (n < 0) {
-                    AppLogger.logError(TAG, "AudioRecord.read() returned $n")
-                    break
-                }
-                if (n == 0) continue
-                val frames = n / count
-                if (frames == 0) continue
-                framesRead += frames
-                val now = System.nanoTime()
-                if (anchorFrames < 0 || ++sinceAnchor >= 50) {
-                    sinceAnchor = 0
-                    if (audioRecord.getTimestamp(timestamp, AudioTimestamp.TIMEBASE_MONOTONIC) == AudioRecord.SUCCESS) {
-                        anchorFrames = timestamp.framePosition
-                        anchorNanos = timestamp.nanoTime
+            var lost = false
+            // Nothing that goes wrong in here may end the process: a plain thread that throws takes the whole app with it, and the exterior route
+            // with it left on. It ends the capture and says so, and the broadcast is ended the proper way.
+            try {
+                while (record === audioRecord) {
+                    val n = audioRecord.read(buffer, 0, buffer.size)
+                    if (n < 0) {
+                        AppLogger.logError(TAG, "AudioRecord.read() returned $n")
+                        lost = true
+                        break
                     }
+                    if (n == 0) continue
+                    val frames = n / count
+                    if (frames == 0) continue
+                    framesRead += frames
+                    val now = System.nanoTime()
+                    if (anchorFrames < 0 || ++sinceAnchor >= 50) {
+                        sinceAnchor = 0
+                        if (audioRecord.getTimestamp(timestamp, AudioTimestamp.TIMEBASE_MONOTONIC) == AudioRecord.SUCCESS) {
+                            anchorFrames = timestamp.framePosition
+                            anchorNanos = timestamp.nanoTime
+                        }
+                    }
+                    val capturedAt = if (anchorFrames >= 0) anchorNanos + (framesRead - anchorFrames) * 1_000_000_000L / BROADCAST_SAMPLE_RATE else now
+                    val mono = if (count == 1) buffer.copyOf(frames) else ShortArray(frames) { i -> ((buffer[2 * i] + buffer[2 * i + 1]) shr 1).toShort() }
+                    onChunk(mono, capturedAt)
                 }
-                val capturedAt = if (anchorFrames >= 0) anchorNanos + (framesRead - anchorFrames) * 1_000_000_000L / BROADCAST_SAMPLE_RATE else now
-                val mono = if (count == 1) buffer.copyOf(frames) else ShortArray(frames) { i -> ((buffer[2 * i] + buffer[2 * i + 1]) shr 1).toShort() }
-                onChunk(mono, capturedAt)
+            } catch (e: Throwable) {
+                AppLogger.logError(TAG, "The capture thread failed", e)
+                lost = true
             }
+            if (lost && record === audioRecord) onLost?.invoke()
         }, "BroadcastCapture")
         thread = reader
         reader.start()

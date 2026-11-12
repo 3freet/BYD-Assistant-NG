@@ -53,6 +53,9 @@ internal class CarExteriorSpeaker @Inject constructor(
     private var savedVolume: Int? = null
     private var switchedOn = false
 
+    // Whether a route may have been left on by a run that died (see [ExteriorRouteMemory]).
+    private val memory = ExteriorRouteMemory(context.getSharedPreferences("exterior_route", Context.MODE_PRIVATE))
+
     // The helper command that switched the route on ("on" or "on media"): a second user can only share the same route.
     private var routeCommand: String? = null
 
@@ -69,10 +72,54 @@ internal class CarExteriorSpeaker @Inject constructor(
 
     override fun prepare() {
         scope.launch {
-            state.withLock {
-                ensureSession()
-                armIdleClose()
+            try {
+                state.withLock {
+                    val helper = ensureSession()
+                    // The helper is up: the moment to put back a route that an earlier run left on, if it did.
+                    if (helper != null) putBackLeftRoute(helper)
+                    armIdleClose()
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Nobody waits for this one: it must not take the app down.
+                AppLogger.logError(TAG, "Could not get the helper ready", e)
             }
+        }
+    }
+
+    override fun recoverLeftRoute() {
+        if (!memory.possiblyOn) return
+        scope.launch {
+            try {
+                state.withLock {
+                    // Not while a route is in use (this run's own), and not when somebody else already put it back.
+                    if (switchedOn || !memory.possiblyOn) return@withLock
+                    val helper = ensureSession()
+                    if (helper == null) {
+                        AppLogger.log(TAG, "A route may be left on and there is no helper to switch it off (is ADB reachable?) — trying again later")
+                        return@withLock
+                    }
+                    putBackLeftRoute(helper)
+                    armIdleClose()
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.logError(TAG, "Could not put back a route an earlier run left on", e)
+            }
+        }
+    }
+
+    /** With [state] held: has [helper] switch both routes off when the memory says one may be on. Forgets it once the car has taken that. */
+    private suspend fun putBackLeftRoute(helper: OutsideSpeakerSession) {
+        if (!memory.possiblyOn || switchedOn) return
+        val reset = commands.withLock { helper.command("reset") }
+        AppLogger.log(TAG, "A route that an earlier run may have left on: reset -> $reset")
+        if (reset is VehicleDispatchResult.Success) {
+            memory.clear()
+        } else if (reset is VehicleDispatchResult.Failure && reset.error == VehicleDispatchError.HELPER_UNAVAILABLE) {
+            dropSession()
         }
     }
 
@@ -108,10 +155,20 @@ internal class CarExteriorSpeaker @Inject constructor(
                 savedVolume = navi
                 audio.setStreamVolume(NaviAudio.STREAM_NAVI, 1, 0)
             }
+            // From here the route may be on until the switch-off is seen to be taken: remembered before the helper is asked, because the app
+            // may die the next moment and the helper with it.
+            memory.markOn()
             val on = commands.withLock { helper.command(command) }
             AppLogger.log(TAG, "Exterior speaker $command (navi volume $navi): $on")
             if (on !is VehicleDispatchResult.Success) {
-                if (on is VehicleDispatchResult.Failure && on.error == VehicleDispatchError.HELPER_UNAVAILABLE) dropSession()
+                if (on is VehicleDispatchResult.Failure && on.error == VehicleDispatchError.HELPER_UNAVAILABLE) {
+                    // No answer: what the car was told is not known, so the memory stays and a fresh helper puts it back.
+                    dropSession()
+                    scope.launch { recoverLeftRoute() }
+                } else {
+                    // The helper answered that it did not switch on (and put back what it had written): nothing to remember.
+                    memory.clear()
+                }
                 restoreVolume(audio)
                 return@withLock false
             }
@@ -134,7 +191,8 @@ internal class CarExteriorSpeaker @Inject constructor(
             true
         } catch (t: Throwable) {
             AppLogger.logError(TAG, "Could not switch to the exterior speaker", t)
-            runCatching { commands.withLock { helper.command("off") } }
+            val off = runCatching { commands.withLock { helper.command("off") } }.getOrNull()
+            if (off is VehicleDispatchResult.Success) memory.clear() else scope.launch { recoverLeftRoute() }
             restoreVolume(audio)
             switchedOn = false
             routeCommand = null
@@ -193,14 +251,21 @@ internal class CarExteriorSpeaker @Inject constructor(
             heartbeat?.cancel()
             heartbeat = null
             val helper = session
+            var putBack = true
             if (switchedOn && helper != null) {
                 val off = commands.withLock { helper.command("off") }
                 AppLogger.log(TAG, "Exterior speaker off: $off")
+                putBack = off is VehicleDispatchResult.Success
+            } else if (switchedOn) {
+                putBack = false
             }
+            if (putBack) memory.clear()
             switchedOn = false
             routeCommand = null
             restoreVolume(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
             armIdleClose()
+            // The switch-off was not seen to be taken (the helper is gone, or did not answer): a fresh one puts the route back.
+            if (!putBack) scope.launch { recoverLeftRoute() }
         }
     }
 

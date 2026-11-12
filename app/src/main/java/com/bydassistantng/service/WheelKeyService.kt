@@ -138,6 +138,9 @@ class WheelKeyService : AccessibilityService(), GreetingHost {
                     }
                 }
         }
+        // A route that an earlier run left on (the app was killed in the middle of a broadcast: the helper that held it goes with it, without
+        // switching it off) is put back, whatever the settings are now. Nothing happens when nothing was left.
+        liveBroadcast.recoverLeftRoute()
         AppLogger.log(TAG, "Connected, watching key $triggerKeyCode")
     }
 

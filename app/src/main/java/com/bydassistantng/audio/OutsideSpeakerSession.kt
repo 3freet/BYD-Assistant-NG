@@ -26,7 +26,12 @@ internal class OutsideSpeakerSession private constructor(private val helper: Hel
         val reply = try {
             helper.write(line)
             helper.readLineStartingWith(HelperProtocol.RESULT_PREFIX.trim(), COMMAND_TIMEOUT_MS)
-        } catch (e: java.io.IOException) {
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // A closed or broken stream is not always an IOException (the library may say it with an IllegalStateException): whatever it
+            // is, the link is gone, which is reported, and not allowed to take the app down from a coroutine nobody is waiting on.
+            AppLogger.log(TAG, "The helper's stream failed on '$line': $e")
             null
         } ?: return VehicleDispatchResult.Failure(VehicleDispatchError.HELPER_UNAVAILABLE, "No answer from the helper to '$line'")
         return HelperProtocol.parse(reply)

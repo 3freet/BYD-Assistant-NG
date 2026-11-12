@@ -7,6 +7,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bydassistantng.audio.AudioRecorder
+import com.bydassistantng.audio.LiveBroadcast
 import com.bydassistantng.audio.TextToSpeechEngine
 import com.bydassistantng.data.CoreFeatures
 import com.bydassistantng.data.PreferencesRepository
@@ -54,6 +55,7 @@ class HomeViewModel @Inject constructor(
     private val ttsEngine: TextToSpeechEngine,
     preferencesRepository: PreferencesRepository,
     private val updateManager: UpdateManager,
+    private val liveBroadcast: LiveBroadcast,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Idle)
@@ -69,6 +71,13 @@ class HomeViewModel @Inject constructor(
     fun dismissJustUpdated() = updateManager.dismissJustUpdated()
 
     fun onMicTapped() {
+        // A live broadcast has the microphone and the exterior speaker: the assistant's tones and replies would come out of the car with it
+        // (the music output is what goes outside on the fast route), and a second recording would start next to the broadcast's. The broadcast
+        // is ended by the steering-wheel button, as it was started.
+        if (liveBroadcast.isActive) {
+            AppLogger.log(TAG, "Mic tap ignored: a live broadcast is on")
+            return
+        }
         when {
             // A tap ends a conversation in progress, whatever stage it's at; otherwise it starts one.
             liveConversationController.inConversation -> liveConversationController.endConversation()

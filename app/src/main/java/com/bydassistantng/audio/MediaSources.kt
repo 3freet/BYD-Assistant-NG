@@ -63,6 +63,14 @@ class MediaSources @Inject constructor(@ApplicationContext private val context: 
         return paused
     }
 
+    /** Whether a session of one of [packages] still says it is playing: a pause asked for a moment ago has not been applied yet. */
+    fun stillPlaying(packages: Set<String>): Boolean = synchronized(callbacks) {
+        callbacks.keys.any { controller ->
+            val state = controller.playbackState?.state
+            controller.packageName in packages && (state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING)
+        }
+    }
+
     /** Lets the apps [pausePlaying] paused play again (those still paused: one the user started again meanwhile is left alone). */
     fun resume(packages: Set<String>) {
         if (packages.isEmpty()) return
