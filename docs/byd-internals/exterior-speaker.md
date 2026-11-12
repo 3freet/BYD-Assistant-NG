@@ -98,7 +98,10 @@ started by **holding the steering-wheel microphone button for 1 second**; the ne
 [steering-wheel-button.md](steering-wheel-button.md#holding-the-button)). It needs the exterior speaker, vehicle control and the mic
 button's short press as the assistant's trigger (the default). It starts at once: the status pill says it is live from the first
 moment, no tone is played first, and the helper that holds the switch is kept ready while the broadcast is armed (it takes a second
-to start, and this unit sends the hold as a single event at its mark, with no earlier key-down to start it on). The route is switched
+to start, and this unit sends the hold as a single event at its mark, with no earlier key-down to start it on). Keeping it ready does not
+put the car's "Allow USB debugging?" prompt up again once it was declined or left unanswered (it would come back every few minutes): the
+next hold asks again, and a yes starts the keeping ready again. A press while a start still waits for the helper (ADB not allowed yet: the
+prompt can be left up for a minute) ends the start at once, and the music that was stopped for it goes on. The route is switched
 in about 50 ms (the helper looks at the car's mute state every 15 ms and answers as soon as it has moved, instead of waiting out a fixed
 150 ms), and what is local (the audio mode, the track, the echo canceller, the microphone) is got ready *while the route settles* (it
 needs 300 ms before a sound is certain to come out of it), so the first sound goes out about **350 ms** after the hold's mark (it was
