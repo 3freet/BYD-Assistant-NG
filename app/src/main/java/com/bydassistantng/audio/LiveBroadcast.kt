@@ -16,6 +16,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
@@ -399,8 +400,9 @@ class LiveBroadcast @Inject constructor(
             // The tone that says it is on, at once and in the cabin only (see [Earcons.playLive]): the route is not open yet, and the microphone's first
             // 300 ms are not sent, which is longer than the tone.
             earcons.playLive(onNavigationStream = useMediaRoute && s.speaker.hasMediaRoute && _musicMode.value != MusicMode.INSIDE)
-            // The helper takes a moment to start when nothing has kept it ready: it starts now.
-            s.speaker.prepare()
+            // The helper takes a moment to start when nothing has kept it ready: it starts now, while the music is stopped, and the route waits
+            // for it (see [openRoute]).
+            val helperReady = s.speaker.prepare()
             // A press in this moment cancels it before anything has been switched.
             if (s.stop.isCompleted) {
                 reason = s.stop.await()
@@ -408,7 +410,7 @@ class LiveBroadcast @Inject constructor(
             }
             // The route the music choice asks for, with the music stopped first where it is to be.
             val modeAtStart = _musicMode.value
-            if (!openRoute(s, modeAtStart)) {
+            if (!openRoute(s, modeAtStart, helperReady)) {
                 reason = if (s.stop.isCompleted) s.stop.await() else StopReason.ROUTE_FAILED
                 return
             }
@@ -516,8 +518,13 @@ class LiveBroadcast @Inject constructor(
      * [MusicMode.INSIDE]; the navigation stream's route when that is the choice or the fast one does not take. False when no route would open, or
      * when a press ended it meanwhile (the caller tells which by [Session.stop]). On the fast route the music would go outside with the voice, so
      * it is stopped (unless it is to go out) and the route is switched only once it has.
+     *
+     * [helperReady] is the helper that holds the switch getting ready (null when it is certainly there, as when the route is changed while live). It
+     * is looked at after the music has stopped, which the helper's start overlaps, so that a start with a helper at hand takes as long as it ever
+     * did; but a helper that is slow to come (ADB not allowed yet: the car's prompt can be left up for a minute) is a wait a press can end, with the
+     * music let go on again. Nothing has been switched until it is over.
      */
-    private suspend fun openRoute(s: Session, mode: MusicMode): Boolean {
+    private suspend fun openRoute(s: Session, mode: MusicMode, helperReady: Deferred<Boolean>? = null): Boolean {
         val began = SystemClock.elapsedRealtime()
         val tryMedia = useMediaRoute && s.speaker.hasMediaRoute && mode != MusicMode.INSIDE
         if (tryMedia && mode == MusicMode.PAUSED) {
@@ -526,6 +533,10 @@ class LiveBroadcast @Inject constructor(
             if (s.stop.isCompleted) return false
         }
         val musicDone = SystemClock.elapsedRealtime()
+        if (helperReady != null && !s.speaker.isReady && awaitHelperOrStop(helperReady, s.stop) == null) {
+            giveBackMusic(s)
+            return false
+        }
         val media = tryMedia && s.speaker.openMedia(settle = false)
         if (tryMedia && !media) giveBackMusic(s)
         if (!media && !s.speaker.open(settle = false)) return false

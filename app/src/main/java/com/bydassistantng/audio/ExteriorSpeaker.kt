@@ -7,6 +7,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
 import java.util.Optional
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -49,8 +51,12 @@ interface ExteriorSpeaker {
     /** Whether [open] can answer at once, because what it needs is already running. */
     val isReady: Boolean get() = false
 
-    /** Gets ready in the background, so that [open] later takes as little time as possible. Never switches anything on. */
-    fun prepare() {}
+    /**
+     * Gets ready in the background, so that [open] later takes as little time as possible. Never switches anything on. The result says, once it
+     * is known, whether there is a helper to open with: with ADB not allowed yet that can take a minute (the car's prompt is left up), which is
+     * why a caller that has someone waiting for it looks at it with a press able to end the wait (see [awaitHelperOrStop]). Nobody has to look.
+     */
+    fun prepare(): Deferred<Boolean> = CompletableDeferred(true)
 
     /**
      * Switches the car over and gets it ready. False when that could not be done, in which case nothing is

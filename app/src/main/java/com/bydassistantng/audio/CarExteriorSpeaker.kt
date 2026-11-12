@@ -11,10 +11,12 @@ import com.bydassistantng.vehicle.VehicleDispatchError
 import com.bydassistantng.vehicle.VehicleDispatchResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -70,21 +72,21 @@ internal class CarExteriorSpeaker @Inject constructor(
 
     override fun renderEffect(name: String): ShortArray? = OutsideEffects.render(name)
 
-    override fun prepare() {
-        scope.launch {
-            try {
-                state.withLock {
-                    val helper = ensureSession()
-                    // The helper is up: the moment to put back a route that an earlier run left on, if it did.
-                    if (helper != null) putBackLeftRoute(helper)
-                    armIdleClose()
-                }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // Nobody waits for this one: it must not take the app down.
-                AppLogger.logError(TAG, "Could not get the helper ready", e)
+    override fun prepare(): Deferred<Boolean> = scope.async {
+        try {
+            state.withLock {
+                val helper = ensureSession()
+                // The helper is up: the moment to put back a route that an earlier run left on, if it did.
+                if (helper != null) putBackLeftRoute(helper)
+                armIdleClose()
+                helper != null
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Often nobody waits for this one: it must not take the app down.
+            AppLogger.logError(TAG, "Could not get the helper ready", e)
+            false
         }
     }
 
