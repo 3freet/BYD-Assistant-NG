@@ -841,7 +841,9 @@ class LiveConversationController @Inject constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Throwable) {
-                    AppLogger.logError(TAG, "Error handling $event", e)
+                    // The kind of event only: its text is what the user or the assistant said, and the log's masking cannot tell it
+                    // from the app's own words once it is printed bare (`InputTranscript(text=...)`).
+                    AppLogger.logError(TAG, "Error handling a ${event::class.simpleName} event", e)
                 }
             }
         }

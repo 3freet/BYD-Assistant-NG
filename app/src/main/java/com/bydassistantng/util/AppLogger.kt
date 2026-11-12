@@ -2,6 +2,7 @@ package com.bydassistantng.util
 
 import android.content.Context
 import android.util.Log
+import com.bydassistantng.BuildConfig
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -28,6 +29,16 @@ object AppLogger {
 
     fun install(context: Context) {
         appContext = context.applicationContext
+        if (!BuildConfig.DEBUG) removeOldMirror(context)
+    }
+
+    /** Earlier builds mirrored the raw log into the external files dir in every build type; remove what they left there. */
+    private fun removeOldMirror(context: Context) {
+        try {
+            context.getExternalFilesDir(null)?.let { File(it, LOG_FILE_NAME).delete() }
+        } catch (_: Throwable) {
+            // Not worth a failure at start-up: the next start tries again.
+        }
     }
 
     fun log(tag: String, message: String) {
@@ -53,12 +64,17 @@ object AppLogger {
         } catch (_: Throwable) {
             // Logging must never be the reason something else breaks.
         }
-        // Mirrored to the app's external files dir, which — unlike the private copy above, and unlike
-        // logcat on this head unit — `adb pull /sdcard/Android/data/<pkg>/files/app_log.txt` can read
-        // without the app being debuggable. The in-app viewer still reads the private file.
-        try {
-            context.getExternalFilesDir(null)?.let { appendCapped(File(it, LOG_FILE_NAME), line) }
-        } catch (_: Throwable) {
+        // A debug build, the one a developer runs on the car, also mirrors the line into the app's external files dir, which
+        // — unlike the private copy above, and unlike logcat on this head unit — `adb pull
+        // /sdcard/Android/data/<pkg>/files/app_log.txt` can read without the app being debuggable. The published builds
+        // do not: what is in this file is the raw log (what was said, places), the masking only happens when the log is
+        // shown, shared or saved, and a file in shared storage can be read by anyone who plugs the unit into a computer
+        // and, on older Android versions, by other apps. The in-app viewer reads the private file in every build.
+        if (BuildConfig.DEBUG) {
+            try {
+                context.getExternalFilesDir(null)?.let { appendCapped(File(it, LOG_FILE_NAME), line) }
+            } catch (_: Throwable) {
+            }
         }
     }
 
