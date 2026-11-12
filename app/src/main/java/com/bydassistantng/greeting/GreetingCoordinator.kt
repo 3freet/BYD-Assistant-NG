@@ -125,6 +125,10 @@ class GreetingCoordinator internal constructor(
     private var watching: Job? = null
     private var lastWakeAt = Long.MIN_VALUE / 2
 
+    // When the first try of this wake began. Kept for the whole wake: a flicker of the seat or the door does not start the
+    // minute again, so a greeting that cannot connect stops trying after CONNECT_LIMIT_MS, whatever the car reports meanwhile.
+    private var firstTryAt: Long? = null
+
     /** The car has woken (the boot broadcast). Starts watching for the driver; one watch per wake. */
     fun onWake() {
         val t = now()
@@ -154,6 +158,7 @@ class GreetingCoordinator internal constructor(
         loggedWaitingForAssistant = false
         greeted = false
         sessionAhead = false
+        firstTryAt = null
         if (!enabled()) {
             log("The greeting is off — not watching")
             return
@@ -195,7 +200,6 @@ class GreetingCoordinator internal constructor(
 
     private suspend fun watchSeatAndDoor(wakeAt: Long) {
         var steady = 0
-        var triedSince: Long? = null
         var lastShown: DriverPresence.State? = null
         var unreadable = false
         var firstRead = true
@@ -217,16 +221,16 @@ class GreetingCoordinator internal constructor(
                 if (state.someoneAbout) openSessionAhead() else if (state.nobodyAbout) letSessionGo()
             }
             firstRead = false
-            if (steady < STEADY_READS) {
-                triedSince = null
-            } else {
-                val since = triedSince ?: now().also { triedSince = it }
-                val outcome = attempt()
-                if (outcome == Attempt.DONE) return
-                if (now() - since >= PATIENCE_MS) {
-                    log("Gave up greeting: it could not start within ${PATIENCE_MS / 1000} s of the driver being ready")
+            if (steady >= STEADY_READS) {
+                val first = firstTryAt ?: now().also { firstTryAt = it }
+                // A try that could still be going on after the limit is not begun: one try takes at most TRY_MAX_MS, so the
+                // greeting is never connecting for longer than the limit, and what it shows on the screen ends with it.
+                if (now() - first > CONNECT_LIMIT_MS - TRY_MAX_MS) {
+                    log("Gave up greeting: it could not start within ${CONNECT_LIMIT_MS / 1000} s of the first try")
                     return
                 }
+                val outcome = attempt()
+                if (outcome == Attempt.DONE) return
                 if (outcome == Attempt.WAIT_FOR_ASSISTANT) {
                     sleep(HOST_POLL_MS)
                     continue
@@ -362,10 +366,16 @@ class GreetingCoordinator internal constructor(
         const val STEADY_READS = 2
 
         /**
-         * How long a greeting that cannot start yet (no connection to the server, the assistant's service not bound) is
-         * kept trying, from the driver being ready.
+         * The longest a greeting spends trying to start (no connection to the server, a slow or refused one, the assistant's
+         * service not bound), counted from its first try after the wake. When it is over the greeting is given up for that wake.
          */
-        const val PATIENCE_MS = 90_000L
+        const val CONNECT_LIMIT_MS = 60_000L
+
+        /**
+         * The longest one try can take: the server session is opened up to three times (as asked, without web search, without
+         * the custom voice), each given a few seconds (`SETUP_TIMEOUT_MS` in the conversation controller).
+         */
+        const val TRY_MAX_MS = 12_000L
         const val RETRY_MS = 4_000L
         const val SAME_WAKE_MS = 20_000L
         private const val CELSIUS_UNIT_CODE = 1

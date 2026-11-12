@@ -256,20 +256,51 @@ class GreetingCoordinatorTest {
         val rig = Rig(FakeCar(listOf(seatedShut)), host)
         rig.coordinator.onWake()
 
-        // One try every RETRY_MS (and a look) for PATIENCE_MS, so about twenty.
-        val expected = (GreetingCoordinator.PATIENCE_MS / (GreetingCoordinator.RETRY_MS + GreetingCoordinator.POLL_MS)).toInt()
+        // One try every RETRY_MS (and a look), begun only while it can still end inside the limit.
+        val window = GreetingCoordinator.CONNECT_LIMIT_MS - GreetingCoordinator.TRY_MAX_MS
+        val expected = (window / (GreetingCoordinator.RETRY_MS + GreetingCoordinator.POLL_MS)).toInt() + 1
         assertTrue("${host.openings.size} tries, expected about $expected", host.openings.size in expected - 2..expected + 2)
         assertTrue(rig.logs.last(), rig.logs.last().startsWith("Gave up greeting"))
     }
 
     @Test
-    fun keepsTryingThroughALateNetwork() {
-        // The tethered phone takes most of a minute to be reachable: the greeting still goes out when it is.
-        val host = FakeHost(mutableListOf<GreetResult>().apply { repeat(12) { add(GreetResult.LATER) }; add(GreetResult.STARTED) })
+    fun neverSpendsMoreThanTheLimitConnecting() {
+        // A server that does not answer, whatever the seat and the door report meanwhile.
+        val host = FakeHost(mutableListOf(GreetResult.LATER))
         val rig = Rig(FakeCar(listOf(seatedShut)), host)
         rig.coordinator.onWake()
 
-        assertEquals(13, host.openings.size)
+        // The first try begins when the driver is first seen ready; the last try cannot run past the limit.
+        val spent = rig.clock - 1_000_000L
+        assertTrue("$spent ms", spent <= GreetingCoordinator.CONNECT_LIMIT_MS)
+        assertTrue("$spent ms", spent >= GreetingCoordinator.CONNECT_LIMIT_MS - GreetingCoordinator.TRY_MAX_MS - GreetingCoordinator.RETRY_MS)
+    }
+
+    @Test
+    fun aFlickerOfTheSeatDoesNotStartTheLimitAgain() {
+        // The reading flickers (seated and shut, seated and shut, then one look with the door open) all the time while the
+        // server does not answer: the old minute started again at every flicker and the tries went on for the whole window.
+        val flicker = listOf(seatedShut, seatedShut, seatedOpen)
+        val host = FakeHost(mutableListOf(GreetResult.LATER))
+        val rig = Rig(FakeCar(List(2_000) { flicker[it % 3] }), host)
+        rig.coordinator.onWake()
+
+        val window = GreetingCoordinator.CONNECT_LIMIT_MS - GreetingCoordinator.TRY_MAX_MS
+        val most = (window / GreetingCoordinator.RETRY_MS).toInt() + 2
+        assertTrue("${host.openings.size} tries, at most $most", host.openings.size <= most)
+        assertTrue(rig.logs.any { it.startsWith("Gave up greeting") })
+        // And it stopped: no look at the seat and the door for the rest of the window.
+        assertTrue("${rig.clock - 1_000_000L} ms", rig.clock - 1_000_000L < GreetingCoordinator.CONNECT_LIMIT_MS)
+    }
+
+    @Test
+    fun keepsTryingThroughALateNetwork() {
+        // The tethered phone takes some tens of seconds to be reachable: the greeting still goes out when it is.
+        val host = FakeHost(mutableListOf<GreetResult>().apply { repeat(8) { add(GreetResult.LATER) }; add(GreetResult.STARTED) })
+        val rig = Rig(FakeCar(listOf(seatedShut)), host)
+        rig.coordinator.onWake()
+
+        assertEquals(9, host.openings.size)
         assertTrue(rig.logs.any { it == "Greeting the driver" })
     }
 
