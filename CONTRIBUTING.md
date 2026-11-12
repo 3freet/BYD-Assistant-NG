@@ -43,7 +43,8 @@ the page of the release is that file, as it is:
    GitHub afterwards.
 
 To see a build and its page without publishing, push the file to another branch, or press *Run workflow* for "Build Beta" in
-the Actions tab with `dry_run`. To change the text of a beta that is out, change its file on `main` and run the workflow with
+the Actions tab with `dry_run` (it builds and signs the app and shows the page, but keeps no APK to download: only a real build on `main`
+does, and it is published anyway). To change the text of a beta that is out, change its file on `main` and run the workflow with
 `notes_only` and the tag: the notes go onto the release, nothing is built.
 
 **To release:** test a beta on a vehicle, then:
@@ -66,7 +67,8 @@ Nobody can see a draft and the app cannot offer it. Look at the page and the APK
 gh release edit v<version> --draft=false --latest
 ```
 
-A run by hand (*Run workflow* for "Build Stable") can be a `dry_run`, which does everything but create the draft; in the rare
+A run by hand (*Run workflow* for "Build Stable") can be a `dry_run`, which does everything but create the draft (and keeps no APK to
+download: the draft holds it, and nobody can see a draft); in the rare
 case of a release with no tested beta, or with changes since it, it can use `allow_changes`.
 
 A version can be published once: raise `appVersionName` in `app/build.gradle.kts` first (`major.minor.patch`, each

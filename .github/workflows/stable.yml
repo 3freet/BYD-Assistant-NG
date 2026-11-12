@@ -77,6 +77,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # The steps below run actions of other people with the signing key on disk: they get no token through git's configuration.
+          persist-credentials: false
 
       - name: Set up JDK 21
         uses: actions/setup-java@v6
@@ -85,7 +87,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
 
       - name: Grant execute permission
         run: chmod +x ./gradlew
@@ -135,7 +137,7 @@ jobs:
 
       - name: Get APK info
         id: apk-info
-        uses: hkusu/apk-info-action@v1
+        uses: hkusu/apk-info-action@392bb88e75a26c806b71bcb86e4f7ee4c871ff58 # v1.0.3 (the v1 branch)
         with:
           apk-path: ${{ steps.apk-path.outputs.path }}
 
@@ -163,12 +165,8 @@ jobs:
             cat release-notes.md
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-apk
-          path: ${{ steps.apk-path.outputs.path }}
-          if-no-files-found: error
+      # No artifact of the APK: it is signed with the release key, and the draft release below holds it, where nobody can see it until it is
+      # published. An artifact would be visible to everyone, on a dry run and before the draft is published.
 
       # Keep this: it is what turns an obfuscated crash trace back into readable code.
       - name: Upload R8 mapping
@@ -190,7 +188,7 @@ jobs:
       - name: Create release (a draft)
         id: release
         if: needs.plan.outputs.mode == 'release' && github.ref == 'refs/heads/stable'
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}
