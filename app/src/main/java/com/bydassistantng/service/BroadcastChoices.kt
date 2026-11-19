@@ -75,8 +75,6 @@ class BroadcastChoices(private val context: Context) {
     }
 
     private fun apply() {
-        // The card is the same way round in every language: loudness on the left, music on the right (the words in the chips follow their own script).
-        card?.layoutDirection = View.LAYOUT_DIRECTION_LTR
         for ((mode, chip) in musicChips) style(chip, mode == music, musicAccent(mode))
         for ((level, chip) in loudnessChips) style(chip, level == loudness, loudnessAccent(level))
     }
@@ -93,8 +91,13 @@ class BroadcastChoices(private val context: Context) {
     private fun ensureAttached(): Boolean {
         if (attached) return true
         val view = buildView()
+        // The window is as wide as its content, found here with no limit. Left to WRAP_CONTENT, the system first measures it at its "preferred
+        // dialog width" (580 dp on a screen as wide as the car's), and a one-line TextView squeezed there cuts its text without saying that it does
+        // not fit: the last chip lost its words ("في" for "في الداخل"), and a language with longer words lost more.
+        view.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        val width = view.measuredWidth.coerceAtMost(context.resources.displayMetrics.widthPixels)
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            width,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -135,6 +138,8 @@ class BroadcastChoices(private val context: Context) {
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            // The card is the same way round in every language: loudness on the left, music on the right (the words in the chips follow their own script).
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
             setPadding(dp(14), dp(8), dp(14), dp(8))
             background = GradientDrawable().apply {
                 cornerRadius = dp(30).toFloat()
