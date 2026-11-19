@@ -97,7 +97,7 @@
     <string name="classic_permission_denied">Google menolak akses untuk proyek kunci ini%1$s. Memasukkan ulang kunci tidak akan membantu — gunakan kunci dari proyek lain atau periksa AI Studio.</string>
     <string name="classic_rate_limited">Gemini sedang membatasi permintaan — coba lagi sebentar lagi.</string>
     <string name="classic_network">Tidak dapat menghubungi Gemini — periksa koneksi.</string>
-    <string name="classic_provider_error">Gemini mengembalikan galat.</string>
+    <string name="classic_provider_error">Gemini mengembalikan kesalahan.</string>
     <string name="classic_empty_response">Gemini mengembalikan respons kosong.</string>
 
     <!-- Settings -->
@@ -155,7 +155,7 @@
     <string name="car_voice_turn_on">Aktifkan kembali</string>
     <string name="car_voice_working">Memproses…</string>
     <string name="car_voice_confirm_title">Nonaktifkan asisten suara BYD?</string>
-    <string name="car_voice_confirm_body">Ini mematikan asisten suara bawaan mobil, sehingga tidak lagi merespons tombol mikrofon di setir. Perintah suara bawaannya juga berhenti berfungsi sampai Anda mengaktifkannya kembali di sini. Tidak ada yang dihapus instalasinya.</string>
+    <string name="car_voice_confirm_body">Ini mematikan asisten suara bawaan mobil, sehingga tidak lagi merespons tombol mikrofon di setir. Perintah suara bawaannya juga berhenti berfungsi sampai Anda mengaktifkannya kembali di sini. Tidak ada aplikasi yang dihapus.</string>
     <string name="car_voice_failed">Tidak dapat mengubahnya. Diperlukan debugging ADB yang aktif pada head unit ini.</string>
     <string name="wheel_conflict_note">Jika aplikasi lain (misalnya aplikasi pemeta tombol) sudah memakai tombol ini, hapus pemetaannya di sana — jika tidak, keduanya akan merespons.</string>
     <string name="wheel_failure_hint">Tidak dapat mengaktifkannya secara otomatis — diperlukan debugging ADB yang aktif pada head unit ini, dan ketuk Izinkan pada pertanyaan mobil “Izinkan debugging USB?”. Atau, sekali dari komputer: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS, lalu coba lagi.</string>
@@ -163,7 +163,7 @@
     <string name="end_wait_desc">Berapa lama asisten menunggu dalam diam sebelum menganggap Anda selesai berbicara. Jeda yang lebih singkat membuat jawaban lebih cepat, tetapi bisa memotong ucapan Anda saat berhenti sejenak di tengah kalimat.</string>
     <string name="end_wait_value">%1$d ms</string>
     <string name="sensitivity_title">Kepekaan pendengaran</string>
-    <string name="sensitivity_desc">Seberapa jelas suara harus terdengar agar asisten menganggapnya sebagai ucapan Anda, baik saat mulai mendengarkan maupun saat Anda menyela. Nilai lebih tinggi menangkap suara yang lebih pelan tetapi lebih mudah terkecoh oleh bising; nilai lebih rendah memerlukan suara yang lebih tegas. Jika asisten menjawab suara yang bukan dari Anda, atau berhenti bicara sendiri, turunkan; jika ucapan Anda terlewat, naikkan.</string>
+    <string name="sensitivity_desc">Seberapa jelas suara harus terdengar agar asisten menganggapnya sebagai ucapan Anda, baik saat mulai mendengarkan maupun saat Anda menyela. Nilai lebih tinggi menangkap suara yang lebih pelan tetapi lebih mudah terkecoh oleh kebisingan; nilai lebih rendah memerlukan suara yang lebih tegas. Jika asisten menjawab suara yang bukan dari Anda, atau berhenti bicara sendiri, turunkan; jika ucapan Anda terlewat, naikkan.</string>
     <string name="sensitivity_value">%1$+d</string>
     <string name="sensitivity_reset">Kembali ke 0</string>
     <string name="media_access_service_name">Media yang diputar (tidak membaca notifikasi)</string>
@@ -247,7 +247,7 @@
     <string name="update_err_busy">Percakapan suara sedang berlangsung. Akhiri dulu, lalu coba lagi.</string>
     <string name="update_err_offline">Tidak dapat menghubungi GitHub. Periksa koneksi internet dan coba lagi.</string>
     <string name="update_err_rate_limited">GitHub sedang membatasi permintaan. Coba lagi beberapa saat lagi.</string>
-    <string name="update_err_server">GitHub menjawab dengan galat (%1$s). Coba lagi nanti.</string>
+    <string name="update_err_server">GitHub menjawab dengan kesalahan (%1$s). Coba lagi nanti.</string>
     <string name="update_err_bad_response">Informasi pembaruan tidak dapat dibaca.</string>
     <string name="update_err_no_space">Ruang penyimpanan tidak cukup untuk mengunduh pembaruan.</string>
     <string name="update_err_download">Unduhan gagal. Periksa koneksi dan coba lagi.</string>
@@ -259,7 +259,7 @@
     <string name="update_err_install">Pemasangan ditolak (%1$s).</string>
     <string name="update_err_install_timeout">Pemasangan tidak selesai. Coba lagi.</string>
     <string name="advanced_channel_title">Kanal pembaruan</string>
-    <string name="advanced_channel_stable_desc">Rilis yang sudah diuji. Direkomendasikan.</string>
+    <string name="advanced_channel_stable_desc">Rilis yang sudah diuji. Disarankan.</string>
     <string name="advanced_channel_beta_desc">Build terbaru, segera setelah dirilis. Mungkin masih mengandung bug.</string>
     <string name="advanced_channel_note">Hanya build yang lebih baru dari yang terpasang yang ditawarkan, sehingga mengganti kanal tidak akan pernah mengembalikan aplikasi ke versi lama.</string>
     <string name="advanced_beta_title">Beralih ke kanal beta?</string>
@@ -273,8 +273,8 @@
     <string name="advanced_live_title">Siaran langsung mikrofon</string>
     <string name="advanced_live_desc">Tahan tombol mikrofon di setir selama 1 detik untuk berbicara melalui speaker eksterior, sehingga orang di luar mendengar Anda secara langsung. Tekan lagi untuk berhenti. Nonaktif secara bawaan.</string>
     <string name="advanced_drive_modes_title">Penggantian mode berkendara</string>
-    <string name="advanced_drive_modes_desc">Memungkinkan asisten mengganti mode berkendara mobil (salju, pasir, lumpur, pegunungan, bebatuan, otomatis, eco, sport) saat Anda memintanya. Mobil tetap yang memutuskan apakah menerimanya. Nonaktif secara bawaan.</string>
-    <string name="advanced_drive_modes_desc_basic">Memungkinkan asisten meminta mode berkendara dari mobil (eco, normal, sport, salju, lumpur, pasir) saat Anda memintanya. Mobil tetap yang memutuskan apakah menerimanya dan mode mana yang dimilikinya. Nonaktif secara bawaan.</string>
+    <string name="advanced_drive_modes_desc">Memungkinkan asisten mengganti mode berkendara mobil (salju, pasir, lumpur, pegunungan, bebatuan, otomatis, eco, sport) saat Anda memintanya. Mobil tetap menentukan apakah menerimanya. Nonaktif secara bawaan.</string>
+    <string name="advanced_drive_modes_desc_basic">Memungkinkan asisten meminta mode berkendara dari mobil (eco, normal, sport, salju, lumpur, pasir) saat Anda memintanya. Mobil tetap menentukan apakah menerimanya dan mode mana yang dimilikinya. Nonaktif secara bawaan.</string>
     <string name="advanced_cluster_enable_title">Panel instrumen</string>
     <string name="advanced_cluster_enable_desc">Memungkinkan asisten menampilkan aplikasi di panel instrumen di belakang setir dan melepasnya kembali. Aplikasi ditampilkan di tengah panel, tempat BYD Maps menampilkan petanya, sementara kecepatan dan lampu peringatan tetap terlihat. Apa pun yang ditampilkan di sana berada dalam pandangan pengemudi, jadi gunakan hanya saat mobil parkir. Fitur ini menyalakan BYD Maps selama bekerja. Nonaktif secara bawaan.</string>
     <string name="advanced_cluster_confirm_title">Aktifkan fitur panel instrumen?</string>
@@ -301,15 +301,15 @@
     <string name="voice_music_pause_desc">Musik berhenti selama percakapan dan diputar lagi setelahnya, pada aplikasi yang dapat melanjutkan sendiri.</string>
     <string name="voice_channel_adaptive_title">Volume mengikuti kebisingan kabin</string>
     <string name="voice_channel_adaptive_desc">Mendengarkan kabin sesaat sebelum berbicara dan menyesuaikan volume suara: lebih keras saat kabin bising, lebih pelan saat tenang. Nonaktif: volume tetap seperti adanya.</string>
-    <string name="voice_channel_adaptive_desc_headrest">Mendengarkan kabin sesaat sebelum berbicara dan menyesuaikan volume sandaran kepala: lebih keras saat kabin bising, lebih pelan saat tenang. Volume navigasi mobil diubah selama percakapan lalu dikembalikan. Nonaktif: sandaran kepala diputar pada volume navigasi yang Anda atur di mobil.</string>
-    <string name="voice_channel_gain_title">Lebih keras atau lebih pelan dari kebisingan kabin</string>
+    <string name="voice_channel_adaptive_desc_headrest">Mendengarkan kabin sesaat sebelum berbicara dan menyesuaikan volume sandaran kepala: lebih keras saat kabin bising, lebih pelan saat tenang. Volume navigasi mobil diubah selama percakapan lalu dikembalikan. Nonaktif: suara di sandaran kepala diputar pada volume navigasi yang Anda atur di mobil.</string>
+    <string name="voice_channel_gain_title">Lebih keras atau lebih pelan dari yang dibutuhkan kabin</string>
     <string name="voice_channel_gain_desc">Menggeser volume yang dipilih ke atas atau ke bawah, sekitar 2 dB per langkah. Di kabin yang tenang, saat suara sudah di tingkat terendah, ini membuat suara itu sendiri lebih pelan.</string>
     <string name="voice_channel_gain_value">%1$+d</string>
     <string name="voice_channel_gain_reset">Kembali ke 0</string>
     <string name="advanced_exterior_confirm_title">Aktifkan speaker eksterior?</string>
     <string name="advanced_exterior_confirm_body">Ini adalah fitur eksperimental. Fitur ini mengeluarkan suara dan bunyi asisten ke luar mobil, yang dapat mengejutkan atau mengganggu orang di sekitar, dan bekerja melalui fungsi mobil yang tidak dirancang untuk aplikasi ini. Fitur ini baru dicoba pada satu model mobil dan bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas cara dan tempat penggunaannya.</string>
     <string name="advanced_live_confirm_title">Aktifkan siaran langsung mikrofon?</string>
-    <string name="advanced_live_confirm_body">Ini adalah fitur eksperimental. Saat aktif, semua yang dikatakan di dalam mobil diputar langsung melalui speaker eksterior, sehingga orang di luar dapat mendengar percakapan Anda, sampai Anda menekan tombol lagi (siaran juga berhenti sendiri setelah satu menit). Hal ini dapat mengejutkan atau mengganggu orang di sekitar, dan jika suaranya terlalu keras, mikrofon dapat menangkapnya dan menimbulkan bunyi mendengking. Fitur ini bekerja melalui fungsi mobil yang tidak dirancang untuk aplikasi ini, baru dicoba pada satu model mobil dan bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas cara dan tempat penggunaannya.</string>
+    <string name="advanced_live_confirm_body">Ini adalah fitur eksperimental. Saat aktif, semua yang dikatakan di dalam mobil diputar langsung melalui speaker eksterior, sehingga orang di luar dapat mendengar percakapan Anda, sampai Anda menekan tombol lagi (siaran juga berhenti sendiri setelah satu menit). Hal ini dapat mengejutkan atau mengganggu orang di sekitar, dan jika suaranya terlalu keras, mikrofon dapat menangkapnya dan menimbulkan bunyi melengking. Fitur ini bekerja melalui fungsi mobil yang tidak dirancang untuk aplikasi ini, baru dicoba pada satu model mobil dan bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas cara dan tempat penggunaannya.</string>
     <string name="advanced_drive_modes_confirm_title">Aktifkan penggantian mode berkendara?</string>
     <string name="advanced_drive_modes_confirm_body">Ini adalah fitur eksperimental. Mengganti mode berkendara mengubah cara mobil menyalurkan tenaga, menangani jalan, dan mengerem, dan bekerja melalui fungsi mobil yang tidak dirancang untuk aplikasi ini. Fitur ini baru dicoba pada satu model mobil; mungkin tidak berfungsi, atau bisa berhenti berfungsi setelah pembaruan perangkat lunak mobil. Gunakan hanya saat aman. Anda menggunakannya sepenuhnya atas risiko sendiri dan tetap bertanggung jawab atas pengoperasian mobil Anda dengan aman.</string>
     <string name="advanced_exterior_title">Volume speaker eksterior</string>
@@ -356,7 +356,7 @@
     <string name="about_title">Tentang</string>
     <string name="about_version">Versi %1$s</string>
     <string name="about_disclaimer_title">Penafian — tanggung jawab Anda</string>
-    <string name="about_disclaimer_body">BYD Assistant NG adalah proyek independen. Aplikasi ini tidak dibuat, disetujui, atau didukung oleh BYD maupun Google; nama BYD, DiLink, dan Gemini adalah milik pemiliknya masing-masing.\n\nAplikasi ini disediakan “sebagaimana adanya”, tanpa jaminan apa pun. Anda menggunakannya sepenuhnya atas tanggung jawab sendiri — termasuk semua yang diucapkannya dan semua yang dilakukannya pada mobil Anda. Kontrol kendaraan bersifat eksperimental: gunakan hanya saat aman, jangan biarkan mengalihkan perhatian Anda dari mengemudi, dan periksa bahwa mobil melakukan apa yang Anda minta.\n\nApa yang Anda ucapkan dikirim ke layanan Gemini milik Google, dan ke Google Search jika Anda mengaktifkan pencarian web.</string>
+    <string name="about_disclaimer_body">BYD Assistant NG adalah proyek independen. Aplikasi ini tidak dibuat, disetujui, atau didukung oleh BYD maupun Google; nama BYD, DiLink, dan Gemini adalah milik pemiliknya masing-masing.\n\nAplikasi ini disediakan “sebagaimana adanya”, tanpa jaminan apa pun. Anda menggunakannya sepenuhnya atas tanggung jawab sendiri — termasuk semua yang diucapkannya dan semua yang dilakukannya pada mobil Anda. Kontrol kendaraan bersifat eksperimental: gunakan hanya saat aman, jangan biarkan fitur ini mengalihkan perhatian Anda dari mengemudi, dan periksa bahwa mobil melakukan apa yang Anda minta.\n\nApa yang Anda ucapkan dikirim ke layanan Gemini milik Google, dan ke Google Search jika Anda mengaktifkan pencarian web.</string>
     <string name="about_open_source_title">Sumber terbuka</string>
     <string name="about_open_source_body">BYD Assistant NG adalah perangkat lunak gratis dan bersumber terbuka, berlisensi GNU General Public License versi 3. Anda dapat membaca kodenya, melaporkan masalah, dan menyumbangkan perbaikan melalui halaman proyek. Kontrol kendaraan yang sudah terverifikasi untuk model lain sangat diharapkan.</string>
     <string name="about_source_link">Buka halaman proyek</string>
@@ -475,6 +475,6 @@
     <string name="log_save_failed">Tidak dapat menyimpan log.</string>
     <string name="log_preparing">Menyiapkan log…</string>
     <string name="log_hide_private">Sembunyikan info pribadi</string>
-    <string name="log_hide_private_on">Apa yang Anda ucapkan dan minta, tempat, judul lagu, kunci, alamat e-mail, nomor telepon, dan alamat jaringan disamarkan di sini, dalam yang Anda bagikan, dan dalam yang Anda simpan.</string>
+    <string name="log_hide_private_on">Apa yang Anda ucapkan dan minta, tempat, judul lagu, kunci, alamat e-mail, nomor telepon, dan alamat jaringan disamarkan di sini, serta pada log yang Anda bagikan dan simpan.</string>
     <string name="log_hide_private_off">Seluruh log ditampilkan. Termasuk apa yang Anda ucapkan dan minta. Bagikan hanya kepada orang yang Anda percayai.</string>
 </resources>

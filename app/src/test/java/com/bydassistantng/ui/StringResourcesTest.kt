@@ -13,7 +13,8 @@ import java.io.File
 class StringResourcesTest {
     private val resDir = File("src/main/res")
     private val entry = Regex("""<string name="([^"]+)"([^>]*)>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
-    private val placeholder = Regex("""%\d\$[sd]""")
+    // %1$s, %1$d, a signed %1$+d, and a literal %%.
+    private val placeholder = Regex("""%\d\$\+?[sd]|%%""")
 
     /** The strings of one folder; brand names marked `translatable="false"` are left out of the comparison. */
     private fun strings(folder: String): Map<String, String> =
@@ -97,8 +98,13 @@ class StringResourcesTest {
 
     @Test
     fun arabicStringsAreActuallyArabic() {
-        // Names and technical terms stay Latin, but a sentence with no Arabic letter at all is a missed translation.
-        val keepLatin = setOf("app_language_english", "app_language_russian", "app_language_polish", "app_language_indonesian")
+        // Names and technical terms stay Latin, and a bare signed number has no letters to translate (a word next to it would also
+        // turn the sign around in a right-to-left line: "-2" would be shown as "2-"); any other sentence with no Arabic letter at all
+        // is a missed translation.
+        val keepLatin = setOf(
+            "app_language_english", "app_language_russian", "app_language_polish", "app_language_indonesian",
+            "sensitivity_value", "voice_channel_gain_value",
+        )
         for ((name, ar) in arabic) {
             if (name in keepLatin) continue
             assertTrue("$name has no Arabic letters: $ar", ar.any { it in '\u0600'..'\u06FF' })
