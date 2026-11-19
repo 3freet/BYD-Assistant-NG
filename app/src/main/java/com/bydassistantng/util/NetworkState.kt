@@ -17,4 +17,14 @@ object NetworkState {
     } catch (_: SecurityException) {
         true // can't tell, so don't claim to be offline
     }
+
+    /** Whether the device is connected to any network that carries internet traffic, validated or not. False is
+     * certain (nothing can connect: the head unit wakes before the phone's hotspot is joined and has no other
+     * network); true only says something is connected, not that it works. Where it cannot be asked, true. */
+    fun hasNetwork(context: Context): Boolean = try {
+        val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        manager == null || manager.activeNetwork != null
+    } catch (_: SecurityException) {
+        true
+    }
 }

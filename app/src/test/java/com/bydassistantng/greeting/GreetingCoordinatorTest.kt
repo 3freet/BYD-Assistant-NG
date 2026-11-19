@@ -75,6 +75,12 @@ class GreetingCoordinatorTest {
         prepareThrows: Boolean = false,
     ) {
         var clock = 1_000_000L
+
+        /** The car has a network from this time on (always, by default). */
+        var networkUpAt = Long.MIN_VALUE
+
+        /** From this time on somebody has started a conversation by hand. */
+        var busyFrom = Long.MAX_VALUE
         val logs = mutableListOf<String>()
         var prepares = 0
         var discards = 0
@@ -85,6 +91,7 @@ class GreetingCoordinatorTest {
             car = car,
             io = Dispatchers.Unconfined,
             host = { if (hostFromTheStart || hostReads++ > 0) host else null },
+            hasNetwork = { clock >= networkUpAt },
             languageToGreetIn = { language },
             notesInUse = { notes },
             prepareSession = { prepares++; if (prepareThrows) throw java.io.IOException("no network") },
@@ -92,7 +99,10 @@ class GreetingCoordinatorTest {
             speaker = { speaker },
             now = { clock },
             timeOfDay = { GreetingPrompt.TimeOfDay(8, 5) },
-            sleep = { clock += it },
+            sleep = {
+                clock += it
+                if (clock >= busyFrom) host?.busy = true
+            },
             log = { logs += it },
         )
     }
@@ -302,6 +312,77 @@ class GreetingCoordinatorTest {
 
         assertEquals(9, host.openings.size)
         assertTrue(rig.logs.any { it == "Greeting the driver" })
+    }
+
+    @Test
+    fun doesNotTryWhileTheCarHasNoNetworkAndGivesUpAtTheSameTime() {
+        // The phone's hotspot never joins. Nothing is touched: no try (so no banner, headrest or microphone) and no reading of
+        // the outside temperature. The minute runs out as it does for a server that does not answer.
+        val host = FakeHost()
+        val rig = Rig(FakeCar(listOf(seatedShut)), host)
+        rig.networkUpAt = Long.MAX_VALUE
+        rig.coordinator.onWake()
+
+        assertEquals(0, host.openings.size)
+        assertEquals(0, rig.car.temperatureReads)
+        assertEquals(1, rig.logs.count { it.startsWith("The car has no network") })
+        assertTrue(rig.logs.last(), rig.logs.last().startsWith("Gave up greeting: the car had no network"))
+        val spent = rig.clock - 1_000_000L
+        assertTrue("$spent ms", spent <= GreetingCoordinator.CONNECT_LIMIT_MS)
+        assertTrue("$spent ms", spent >= GreetingCoordinator.CONNECT_LIMIT_MS - GreetingCoordinator.TRY_MAX_MS)
+    }
+
+    @Test
+    fun triesAsSoonAsTheNetworkComes() {
+        val host = FakeHost()
+        val rig = Rig(FakeCar(listOf(seatedShut)), host)
+        rig.networkUpAt = 1_000_000L + 20_000L
+        rig.coordinator.onWake()
+
+        // One try, and it is the one that works: none was made before the network was there.
+        assertEquals(1, host.openings.size)
+        assertTrue("ended at ${rig.clock - 1_000_000L} ms", rig.clock - 1_000_000L >= 20_000L)
+        val waiting = rig.logs.indexOfFirst { it.startsWith("The car has no network") }
+        val back = rig.logs.indexOfFirst { it.startsWith("The car has a network now") }
+        val greeted = rig.logs.indexOf("Greeting the driver")
+        assertTrue(rig.logs.toString(), waiting in 0 until back && back < greeted)
+    }
+
+    @Test
+    fun aNetworkThatComesAfterTheLimitIsNotWaitedFor() {
+        val host = FakeHost()
+        val rig = Rig(FakeCar(listOf(seatedShut)), host)
+        rig.networkUpAt = 1_000_000L + 55_000L
+        rig.coordinator.onWake()
+
+        assertEquals(0, host.openings.size)
+        assertTrue(rig.logs.last(), rig.logs.last().startsWith("Gave up greeting"))
+    }
+
+    @Test
+    fun aConversationStartedByHandWhileWaitingForTheNetworkEndsTheGreeting() {
+        // The driver does not wait: pressing the button starts a conversation, which has its own way of saying there is no
+        // connection. The greeting steps aside at once and does not try behind it.
+        val host = FakeHost()
+        val rig = Rig(FakeCar(listOf(seatedShut)), host)
+        rig.networkUpAt = Long.MAX_VALUE
+        rig.busyFrom = 1_000_000L + 10_000L
+        rig.coordinator.onWake()
+
+        assertEquals(0, host.openings.size)
+        assertEquals("A conversation is already under way — no greeting", rig.logs.last())
+        assertTrue("${rig.clock - 1_000_000L} ms", rig.clock - 1_000_000L < 15_000L)
+    }
+
+    @Test
+    fun theTestButtonDoesNotWaitForTheNetwork() = runBlocking {
+        // It is the driver's own request, as a press of the button is: whatever there is to say about the connection is said by
+        // the conversation it starts.
+        val rig = Rig(FakeCar(listOf(emptyOpen)))
+        rig.networkUpAt = Long.MAX_VALUE
+
+        assertEquals(GreetingCoordinator.SimulationOutcome.STARTED, rig.coordinator.simulate())
+        assertEquals(1, rig.host!!.openings.size)
     }
 
     @Test

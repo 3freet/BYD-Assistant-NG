@@ -8,6 +8,8 @@ import com.bydassistantng.gemini.LiveConversationController
 import com.bydassistantng.service.WheelKeyService
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
+import com.bydassistantng.util.NetworkDebug
+import com.bydassistantng.util.NetworkState
 import com.bydassistantng.vehicle.DriverPresence
 import com.bydassistantng.vehicle.OutsideTemperatureTool
 import com.bydassistantng.vehicle.ShellHelperVehicleController
@@ -74,6 +76,9 @@ class GreetingCoordinator internal constructor(
     // Where the car is asked: off the main thread (the car is reached over a socket), which the test button runs on.
     private val io: CoroutineDispatcher,
     private val host: () -> GreetingHost?,
+    // Whether the car has any network at all. While it has none the greeting does not try: the car wakes before the phone's
+    // hotspot is joined, and a try with nothing to connect over only puts the banner up and moves the headrest for nothing.
+    private val hasNetwork: () -> Boolean = { true },
     private val languageToGreetIn: suspend () -> String?,
     private val notesInUse: suspend () -> Boolean,
     // Opens the assistant's server session ahead of the greeting, and lets it go if the greeting does not happen.
@@ -97,6 +102,8 @@ class GreetingCoordinator internal constructor(
         car = car,
         io = Dispatchers.IO,
         host = { WheelKeyService.instance },
+        // The debug build's "simulated offline" switch counts too, so that the real wait can be tried on the car.
+        hasNetwork = { !NetworkDebug.simulateOffline && NetworkState.hasNetwork(context) },
         notesInUse = { preferences.longTermMemoryEnabled.first() },
         prepareSession = { conversation.prepare() },
         discardSession = { conversation.discardPrepared() },
@@ -119,6 +126,7 @@ class GreetingCoordinator internal constructor(
 
     private val lock = Any()
     private var loggedWaitingForAssistant = false
+    private var loggedWaitingForNetwork = false
     private var greeted = false
     private var sessionAhead = false
     private var activeWake = Long.MIN_VALUE
@@ -156,6 +164,7 @@ class GreetingCoordinator internal constructor(
 
     private suspend fun watch(wakeAt: Long) {
         loggedWaitingForAssistant = false
+        loggedWaitingForNetwork = false
         greeted = false
         sessionAhead = false
         firstTryAt = null
@@ -226,13 +235,20 @@ class GreetingCoordinator internal constructor(
                 // A try that could still be going on after the limit is not begun: one try takes at most TRY_MAX_MS, so the
                 // greeting is never connecting for longer than the limit, and what it shows on the screen ends with it.
                 if (now() - first > CONNECT_LIMIT_MS - TRY_MAX_MS) {
-                    log("Gave up greeting: it could not start within ${CONNECT_LIMIT_MS / 1000} s of the first try")
+                    log(
+                        if (loggedWaitingForNetwork) "Gave up greeting: the car had no network within ${CONNECT_LIMIT_MS / 1000} s of the first try"
+                        else "Gave up greeting: it could not start within ${CONNECT_LIMIT_MS / 1000} s of the first try",
+                    )
                     return
                 }
                 val outcome = attempt()
                 if (outcome == Attempt.DONE) return
                 if (outcome == Attempt.WAIT_FOR_ASSISTANT) {
                     sleep(HOST_POLL_MS)
+                    continue
+                }
+                if (outcome == Attempt.WAIT_FOR_NETWORK) {
+                    sleep(NETWORK_POLL_MS)
                     continue
                 }
                 sleep(RETRY_MS)
@@ -251,6 +267,9 @@ class GreetingCoordinator internal constructor(
 
         /** The service that owns the microphone has not bound yet (a few seconds after the wake): look again very soon. */
         WAIT_FOR_ASSISTANT,
+
+        /** The car has no network (the phone's hotspot is not joined yet): nothing was touched, look again in a second. */
+        WAIT_FOR_NETWORK,
     }
 
     private suspend fun attempt(): Attempt {
@@ -263,6 +282,17 @@ class GreetingCoordinator internal constructor(
         if (host.busy) {
             log("A conversation is already under way — no greeting")
             return Attempt.DONE
+        }
+        // With nothing to connect over a try can only fail, and it costs the banner on the screen, a reading of the car, the
+        // headrest sound switched and given back and the microphone opened. So none is made; the same minute still runs out.
+        if (!hasNetwork()) {
+            if (!loggedWaitingForNetwork) log("The car has no network yet — waiting for it before trying")
+            loggedWaitingForNetwork = true
+            return Attempt.WAIT_FOR_NETWORK
+        }
+        if (loggedWaitingForNetwork) {
+            log("The car has a network now — trying")
+            loggedWaitingForNetwork = false
         }
         return when (host.greet(opening(), speaker())) {
             GreetResult.STARTED -> {
@@ -361,6 +391,9 @@ class GreetingCoordinator internal constructor(
 
         /** How often to look for the assistant's service to have bound, when the driver is ready and it has not. */
         const val HOST_POLL_MS = 250L
+
+        /** How often to look for the car to have a network while it has none (a look is one call to the system). */
+        const val NETWORK_POLL_MS = 1_000L
 
         /** The seated-and-shut state has to be read this many times running, so a flicker is not a greeting. */
         const val STEADY_READS = 2

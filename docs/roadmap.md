@@ -121,6 +121,13 @@ on after it is not begun. A first version stopped after ten tries, 45 seconds, a
 trying for 90 seconds from the driver being ready, and started the time again at every flicker, so that on a car with no connection
 the "connecting" banner came back on the screen for as long as the reading flickered.
 
+While the car has no network at all (the phone's hotspot not joined yet, and the car has no other network, which is the usual
+case just after a wake) nothing is tried: no banner, no reading of the car, no headrest sound switched and given back, no
+microphone. The greeting looks once a second, inside the same minute, and tries as soon as there is a network. Before that, each
+try (eleven in the one minute of a morning in the log) put the banner up, switched the driver's headrest to Interactive and back,
+opened the microphone for a cabin-noise reading and failed in 0.3 s. A conversation the driver starts by hand, and the test
+button in Settings, do not wait for this: they go through the conversation's own start, which says so when there is no connection.
+
 To check: the delay from the wake broadcast after a night's sleep, whether the broadcast always comes before the driver is
 ready, and a driver arriving 10 to 30 minutes after a remote unlock.
 
