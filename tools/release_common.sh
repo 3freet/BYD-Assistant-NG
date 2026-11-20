@@ -1,7 +1,10 @@
-# Shared by the release tools (new_release_notes.sh, check_release_notes.sh, compose_release_body.sh, plan_release.sh).
+# Shared by the release tools (new_release_notes.sh, check_release_notes.sh, compose_release_body.sh, plan_release.sh, stage_release_assets.sh).
 # Source it: it only defines functions. It works with the bash that ships with macOS (3.2) and with the runners' bash.
 
 release_root() { git rev-parse --show-toplevel; }
+
+# The name Gradle gives the project (rootProject.name in settings.gradle.kts): every APK is named after it.
+project_name() { sed -n 's/^rootProject.name = "\(.*\)"/\1/p' "$(release_root)/settings.gradle.kts"; }
 
 # The version the next release will have, read from app/build.gradle.kts the way the workflows read it.
 app_version() { sed -n 's/^val appVersionName = "\(.*\)"/\1/p' "$(release_root)/app/build.gradle.kts"; }

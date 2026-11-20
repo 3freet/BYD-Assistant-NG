@@ -153,6 +153,12 @@ jobs:
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
+      # What the release keeps for good: the APK under the name of its version, and the R8 mapping of this build, which turns an obfuscated crash
+      # trace back into readable code. A workflow artifact is deleted after 90 days, an asset of the release stays for as long as the release does.
+      # It stops the run, before anything is published, when the APK is not named after the tag or its mapping is missing.
+      - name: Name the files of the release
+        run: tools/stage_release_assets.sh stable "$TAG"
+
       # The app shows these lines under "What's new" when it offers this build as an update.
       - name: Put the release notes together
         run: tools/compose_release_body.sh stable "${{ github.repository }}" "$TAG" "$NOTES" > release-notes.md
@@ -168,7 +174,8 @@ jobs:
       # No artifact of the APK: it is signed with the release key, and the draft release below holds it, where nobody can see it until it is
       # published. An artifact would be visible to everyone, on a dry run and before the draft is published.
 
-      # Keep this: it is what turns an obfuscated crash trace back into readable code.
+      # Keep this: it is what turns an obfuscated crash trace back into readable code. This copy goes after 90 days; a real release also holds the
+      # mapping on the draft (above), and a dry run, which creates nothing, leaves this one to look at.
       - name: Upload R8 mapping
         uses: actions/upload-artifact@v7
         with:
@@ -197,7 +204,8 @@ jobs:
           prerelease: false
           make_latest: false
           body_path: release-notes.md
-          files: ${{ steps.apk-path.outputs.path }}
+          files: release-assets/*
+          fail_on_unmatched_files: true
 
       - name: Say how to publish the draft
         if: needs.plan.outputs.mode == 'release' && github.ref == 'refs/heads/stable'

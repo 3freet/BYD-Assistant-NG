@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests of the release tools against a throwaway repository:   tools/test_release_tools.sh
-# (release_common.sh, check_release_notes.sh, compose_release_body.sh, new_release_notes.sh, plan_release.sh). No network, no Android.
+# (release_common.sh, check_release_notes.sh, compose_release_body.sh, new_release_notes.sh, plan_release.sh, stage_release_assets.sh).
+# No network, no Android.
 set -u
 tools=$(cd "$(dirname "$0")" && pwd)
 work=$(mktemp -d)
@@ -21,7 +22,7 @@ expect_contains() { # <what> <text> <needle>
 
 repo="$work/repo"
 mkdir -p "$repo/app" "$repo/tools" "$repo/release-notes"
-for name in release_common check_release_notes compose_release_body new_release_notes plan_release; do
+for name in release_common check_release_notes compose_release_body new_release_notes plan_release stage_release_assets; do
   cp "$tools/$name.sh" "$repo/tools/$name.sh"
   chmod +x "$repo/tools/$name.sh"
 done
@@ -270,6 +271,59 @@ expect "the starter prints the path of the stable file" release-notes/v1.2.0.md 
 expect_contains "  the notes of the betas are in the comment, to work from" "$(cat release-notes/v1.2.0.md)" "The notes of v1.2.0-beta.1, to work from:"
 expect_contains "  with what they said" "$(sed -n '/^<!--$/,/^-->$/p' release-notes/v1.2.0.md)" "A feature."
 expect_contains "  and the lines are the commits since the previous stable release" "$(sed '/^<!--$/,/^-->$/d' release-notes/v1.2.0.md)" "- first change"
+
+# ── The files a release keeps ───────────────────────────────────────────────────────────────────
+
+printf 'rootProject.name = "BYDAssistantNG"\n' > settings.gradle.kts
+expect "the project name is read from the settings file" BYDAssistantNG "$(project_name)"
+
+build_outputs() { # <variant> <name of the APK>: what a Gradle build of that variant leaves
+  rm -rf app/build release-assets
+  mkdir -p "app/build/outputs/apk/$1" "app/build/outputs/mapping/$1"
+  printf 'the apk' > "app/build/outputs/apk/$1/$2"
+  printf '# the mapping\n' > "app/build/outputs/mapping/$1/mapping.txt"
+}
+stage() { tools/stage_release_assets.sh "$@" > "$work/stage.out" 2>&1; }
+staged() { LC_ALL=C ls release-assets 2>/dev/null | tr '\n' ' ' | sed 's/ $//'; }
+
+build_outputs beta BYDAssistantNG-1.2.0-beta.3.apk
+if stage beta v1.2.0-beta.3; then pass; else fail "a beta that is named after its tag was refused: $(cat "$work/stage.out")"; fi
+expect "a beta keeps its APK and its mapping, named after its version" "BYDAssistantNG-1.2.0-beta.3-mapping.txt.gz BYDAssistantNG-1.2.0-beta.3.apk" "$(staged)"
+expect "  the APK is the build's" "the apk" "$(cat release-assets/BYDAssistantNG-1.2.0-beta.3.apk)"
+expect "  the mapping is the build's, compressed" "# the mapping" "$(gzip -dc release-assets/BYDAssistantNG-1.2.0-beta.3-mapping.txt.gz)"
+expect_contains "  the list of the files says what they are" "$(cat "$work/stage.out")" "BYDAssistantNG-1.2.0-beta.3.apk (7 bytes, sha256 "
+expect_contains "  and names the mapping too" "$(cat "$work/stage.out")" "BYDAssistantNG-1.2.0-beta.3-mapping.txt.gz ("
+
+build_outputs beta BYDAssistantNG-1.2.0-beta.3.10200003.-beta-24102026072854.apk
+if stage beta v1.2.0-beta.3; then fail "an APK named with its build time was accepted"; else pass; fi
+expect_contains "an APK that is not named after its tag is refused, with the name it should have" "$(cat "$work/stage.out")" "keeps its APK as BYDAssistantNG-1.2.0-beta.3.apk"
+expect "  and nothing is staged" "" "$(staged)"
+
+build_outputs beta BYDAssistantNG-1.2.0-beta.3.apk
+rm app/build/outputs/mapping/beta/mapping.txt
+if stage beta v1.2.0-beta.3; then fail "a beta with no mapping was accepted"; else pass; fi
+expect_contains "a build with no mapping is refused, and the reason is said" "$(cat "$work/stage.out")" "R8 mapping"
+: > app/build/outputs/mapping/beta/mapping.txt
+if stage beta v1.2.0-beta.3; then fail "an empty mapping was accepted"; else pass; fi
+
+build_outputs beta BYDAssistantNG-1.2.0-beta.3.apk
+printf 'another' > app/build/outputs/apk/beta/BYDAssistantNG-1.2.0-beta.2.apk
+if stage beta v1.2.0-beta.3; then fail "two APKs were accepted"; else pass; fi
+expect_contains "two APKs are refused, and how many is said" "$(cat "$work/stage.out")" "2 APKs"
+
+build_outputs beta BYDAssistantNG-1.2.0-beta.3.apk
+rm app/build/outputs/apk/beta/*.apk
+if stage beta v1.2.0-beta.3; then fail "a build with no APK was accepted"; else pass; fi
+
+build_outputs release BYDAssistantNG-1.2.0.apk
+if stage stable v1.2.0; then pass; else fail "a release that is named after its tag was refused: $(cat "$work/stage.out")"; fi
+expect "a release keeps its APK and its mapping, named after its version" "BYDAssistantNG-1.2.0-mapping.txt.gz BYDAssistantNG-1.2.0.apk" "$(staged)"
+printf 'left from an earlier run' > release-assets/stale.txt
+stage stable v1.2.0
+expect "an earlier staging is replaced, not added to" "BYDAssistantNG-1.2.0-mapping.txt.gz BYDAssistantNG-1.2.0.apk" "$(staged)"
+if stage stable v1.2.0-beta.3; then fail "a release's APK was taken for the tag of a beta"; else pass; fi
+if tools/stage_release_assets.sh > /dev/null 2>&1; then fail "a run with no arguments was accepted"; else pass; fi
+rm -rf app/build release-assets settings.gradle.kts
 
 printf '\n%d checks, %d failed\n' "$checks" "$failures"
 [ "$failures" -eq 0 ]

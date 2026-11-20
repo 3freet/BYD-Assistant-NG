@@ -171,8 +171,9 @@ androidComponents {
         variant.outputs.forEach { output ->
             if (variant.buildType == "beta") output.versionCode.set(versionCodeFor(betaNumber.get()))
             // A beta or a release is named after its version alone (BYDAssistantNG-1.3.0-beta.1.apk, BYDAssistantNG-1.3.0.apk): the name is the
-            // same for every build of that version, and it is the name the file keeps on its release page. A debug build also carries its
-            // version code and the time it was made, so that the ones lying around on a disk can be told apart.
+            // same for every build of that version, and it is the name the file keeps on its release page (the release workflows check it, see
+            // tools/stage_release_assets.sh). A debug build also carries its version code and the time it was made, so that the ones lying around
+            // on a disk can be told apart.
             output.outputFileName.set(
                 if (variant.buildType == "debug") {
                     val date = SimpleDateFormat("ddMMyyyyHHmmss").format(Date())

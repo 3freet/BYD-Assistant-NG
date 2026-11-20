@@ -170,5 +170,8 @@ fabric.properties
 app/release/*
 app/beta/*
 
+# The files a release keeps, put together by tools/stage_release_assets.sh
+release-assets/
+
 signing.properties
 *.keystore

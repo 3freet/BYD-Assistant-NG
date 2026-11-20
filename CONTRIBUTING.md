@@ -71,6 +71,21 @@ A run by hand (*Run workflow* for "Build Stable") can be a `dry_run`, which does
 download: the draft holds it, and nobody can see a draft); in the rare
 case of a release with no tested beta, or with changes since it, it can use `allow_changes`.
 
+**What a release holds** is two files, both named after its version, so the name is the same for every build of that version and says
+nothing of the day it was built: the APK (`BYDAssistantNG-1.3.0-beta.1.apk`, `BYDAssistantNG-1.3.0.apk`) and the R8 mapping of that
+build (`BYDAssistantNG-<version>-mapping.txt.gz`, 3 MB packed, 43 MB as text), which turns an obfuscated crash trace of it back into
+readable code:
+
+```bash
+gunzip BYDAssistantNG-<version>-mapping.txt.gz
+$ANDROID_HOME/cmdline-tools/latest/bin/retrace BYDAssistantNG-<version>-mapping.txt trace.txt
+```
+
+A workflow artifact is deleted after 90 days and an asset of a release is not, so the mapping is kept on the release, next to the APK it
+belongs to. `tools/stage_release_assets.sh` puts the two files together in both workflows and stops the run, before anything is published,
+when the APK is not named after the tag or the mapping is missing. The app's update check only looks for the file that ends in `.apk`.
+A debug build keeps its version code and the time it was made in its name, so that the ones lying around on a disk can be told apart.
+
 A version can be published once: raise `appVersionName` in `app/build.gradle.kts` first (`major.minor.patch`, each
 0-99), or the workflow stops at once with a message saying so. The Android `versionCode` is computed from the name, so
 it always rises with the version and a beta (`1.2.0-beta.3`) always sorts below the release it leads up to
