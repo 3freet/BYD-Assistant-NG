@@ -47,7 +47,7 @@ where to read how the unit really sends a hold. A hold during a conversation doe
 ## Staying alive across sleep and wake
 
 "Waking" the head unit is a **quick-boot**, not a reboot: uptime keeps counting, but boot broadcasts are sent
-again and the vendor's cleaner force-stops apps around it. Two separate failures followed from that.
+again and the vendor's cleaner force-stops apps around it. Three separate failures followed from that.
 
 1. **The service entry disappears.** Android removes an app's accessibility service from the enabled list
    whenever the app is force-stopped. Nothing puts it back, so the button is dead until the app is opened.
@@ -57,6 +57,25 @@ again and the vendor's cleaner force-stops apps around it. Two separate failures
    process existed, because the system only binds an accessibility service when that setting *changes* —
    rewriting an identical value does nothing. Fix: remove the entry and add it again; the system starts the
    service within about a second.
+3. **On a DiLink 3.0 unit the nudge cannot reach it.** When the app is killed, Android moves its service to the
+   "binding" set (switched on, not bound, waiting for the service to be restarted), and whenever the enabled list
+   changes it skips everything in that set (Android 10's `AccessibilityManagerService`: "Wait for the binding if
+   it is in process"), so removing and re-adding the entry does nothing. Only a force-stop or an update empties
+   that set. On a DiLink 3.0 unit (Android 10) the restart mostly never comes: an owner's log showed the service
+   bound in 21 of 81 runs of the app, the nudge binding it 0 times in 60, and the car's own assistant answering
+   the button the rest of the time. Fix, on DiLink 3.0 units only (told by their own name, `DiLink3.0` as the
+   device or model or `Di3.0` in `ro.vehicle.type`, not by the car's numbers, which read as DiLink 4 on that
+   unit): when the service is still not bound 3 s after the nudge at a wake, the app has the ADB shell force-stop
+   it and start it again with a broadcast to its boot receiver; the new process puts the entry back and carries
+   on with the wake. At most once in 10 minutes, never while the app is on the screen.
+
+   To try it on a stock Android 10 emulator with a debug build: `adb shell setprop debug.bydassistant.dilink30 1`
+   makes it count as a DiLink 3.0 unit; `adb shell pm disable-user <package>` then `pm enable <package>` stops the
+   app without telling the accessibility manager and leaves the service in that "binding" set, as the car does
+   (`dumpsys accessibility` shows it under "Binding services"; the shell may not disable the service component
+   itself); a broadcast of `android.intent.action.QUICKBOOT_POWERON` to the boot receiver is the wake. The app's
+   own ADB connection needs `adb reverse tcp:5555 tcp:<the emulator's adb port>` there (console port + 1, 5557
+   for `-port 5556`), because the emulator's adbd does not listen on 5555 inside it.
 
 Neither runs at all unless the vendor's **auto-start manager** lets the app start in the background — boot
 broadcasts were only delivered to apps on its whitelist. The whitelist cannot be read by an app. Its screen

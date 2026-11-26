@@ -36,6 +36,9 @@ interface BootEntryPoint {
  *
  * The apps are stopped when the car is switched off and started again by this broadcast, which is the one sign the app
  * gets that the car has woken. An app update (`MY_PACKAGE_REPLACED`) is not a wake.
+ *
+ * On a DiLink 3.0 unit the app may restart itself early in a wake to free the wheel button ([WheelKeys.ACTION_RESTARTED], sent
+ * by the ADB shell to this receiver): the new process carries on with that wake and puts the button back.
  */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -45,7 +48,10 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         AppLogger.log(TAG, "Received ${intent.action}")
-        if (intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) {
+        val restarted = intent.action == WheelKeys.ACTION_RESTARTED
+        val wake = intent.action != Intent.ACTION_MY_PACKAGE_REPLACED && !restarted
+        // After a restart the greeting is told again: the wake it was waiting in went with the process that was stopped.
+        if (wake || restarted) {
             runCatching { EntryPointAccessors.fromApplication(context.applicationContext, BootEntryPoint::class.java).greeting().onWake() }
                 .onFailure { AppLogger.logError(TAG, "Could not tell the greeting about the wake", it) }
         }
@@ -54,7 +60,8 @@ class BootReceiver : BroadcastReceiver() {
         val pending = goAsync()
         Thread {
             try {
-                WheelKeys.ensureServiceRunning(context.applicationContext)
+                if (restarted) WheelKeys.afterRestart(context.applicationContext)
+                else WheelKeys.ensureServiceRunning(context.applicationContext, atWake = wake)
             } finally {
                 pending.finish()
             }

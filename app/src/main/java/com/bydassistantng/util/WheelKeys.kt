@@ -1,14 +1,20 @@
 package com.bydassistantng.util
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
 import android.view.KeyEvent
 import android.os.SystemClock
+import com.bydassistantng.BuildConfig
 import com.bydassistantng.R
+import com.bydassistantng.service.BootReceiver
 import com.bydassistantng.service.WheelKeyService
+import com.bydassistantng.vehicle.HeadUnitProperties
+import kotlinx.coroutines.runBlocking
 
 /**
  * The steering-wheel mic button isn't a standard Android key. On this BYD DiLink unit it arrives
@@ -21,6 +27,17 @@ private const val SELF_BIND_GRACE_MS = 1_200L
 private const val SELF_BIND_POLL_MS = 100L
 private const val REBIND_GAP_MS = 400L
 private const val MIN_REBIND_INTERVAL_MS = 30_000L
+
+// DiLink 3.0 only (see [WheelKeys.restartToRebind]).
+private const val NUDGE_VERIFY_MS = 3_000L
+private const val MIN_SELF_RESTART_INTERVAL_MS = 10 * 60_000L
+private const val FORCE_STOP_SETTLE_MS = 5_000L
+private const val RESTART_ADB_TIMEOUT_MS = 20_000L
+private const val RESTART_PREFS = "wheel_keys"
+private const val KEY_LAST_RESTART_AT = "last_self_restart_elapsed"
+// Debug builds only: `adb shell setprop debug.bydassistant.dilink30 1` makes an emulator count as a DiLink 3.0 unit, so the restart can be
+// tried there. A release build never reads it.
+private const val DEBUG_DILINK30_PROPERTY = "debug.bydassistant.dilink30"
 
 object WheelKeys {
     const val MIC_SHORT_PRESS = 320
@@ -82,19 +99,140 @@ object WheelKeys {
      * opened by hand, and the wheel button stays dead. Observed on a DiLink head unit: removing and re-adding
      * the entry makes the system start the service within a second.
      *
+     * [atWake] is true when the car has just woken (a boot broadcast, not an app update). On a DiLink 3.0 head unit the nudge
+     * then gets a few seconds to work, and when it has not, the app restarts itself to free the service ([restartToRebind]).
+     * Every other head unit is left as it was.
+     *
      * Blocks for a few seconds — call it from a background thread.
      *
      * @return true if the service is running afterwards.
      */
     @Synchronized
-    fun ensureServiceRunning(context: Context): Boolean {
+    fun ensureServiceRunning(context: Context, atWake: Boolean = false): Boolean {
         if (!ensureServiceEnabled(context)) return false // missing from the list: adding it makes the system bind it
-        if (WheelKeyService.instance != null) return true
         // When our process was started *by* the system binding the service, it is about to connect on its own.
-        val deadline = SystemClock.elapsedRealtime() + SELF_BIND_GRACE_MS
+        if (awaitService(SELF_BIND_GRACE_MS)) return true
+        val nudged = rebindService(context)
+        if (!atWake || !isDiLink30Unit()) return nudged
+        if (awaitService(NUDGE_VERIFY_MS)) return true
+        restartToRebind(context)
+        return false
+    }
+
+    /** Waits up to [ms] for the service to connect; true when it is connected. */
+    private fun awaitService(ms: Long): Boolean {
+        val deadline = SystemClock.elapsedRealtime() + ms
         while (WheelKeyService.instance == null && SystemClock.elapsedRealtime() < deadline) Thread.sleep(SELF_BIND_POLL_MS)
-        if (WheelKeyService.instance != null) return true
-        return rebindService(context)
+        return WheelKeyService.instance != null
+    }
+
+    // ── DiLink 3.0: restarting the app to free the service ──────────────────────────────────
+
+    /** The broadcast the app is started with again after [restartToRebind] stopped it (handled by [BootReceiver]). */
+    const val ACTION_RESTARTED = "com.bydassistantng.action.RESTARTED_FOR_WHEEL_BUTTON"
+
+    /**
+     * DiLink 3.0 only: frees a service the system no longer binds, by restarting the app.
+     *
+     * When the car kills the app as it goes to sleep, Android moves the service to its "binding" set (switched on, not bound,
+     * waiting for the service to be restarted), and whenever the enabled list changes it skips everything in that set, so the
+     * nudge cannot reach it. On a DiLink 3.0 unit (Android 10) that restart mostly never comes: an owner's log (2026-11-26)
+     * shows the service bound in 21 of 81 runs of the app, the nudge binding it 0 times in 60, and the car's own assistant
+     * answering the button the rest of the time. Only a force-stop (or an update) empties that set, which is why opening the
+     * app after it had been stopped brought the button back every time (9 of 9).
+     *
+     * So the app does the same itself: the ADB shell force-stops it and starts it again with [ACTION_RESTARTED], and the new
+     * process puts the service back on the list ([afterRestart]) and carries on with the wake. Not more than once in
+     * [MIN_SELF_RESTART_INTERVAL_MS], never while the app is on the screen, and not when the car's "Allow USB debugging?"
+     * prompt was refused.
+     */
+    private fun restartToRebind(context: Context) {
+        val prefs = context.getSharedPreferences(RESTART_PREFS, Context.MODE_PRIVATE)
+        val now = SystemClock.elapsedRealtime()
+        val decision = restartDecision(now, prefs.getLong(KEY_LAST_RESTART_AT, 0L), AdbHelper.isRefused, isAppOnScreen())
+        if (decision != RestartDecision.RESTART) {
+            AppLogger.log(TAG, decision.message)
+            return
+        }
+        // Written before the restart is asked for: the process that writes it is about to be stopped.
+        prefs.edit().putLong(KEY_LAST_RESTART_AT, now).commit()
+        AppLogger.log(TAG, "Wheel button service is still not bound after the nudge — restarting the app to free it (DiLink 3.0)")
+        val sent = runCatching { runBlocking { AdbHelper.shell(context, restartCommand(context.packageName), RESTART_ADB_TIMEOUT_MS) } }
+            .getOrDefault(false)
+        if (!sent) AppLogger.log(TAG, "Could not reach ADB to restart the app — the wheel button stays off until the app is opened")
+    }
+
+    /**
+     * In the process that [restartToRebind] started: waits for the force-stop to take the service off the enabled list (that is
+     * what empties the "binding" set, and adding it back before the system's own write would let that write undo it), puts it
+     * back, and says whether it came back.
+     */
+    fun afterRestart(context: Context) {
+        val started = SystemClock.elapsedRealtime()
+        val deadline = started + FORCE_STOP_SETTLE_MS
+        while (isServiceEnabled(context) && WheelKeyService.instance == null && SystemClock.elapsedRealtime() < deadline) {
+            Thread.sleep(SELF_BIND_POLL_MS)
+        }
+        ensureServiceRunning(context)
+        val back = awaitService(NUDGE_VERIFY_MS)
+        AppLogger.log(
+            TAG,
+            if (back) "Wheel button service is back after the restart (${SystemClock.elapsedRealtime() - started} ms)"
+            else "Wheel button service is still not bound after the restart",
+        )
+    }
+
+    internal enum class RestartDecision(val message: String) {
+        RESTART(""),
+        ON_SCREEN("Wheel button service is still not bound; the app is on the screen, so it is not restarted now"),
+        ADB_REFUSED("Wheel button service is still not bound; restarting the app needs ADB, and the car's prompt was refused"),
+        TOO_SOON("Wheel button service is still not bound, but the app was restarted for it less than 10 minutes ago — not again"),
+    }
+
+    /** Whether to restart the app now; [lastRestartAt] and [now] are `elapsedRealtime`, which a wake (a quick-boot) does not reset. */
+    internal fun restartDecision(now: Long, lastRestartAt: Long, adbRefused: Boolean, appOnScreen: Boolean): RestartDecision = when {
+        appOnScreen -> RestartDecision.ON_SCREEN
+        adbRefused -> RestartDecision.ADB_REFUSED
+        // A time ahead of now was written before a real reboot, which does reset the clock.
+        lastRestartAt > 0L && now - lastRestartAt in 0 until MIN_SELF_RESTART_INTERVAL_MS -> RestartDecision.TOO_SOON
+        else -> RestartDecision.RESTART
+    }
+
+    /**
+     * The shell command that restarts the app. It runs in a session of its own (`setsid`), so it outlives this process, whose ADB
+     * connection the force-stop cuts; the first second lets the command return before that. The force-stop takes the service off
+     * the list and empties the "binding" set; the broadcast, which is allowed to start a stopped app (`0x20`), starts the app again.
+     */
+    internal fun restartCommand(packageName: String): String {
+        val receiver = "$packageName/${BootReceiver::class.java.name}"
+        val steps = "sleep 1; am force-stop $packageName; sleep 2; am broadcast -f 0x20 -a $ACTION_RESTARTED -n $receiver"
+        return "setsid sh -c '$steps' > /dev/null 2>&1 < /dev/null &"
+    }
+
+    /** Whether this head unit is a DiLink 3.0 one, by its own name (see [isDiLink30]). */
+    private fun isDiLink30Unit(): Boolean =
+        isDiLink30(Build.DEVICE, Build.MODEL, HeadUnitProperties.read("ro.vehicle.type")) ||
+            (BuildConfig.DEBUG && HeadUnitProperties.read(DEBUG_DILINK30_PROPERTY) == "1")
+
+    private val DILINK_30_NAME = Regex("^DiLink[ _-]?3\\.0(?!\\d)", RegexOption.IGNORE_CASE)
+    private val DI_30_TYPE = Regex("^Di3\\.0(?!\\d)", RegexOption.IGNORE_CASE)
+
+    /**
+     * A DiLink 3.0 head unit by its own name: `DiLink3.0` as its device or model (`DiLink3.0 For BYD AUTO`), or `Di3.0` in
+     * `ro.vehicle.type` (`Di3.0_3.5UI`). Not the platform the app reads from the car's numbers: the DiLink 3.0 unit in that log
+     * has the newer numbers, which read as DiLink 4. A DiLink 3.0 unit that runs the 5.0 interface (`DiLink50_5.0UI`) still
+     * says DiLink3.0 as its device.
+     */
+    internal fun isDiLink30(device: String?, model: String?, vehicleType: String?): Boolean =
+        listOf(device, model).any { DILINK_30_NAME.containsMatchIn(it.orEmpty().trim()) } ||
+            DI_30_TYPE.containsMatchIn(vehicleType.orEmpty().trim())
+
+    /** Whether one of the app's screens is showing: a restart would close it under the user's finger. */
+    private fun isAppOnScreen(): Boolean {
+        val info = ActivityManager.RunningAppProcessInfo()
+        ActivityManager.getMyMemoryState(info)
+        return info.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
+            info.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE
     }
 
     /** Removes and re-adds the service's entry, which makes the system bind it afresh. Rate-limited so a
