@@ -3,7 +3,9 @@ package com.bydassistantng.navigation
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import com.bydassistantng.gemini.GeminiFunctionCall
 import com.bydassistantng.gemini.GeminiFunctionDeclaration
 import com.bydassistantng.gemini.GeminiSchema
@@ -18,12 +20,17 @@ import kotlinx.serialization.json.put
 private const val TAG = "NavigationTool"
 private const val MAX_DESTINATION_LENGTH = 200
 
-// Tried in this order. Google Maps is the usual maps handler on these head units; the others are what
-// else may be installed that understands the same intent.
-private val NAVIGATION_PACKAGES = listOf(
+// Tried first, in this order. Google Maps is the usual maps handler on these head units; the others are what
+// else may be installed that understands the same intent. Any other app that takes the link comes after these.
+// The last two were added later and stay behind the first three, so a car that already navigates keeps its app.
+private val KNOWN_NAVIGATION_APPS = listOf(
     "com.google.android.apps.maps" to "Google Maps",
     "net.osmand.plus" to "OsmAnd",
     "ru.yandex.yandexnavi" to "Yandex Navigator",
+    // The Automotive build of Google Maps: on some head units the only maps app (issue #6).
+    "com.google.android.apps.maps.automotive" to "Google Maps",
+    // OsmAnd's free edition.
+    "net.osmand" to "OsmAnd",
 )
 
 /**
@@ -66,14 +73,16 @@ object NavigationTool {
 
     private fun start(context: Context, destination: String): JsonObject {
         val uri = Uri.parse("google.navigation:q=${Uri.encode(destination)}&mode=d")
-        for ((packageName, appName) in NAVIGATION_PACKAGES) {
+        val apps = appsThatNavigate(context.packageManager, Intent(Intent.ACTION_VIEW, uri))
+        for (packageName in tryOrder(apps.keys)) {
+            val appName = KNOWN_NAVIGATION_APPS.firstOrNull { it.first == packageName }?.second ?: apps.getValue(packageName)
             val intent = Intent(Intent.ACTION_VIEW, uri)
                 .setPackage(packageName)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             if (intent.resolveActivity(context.packageManager) == null) continue
             try {
                 context.startActivity(intent)
-                AppLogger.log(TAG, "Started navigation to \"$destination\" in $appName")
+                AppLogger.log(TAG, "Started navigation to \"$destination\" in $appName ($packageName)")
                 return buildJsonObject {
                     put("status", "ok")
                     put("note", "Navigation to $destination started in $appName.")
@@ -84,10 +93,40 @@ object NavigationTool {
                 AppLogger.logError(TAG, "Not allowed to open $appName", e)
             }
         }
-        AppLogger.logError(TAG, "No navigation app could be opened for \"$destination\"")
+        val found = apps.keys.joinToString().ifEmpty { "none" }
+        AppLogger.logError(TAG, "No navigation app could be opened for \"$destination\" (apps that take a navigation link: $found)")
         return buildJsonObject {
             put("status", "error")
             put("error", "No navigation app is available on this car")
         }
+    }
+
+    /**
+     * The order the apps that take a navigation link are tried in: the known ones in [KNOWN_NAVIGATION_APPS] order,
+     * then every other one in the order the system listed them. Each app once.
+     */
+    internal fun tryOrder(apps: Collection<String>): List<String> {
+        val known = KNOWN_NAVIGATION_APPS.map { it.first }
+        return known.filter { it in apps } + apps.filter { it !in known }.distinct()
+    }
+
+    /**
+     * Every app that can be handed the navigation link, by package, with the name it shows, in the order the system
+     * lists them. The manifest's package-visibility queries let the app see them all; only activities that can be
+     * started by such a link count.
+     */
+    private fun appsThatNavigate(pm: PackageManager, intent: Intent): Map<String, String> {
+        val matches = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong()))
+        } else {
+            @Suppress("DEPRECATION")
+            pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        }
+        val apps = LinkedHashMap<String, String>()
+        for (match in matches) {
+            val packageName = match.activityInfo?.packageName ?: continue
+            apps.getOrPut(packageName) { match.loadLabel(pm).toString().ifBlank { packageName } }
+        }
+        return apps
     }
 }
