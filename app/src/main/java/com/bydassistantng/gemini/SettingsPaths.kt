@@ -42,4 +42,10 @@ object SettingsPaths {
         fun text(id: Int) = AppLanguage.string(context, id)
         return compose(text(R.string.settings_title), text(R.string.settings_section_car), text(R.string.navigation_app_title))
     }
+
+    /** Where the favorite places are added, changed and deleted. */
+    fun favoritePlaces(context: Context): String {
+        fun text(id: Int) = AppLanguage.string(context, id)
+        return compose(text(R.string.settings_title), text(R.string.settings_section_car), text(R.string.favorite_places_title))
+    }
 }

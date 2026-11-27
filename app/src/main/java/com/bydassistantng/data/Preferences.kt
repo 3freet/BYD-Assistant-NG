@@ -17,6 +17,9 @@ import com.bydassistantng.audio.MusicMode
 import com.bydassistantng.audio.VoiceChannelOptions
 import com.bydassistantng.audio.VoiceSensitivity
 import com.bydassistantng.audio.VoiceSpeaker
+import com.bydassistantng.navigation.FavoritePlace
+import com.bydassistantng.navigation.FavoritePlaces
+import com.bydassistantng.navigation.SavePlaceResult
 import com.bydassistantng.util.WheelKeys
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -92,6 +95,7 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val LEVEL_GATE_ENABLED = booleanPreferencesKey("level_gate_enabled")
         val MUSIC_HINT_ENABLED = booleanPreferencesKey("music_hint_enabled")
         val NAVIGATION_APP = stringPreferencesKey("navigation_app")
+        val FAVORITE_PLACES = stringPreferencesKey("favorite_places")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -187,6 +191,30 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
                 prefs.remove(Keys.NAVIGATION_APP)
             } else {
                 prefs[Keys.NAVIGATION_APP] = packageName
+            }
+        }
+    }
+
+    /** The places the user is taken to by name, in the order they were added. Only their names ever reach the assistant. */
+    val favoritePlaces: Flow<List<FavoritePlace>> = dataStore.data.map { FavoritePlaces.decode(it[Keys.FAVORITE_PLACES]) }
+
+    /** Saves [place], as a new one or in place of the one named [replacing], in one step with reading the list. */
+    suspend fun saveFavoritePlace(place: FavoritePlace, replacing: String? = null): SavePlaceResult {
+        var result: SavePlaceResult = SavePlaceResult.Empty
+        dataStore.edit { prefs ->
+            result = FavoritePlaces.save(FavoritePlaces.decode(prefs[Keys.FAVORITE_PLACES]), place, replacing)
+            (result as? SavePlaceResult.Saved)?.let { prefs[Keys.FAVORITE_PLACES] = FavoritePlaces.encode(it.places) }
+        }
+        return result
+    }
+
+    suspend fun deleteFavoritePlace(name: String) {
+        dataStore.edit { prefs ->
+            val left = FavoritePlaces.delete(FavoritePlaces.decode(prefs[Keys.FAVORITE_PLACES]), name)
+            if (left.isEmpty()) {
+                prefs.remove(Keys.FAVORITE_PLACES)
+            } else {
+                prefs[Keys.FAVORITE_PLACES] = FavoritePlaces.encode(left)
             }
         }
     }

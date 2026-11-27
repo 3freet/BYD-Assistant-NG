@@ -1,5 +1,7 @@
 package com.bydassistantng.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bydassistantng.R
 import com.bydassistantng.audio.ExteriorVolume
+import com.bydassistantng.navigation.CarLocation
+import com.bydassistantng.navigation.FavoritePlace
+import com.bydassistantng.navigation.FavoritePlaces
 import com.bydassistantng.ui.AppAlertDialog
 import com.bydassistantng.ui.CarVoiceAssistantSetup
 import com.bydassistantng.ui.WheelServiceSetup
@@ -36,6 +41,12 @@ import com.bydassistantng.util.WheelKeys
  * steering-wheel button and the car's own assistant, the experimental car features, and then the app's language, updates
  * and support.
  */
+
+/** The favorite place being added, or the one being changed. */
+private sealed interface PlaceDialog {
+    data object New : PlaceDialog
+    data class Edit(val place: FavoritePlace) : PlaceDialog
+}
 
 /** Whether the head unit's auto-start screen has been opened since the app was last updated (the app cannot see its answer). */
 @Composable
@@ -70,6 +81,18 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
     var showVehicleControlWarning by remember { mutableStateOf(false) }
     var showVolumeChoice by remember { mutableStateOf(false) }
     var showNavigationChoice by remember { mutableStateOf(false) }
+    val favoritePlaces by viewModel.favoritePlaces.collectAsState()
+    val carLocating by viewModel.carLocating.collectAsState()
+    var placeDialog by remember { mutableStateOf<PlaceDialog?>(null) }
+    // The location permission is asked for only here, when the user wants where the car is now; refused, the Car Link is tried.
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { viewModel.locateCar() }
+    val useCarLocation = {
+        if (CarLocation.allowed(context)) viewModel.locateCar() else locationPermission.launch(CarLocation.PERMISSIONS)
+    }
+    val openPlace = { dialog: PlaceDialog ->
+        viewModel.clearCarLocating()
+        placeDialog = dialog
+    }
     var confirmExterior by remember { mutableStateOf(false) }
     var confirmLive by remember { mutableStateOf(false) }
     var confirmDriveModes by remember { mutableStateOf(false) }
@@ -137,6 +160,24 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
                 showNavigationChoice = false
             },
             onDismiss = { showNavigationChoice = false },
+        )
+    }
+    placeDialog?.let { dialog ->
+        val editing = (dialog as? PlaceDialog.Edit)?.place
+        FavoritePlaceDialog(
+            place = editing,
+            takenNames = favoritePlaces.map { it.name }.filter { editing == null || !FavoritePlaces.sameName(it, editing.name) },
+            locating = carLocating,
+            onUseCarLocation = useCarLocation,
+            onSave = { place, done -> viewModel.saveFavoritePlace(place, replacing = editing?.name, onResult = done) },
+            onDelete = {
+                editing?.let { viewModel.deleteFavoritePlace(it.name) }
+                placeDialog = null
+            },
+            onDismiss = {
+                placeDialog = null
+                viewModel.clearCarLocating()
+            },
         )
     }
     // The experimental features are only switched on after the user has read what that means.
@@ -210,6 +251,29 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
                     value = navigationAppName.ifEmpty { automaticLabel },
                     onClick = { showNavigationChoice = true },
                 )
+            }
+            row {
+                SettingRow(
+                    title = stringResource(R.string.favorite_places_title),
+                    subtitle = stringResource(R.string.favorite_places_hint),
+                    trailing = {
+                        SettingButton(
+                            label = stringResource(R.string.action_add),
+                            enabled = favoritePlaces.size < FavoritePlaces.MAX_PLACES,
+                            onClick = { openPlace(PlaceDialog.New) },
+                        )
+                    },
+                )
+            }
+            for (place in favoritePlaces) {
+                row(nested = true) {
+                    SettingRow(
+                        title = isolated(place.name),
+                        subtitle = isolated(place.destination),
+                        onClick = { openPlace(PlaceDialog.Edit(place)) },
+                        trailing = { SettingButton(label = stringResource(R.string.action_change), onClick = { openPlace(PlaceDialog.Edit(place)) }) },
+                    )
+                }
             }
         }
 

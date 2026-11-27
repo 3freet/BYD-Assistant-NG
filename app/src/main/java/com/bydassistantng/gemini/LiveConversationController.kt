@@ -326,6 +326,8 @@ class LiveConversationController @Inject constructor(
     private var musicPlayingNow = false
     private var musicCheckedAtMs = 0L
     private var musicHintForSession = false
+    // The names of the favorite places, which navigation may be asked for by name this session (never their addresses).
+    private var favoritePlacesForSession = emptyList<String>()
 
     // Between "the detector thinks that's the user" and "it is, cut the reply" / "it isn't, carry on": the
     // reply is turned down and the mic watched. Only touched from the capture thread and the resets below.
@@ -564,6 +566,7 @@ class LiveConversationController @Inject constructor(
         shortTermForSession = preferencesRepository.shortTermMemoryEnabled.first()
         exteriorSpeakerForSession = preferencesRepository.exteriorSpeakerEnabled.first()
         driveModesForSession = preferencesRepository.driveModesEnabled.first()
+        favoritePlacesForSession = preferencesRepository.favoritePlaces.first().map { it.name }
         clusterPresentForSession = ClusterScreenAvailability.isOnThisCar(context)
         clusterSwitchOnForSession = preferencesRepository.clusterScreenEnabled.first()
         clusterForSession = ClusterOptions(
@@ -778,6 +781,7 @@ class LiveConversationController @Inject constructor(
             driveModes = driveModeSwitch != null && driveModesForSession,
             clusterScreen = clusterForSession.enabled,
             driveModeOptions = DriveModeControl.modesOf(DriveModeControl.route()),
+            favoritePlaces = favoritePlacesForSession,
         )
         sessionInstruction = GeminiContent(
             parts = listOf(
@@ -792,6 +796,7 @@ class LiveConversationController @Inject constructor(
                         switchedOff = switchedOff,
                         notOnThisCar = notOnThisCar,
                         navigationAppPath = SettingsPaths.navigationApp(context),
+                        favoritePlacesPath = SettingsPaths.favoritePlaces(context),
                     ),
                 ),
             ),

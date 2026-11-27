@@ -78,6 +78,42 @@ class NavigationToolTest {
         assertEquals(names.size, names.toSet().size)
     }
 
+    private val places = listOf(FavoritePlace("Home", "Al Khuwair, Muscat"), FavoritePlace("Work", "51.500729,-0.124625"))
+
+    @Test
+    fun aFavoritePlaceIsFoundByItsNameAndOnlyItsNameIsToBeSaid() {
+        val home = NavigationTool.resolve(places, savedPlace = "Home", destination = "")!!
+        assertEquals("Home", home.label)
+        assertEquals("Al Khuwair, Muscat", home.destination)
+        assertEquals(true, home.favorite)
+        // The name given as a plain destination, as for a place saved during this conversation, is the place too.
+        assertEquals("51.500729,-0.124625", NavigationTool.resolve(places, savedPlace = "", destination = "work")!!.destination)
+        // A favorite place wins over an address that came with it (from what the assistant remembers).
+        assertEquals("Home", NavigationTool.resolve(places, savedPlace = "home", destination = "Some street 4")!!.label)
+    }
+
+    @Test
+    fun anythingElseIsTheDestinationAsSaid() {
+        val station = NavigationTool.resolve(places, savedPlace = "", destination = "Central Station")!!
+        assertEquals(NavigationTool.Target("Central Station", "Central Station", favorite = false), station)
+        // A favorite place that is not saved: what else was said is used, and with nothing else there is no place to go.
+        assertEquals("Central Station", NavigationTool.resolve(places, savedPlace = "Gym", destination = "Central Station")!!.destination)
+        assertEquals(null, NavigationTool.resolve(places, savedPlace = "Gym", destination = ""))
+    }
+
+    @Test
+    fun theDeclarationNamesTheFavoritePlacesButNeverTheirAddresses() {
+        val plain = NavigationTool.declarationFor(emptyList())
+        assertEquals(listOf("destination"), plain.parameters?.required)
+        assertEquals(null, plain.parameters?.properties?.get("saved_place"))
+
+        val withPlaces = NavigationTool.declarationFor(listOf("Home", " Work ", "home", ""))
+        assertEquals(listOf("Home", "Work"), withPlaces.parameters?.properties?.get("saved_place")?.enum)
+        assertEquals(null, withPlaces.parameters?.required)
+        val everything = withPlaces.toString()
+        assertEquals(false, everything.contains("Al Khuwair"))
+    }
+
     @Test
     fun anyOtherAppGoesByTheNameItShowsOrItsPackage() {
         assertEquals("Other Navi", NavigationTool.nameOf("com.example.navi", "Other Navi"))

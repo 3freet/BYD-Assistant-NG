@@ -24,8 +24,12 @@ import com.bydassistantng.greeting.GreetingCoordinator
 import com.bydassistantng.memory.AddOutcome
 import com.bydassistantng.memory.MemoryFact
 import com.bydassistantng.memory.MemoryRepository
+import com.bydassistantng.navigation.CarLocation
+import com.bydassistantng.navigation.CarLocationResult
+import com.bydassistantng.navigation.FavoritePlace
 import com.bydassistantng.navigation.NavigationApp
 import com.bydassistantng.navigation.NavigationTool
+import com.bydassistantng.navigation.SavePlaceResult
 import com.bydassistantng.service.WheelKeyService
 import com.bydassistantng.update.UpdateChannel
 import com.bydassistantng.update.UpdateManager
@@ -36,6 +40,7 @@ import com.bydassistantng.util.WheelKeys
 import com.bydassistantng.vehicle.DriveModeControl
 import com.bydassistantng.vehicle.DriveModeRoute
 import com.bydassistantng.vehicle.DriveModeSwitch
+import com.bydassistantng.vehicle.ShellHelperVehicleController
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -62,6 +67,8 @@ class SettingsViewModel @Inject constructor(
     private val updateManager: UpdateManager,
     private val headrestRoute: HeadrestRoute,
     private val greeting: GreetingCoordinator,
+    // The Car Link: where the car is, when the app may not ask Android itself (and vehicle control is on).
+    private val carLink: ShellHelperVehicleController,
     exteriorSpeaker: Optional<ExteriorSpeaker>,
     driveModes: Optional<DriveModeSwitch>,
 ) : ViewModel() {
@@ -321,6 +328,50 @@ class SettingsViewModel @Inject constructor(
 
     /** The name shown for a chosen maps app, also when the car no longer has it. */
     fun navigationAppName(packageName: String): String = NavigationTool.nameOf(context, packageName)
+
+    /** The places the user goes to by name, as they are kept on the car. */
+    val favoritePlaces: StateFlow<List<FavoritePlace>> = preferencesRepository.favoritePlaces
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Saves [place], new or in place of the one named [replacing], and says how that went. */
+    fun saveFavoritePlace(place: FavoritePlace, replacing: String?, onResult: (SavePlaceResult) -> Unit) {
+        viewModelScope.launch { onResult(preferencesRepository.saveFavoritePlace(place, replacing)) }
+    }
+
+    fun deleteFavoritePlace(name: String) {
+        viewModelScope.launch { preferencesRepository.deleteFavoritePlace(name) }
+    }
+
+    /** Looking up where the car is, for a favorite place. */
+    sealed interface CarLocating {
+        data object Idle : CarLocating
+        data object Looking : CarLocating
+        /** Found: [destination] is the position, ready to be the place's destination. */
+        data class Found(val destination: String) : CarLocating
+        data object NotAllowed : CarLocating
+        data object Unavailable : CarLocating
+    }
+
+    private val _carLocating = MutableStateFlow<CarLocating>(CarLocating.Idle)
+    val carLocating: StateFlow<CarLocating> = _carLocating.asStateFlow()
+
+    /** Where the car is now: from Android if the app may ask, else from the Car Link while vehicle control is on. */
+    fun locateCar() {
+        if (_carLocating.value == CarLocating.Looking) return
+        _carLocating.value = CarLocating.Looking
+        viewModelScope.launch {
+            val link = carLink.takeIf { preferencesRepository.vehicleControlEnabled.first() }
+            _carLocating.value = when (val result = CarLocation.now(context, link)) {
+                is CarLocationResult.Found -> CarLocating.Found(result.position.destination)
+                CarLocationResult.NotAllowed -> CarLocating.NotAllowed
+                CarLocationResult.Unavailable -> CarLocating.Unavailable
+            }
+        }
+    }
+
+    fun clearCarLocating() {
+        if (_carLocating.value != CarLocating.Looking) _carLocating.value = CarLocating.Idle
+    }
 
     fun setWebSearchEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setWebSearchEnabled(enabled) }

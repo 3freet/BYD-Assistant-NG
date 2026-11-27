@@ -17,6 +17,7 @@ import com.bydassistantng.data.AssistantLanguage
 import com.bydassistantng.media.MediaControlTool
 import com.bydassistantng.media.PlayMediaTool
 import com.bydassistantng.navigation.NavigationTool
+import com.bydassistantng.navigation.SavePlaceTool
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
 import com.bydassistantng.vehicle.VolumeTool
@@ -65,7 +66,8 @@ private fun mediaActionText(context: Context, action: String): String = when (ac
  * [driveModes] offers changing the car's drive mode, like the exterior speaker only in a build that can; [driveModeOptions] are the
  * modes the car's route can be asked for (all of them on the Leopard's, Eco, Normal and Sport on the classic one).
  * [clusterScreen] offers putting an app on the instrument cluster (experimental: a car that has it, with its
- * switch on). */
+ * switch on). [favoritePlaces] are the names of the user's favorite places, which navigation can be asked for by name (their
+ * addresses stay on the car); saving where the car is now as one is always offered. */
 fun assistantTools(
     vehicleControlEnabled: Boolean,
     conversation: Boolean = false,
@@ -76,9 +78,11 @@ fun assistantTools(
     driveModes: Boolean = false,
     clusterScreen: Boolean = false,
     driveModeOptions: List<DriveMode> = DriveMode.entries,
+    favoritePlaces: List<String> = emptyList(),
 ): List<GeminiTool> {
     val declarations = buildList {
-        add(NavigationTool.declaration)
+        add(NavigationTool.declarationFor(favoritePlaces))
+        add(SavePlaceTool.declaration)
         add(AppLauncherTool.declaration)
         add(CloseAppTool.declaration)
         add(MediaControlTool.declaration)
@@ -135,6 +139,10 @@ object VehicleFunctionDispatcher {
     ): JsonObject {
         if (functionCall.name == NavigationTool.FUNCTION_NAME) {
             return NavigationTool.handle(context, functionCall, onDispatching)
+        }
+        if (functionCall.name == SavePlaceTool.FUNCTION_NAME) {
+            // The Car Link, which can read where the car is, only when the user has it on (it is the vehicle-control link).
+            return SavePlaceTool.handle(context, functionCall, carLink = reflectionController.takeIf { vehicleControlEnabled }, onDispatching)
         }
 
         if (functionCall.name == AppLauncherTool.FUNCTION_NAME) {
@@ -303,7 +311,8 @@ private val endConversationDeclaration = GeminiFunctionDeclaration(
  * [notOnThisCar] those the car does not have at all: asked for one, the assistant says so instead of a vague refusal
  * (see [SwitchedOffFeatures]); the same on every car and for every way a feature reaches it. [navigationAppPath] is where in
  * Settings the maps app that navigation opens is chosen ([SettingsPaths.navigationApp]): asked to use or remember another one,
- * the assistant says where it is chosen instead of promising what it cannot do. */
+ * the assistant says where it is chosen instead of promising what it cannot do. [favoritePlacesPath] is where the favorite
+ * places are kept ([SettingsPaths.favoritePlaces]): the assistant goes to them by name and never asks for their addresses. */
 fun voiceAssistantSystemPrompt(
     language: AssistantLanguage,
     conversation: Boolean = false,
@@ -314,6 +323,7 @@ fun voiceAssistantSystemPrompt(
     switchedOff: List<SwitchedOff> = emptyList(),
     notOnThisCar: List<SwitchableFeature> = emptyList(),
     navigationAppPath: String? = null,
+    favoritePlacesPath: String? = null,
 ): String {
     // A fixed language is a firm rule and is said twice (here and again at the very end): a model that listens in many
     // languages, and was told only once, tends to answer in whichever it heard, which an unclear word can make the wrong one.
@@ -399,6 +409,14 @@ fun voiceAssistantSystemPrompt(
             "one: when the user asks to navigate in a particular app, or to always use one, still call navigate_to if they " +
             "asked to go somewhere, and tell them it is chosen in $it; do not call remember for it."
     }.orEmpty()
+    // Favorite places go by name only: their addresses stay on the car, and a saved one beats an address in the memory.
+    val favoritePlacesInstruction = favoritePlacesPath?.let {
+        " The user's favorite places are kept on the car by name: to go to one, call navigate_to with its name as saved_place, " +
+            "never ask for or say its address, and use it rather than an address remembered about the user. When the user asks " +
+            "to save this place, or where the car is now, under a name, call save_place. When the user asks to go to a place " +
+            "by a name that is not saved (such as home), say they can save it by asking you to save where the car is under " +
+            "that name when they are there, or in $it."
+    }.orEmpty()
     // Opt-in: music with singing can reach the microphone, and the model takes sung words for someone speaking to it.
     val musicInstruction = if (musicHint) {
         " Music may be playing in the car. Sung words and other music are not the driver speaking to you: ignore them, and " +
@@ -406,7 +424,7 @@ fun voiceAssistantSystemPrompt(
     } else ""
     return "You are a concise voice assistant built into a car's head unit. $languageInstruction$dialectInstruction$indonesianInstruction " +
         "Keep replies short — they will be read aloud.$listeningHint When the user asks to be taken somewhere, call " +
-        "navigate_to with the place name instead of describing the route.$navigationAppInstruction When the user asks to open an app, call " +
+        "navigate_to with the place name instead of describing the route.$navigationAppInstruction$favoritePlacesInstruction When the user asks to open an app, call " +
         "open_app, and to close or quit an app, call close_app; for play, pause, next or previous on the music, " +
         "call media_control. When the user asks you to " +
         "control something in the car and a matching function is available, call that function instead " +

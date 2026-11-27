@@ -10,6 +10,7 @@ import com.bydassistantng.data.PreferencesRepository
 import com.bydassistantng.gemini.GeminiFunctionCall
 import com.bydassistantng.gemini.GeminiFunctionDeclaration
 import com.bydassistantng.gemini.GeminiSchema
+import com.bydassistantng.gemini.SettingsPaths
 import com.bydassistantng.R
 import com.bydassistantng.util.AppLanguage
 import com.bydassistantng.util.AppLogger
@@ -58,35 +59,97 @@ interface NavigationEntryPoint {
  */
 object NavigationTool {
     const val FUNCTION_NAME = "navigate_to"
+    private const val DESTINATION = "destination"
+    private const val SAVED_PLACE = "saved_place"
 
-    val declaration = GeminiFunctionDeclaration(
-        name = FUNCTION_NAME,
-        description = "Start turn-by-turn navigation to a place in the car's maps app. Use whenever the user asks " +
-            "to be taken, driven or navigated somewhere, or to start a route.",
-        parameters = GeminiSchema(
-            type = "OBJECT",
-            properties = mapOf(
-                "destination" to GeminiSchema(
-                    type = "STRING",
-                    description = "The place to go to, as a name or address the maps app can search for, e.g. " +
-                        "\"Central Station\" or \"City Library\". Use the name the user said; do not invent an address.",
+    private const val DESCRIPTION = "Start turn-by-turn navigation to a place in the car's maps app. Use whenever the user " +
+        "asks to be taken, driven or navigated somewhere, or to start a route."
+    private const val DESTINATION_DESCRIPTION = "The place to go to, as a name or address the maps app can search for, e.g. " +
+        "\"Central Station\" or \"City Library\". Use the name the user said; do not invent an address."
+
+    /** The declaration when the user has no favorite places. */
+    val declaration = declarationFor(emptyList())
+
+    /**
+     * The declaration for a session: with [favoritePlaces] (their names), the model may name one of them instead of a
+     * destination, and can only name one that exists. Their addresses are never in it.
+     */
+    fun declarationFor(favoritePlaces: List<String>): GeminiFunctionDeclaration {
+        val names = favoritePlaces.map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() }
+        if (names.isEmpty()) {
+            return GeminiFunctionDeclaration(
+                name = FUNCTION_NAME,
+                description = DESCRIPTION,
+                parameters = GeminiSchema(
+                    type = "OBJECT",
+                    properties = mapOf(DESTINATION to GeminiSchema(type = "STRING", description = DESTINATION_DESCRIPTION)),
+                    required = listOf(DESTINATION),
+                ),
+            )
+        }
+        return GeminiFunctionDeclaration(
+            name = FUNCTION_NAME,
+            description = "$DESCRIPTION To go to one of the user's favorite places, give $SAVED_PLACE instead of a destination.",
+            parameters = GeminiSchema(
+                type = "OBJECT",
+                properties = mapOf(
+                    DESTINATION to GeminiSchema(type = "STRING", description = "$DESTINATION_DESCRIPTION Leave it out when $SAVED_PLACE is given."),
+                    SAVED_PLACE to GeminiSchema(
+                        type = "STRING",
+                        enum = names,
+                        description = "One of the user's favorite places, by its name. Use it when the user asks to go to " +
+                            "it, by this name or in other words or another language (\"take me home\" is Home). Its address " +
+                            "is kept on the car: never ask for it or say it.",
+                    ),
                 ),
             ),
-            required = listOf("destination"),
-        ),
-    )
+        )
+    }
 
     /** @param onNavigating told the destination just before the maps app is opened, for status display. */
     suspend fun handle(context: Context, call: GeminiFunctionCall, onNavigating: suspend (String) -> Unit): JsonObject {
-        val destination = (call.args["destination"] as? JsonPrimitive)?.content?.trim().orEmpty()
-        if (destination.isEmpty()) return buildJsonObject {
+        val savedPlace = (call.args[SAVED_PLACE] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val destination = (call.args[DESTINATION] as? JsonPrimitive)?.content?.trim().orEmpty()
+        if (savedPlace.isEmpty() && destination.isEmpty()) return buildJsonObject {
             put("status", "error")
             put("error", "No destination was given")
         }
-        val safeDestination = destination.take(MAX_DESTINATION_LENGTH)
+        val target = resolve(favoritePlaces(context), savedPlace, destination) ?: return buildJsonObject {
+            put("status", "error")
+            put(
+                "error",
+                "There is no favorite place called \"$savedPlace\". The user can save one by asking you to save where the car " +
+                    "is now under that name, or in ${SettingsPaths.favoritePlaces(context)}.",
+            )
+        }
 
-        onNavigating(AppLanguage.string(context, R.string.banner_navigating, safeDestination))
-        return start(context, safeDestination, chosenApp(context))
+        onNavigating(AppLanguage.string(context, R.string.banner_navigating, target.label))
+        return start(context, target, chosenApp(context))
+    }
+
+    /** Where to go, with what to call it: a favorite place's name stands in for its destination everywhere but the link. */
+    internal data class Target(val label: String, val destination: String, val favorite: Boolean)
+
+    /**
+     * Where to go: the favorite place named [savedPlace]; else the one whose name is exactly the [destination] said (a
+     * place saved during this conversation is not among the session's names yet); else the [destination] as said. Null when
+     * a favorite place was named that does not exist and nothing else was given.
+     */
+    internal fun resolve(places: List<FavoritePlace>, savedPlace: String, destination: String): Target? {
+        FavoritePlaces.find(places, savedPlace)?.let { return Target(it.name, it.destination, favorite = true) }
+        FavoritePlaces.find(places, destination)?.let { return Target(it.name, it.destination, favorite = true) }
+        if (destination.isEmpty()) return null
+        val asSaid = destination.take(MAX_DESTINATION_LENGTH)
+        return Target(asSaid, asSaid, favorite = false)
+    }
+
+    /** The favorite places on the car; none when they cannot be read. */
+    private suspend fun favoritePlaces(context: Context): List<FavoritePlace> = try {
+        EntryPointAccessors.fromApplication(context.applicationContext, NavigationEntryPoint::class.java)
+            .preferences().favoritePlaces.first()
+    } catch (e: IOException) {
+        AppLogger.logError(TAG, "Could not read the favorite places", e)
+        emptyList()
     }
 
     /** The app chosen in Settings, by package; empty when none is (the first one found is used). */
@@ -98,8 +161,11 @@ object NavigationTool {
         ""
     }
 
-    private fun start(context: Context, destination: String, chosen: String): JsonObject {
-        val uri = navigationLink(destination)
+    private fun start(context: Context, target: Target, chosen: String): JsonObject {
+        val uri = navigationLink(target.destination)
+        // What the log and the assistant are told: a favorite place by its name only, never its address.
+        val destination = target.label
+        val what = if (target.favorite) "the favorite place \"$destination\"" else "\"$destination\""
         val apps = appsThatNavigate(context.packageManager, Intent(Intent.ACTION_VIEW, uri))
         if (chosen.isNotEmpty() && chosen !in apps) {
             AppLogger.log(TAG, "The navigation app chosen in Settings ($chosen) is not on the car or does not take the link; trying the others")
@@ -113,7 +179,7 @@ object NavigationTool {
             try {
                 context.startActivity(intent)
                 val how = if (packageName == chosen) ", chosen in Settings" else ""
-                AppLogger.log(TAG, "Started navigation to \"$destination\" in $appName ($packageName)$how")
+                AppLogger.log(TAG, "Started navigation to $what in $appName ($packageName)$how")
                 return buildJsonObject {
                     put("status", "ok")
                     // When the app chosen in Settings was passed over, the assistant can say so.
@@ -131,7 +197,7 @@ object NavigationTool {
             }
         }
         val found = apps.keys.joinToString().ifEmpty { "none" }
-        AppLogger.logError(TAG, "No navigation app could be opened for \"$destination\" (apps that take a navigation link: $found)")
+        AppLogger.logError(TAG, "No navigation app could be opened for $what (apps that take a navigation link: $found)")
         return buildJsonObject {
             put("status", "error")
             put("error", "No navigation app is available on this car")
@@ -178,7 +244,11 @@ object NavigationTool {
 
     private fun knownName(packageName: String): String? = KNOWN_NAVIGATION_APPS.firstOrNull { it.first == packageName }?.second
 
-    private fun navigationLink(destination: String): Uri = Uri.parse("google.navigation:q=${Uri.encode(destination)}&mode=d")
+    /** The link the maps apps take; coordinates go in as they are ("23.588000,58.382898"), anything else is encoded. */
+    private fun navigationLink(destination: String): Uri {
+        val query = if (FavoritePlaces.isCoordinates(destination)) destination.filterNot { it.isWhitespace() } else Uri.encode(destination)
+        return Uri.parse("google.navigation:q=$query&mode=d")
+    }
 
     /**
      * Every app that can be handed the navigation link, by package, with the name it shows, in the order the system

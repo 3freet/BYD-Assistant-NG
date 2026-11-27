@@ -18,6 +18,8 @@ enum class VehicleQuery(val id: String) {
     AIR_QUALITY("air_quality"),
     HEADREST_SOUND("headrest_sound"),
     DRIVER_PRESENCE("driver_presence"),
+    /** Where the car is: the newest location Android recorded, read by the Car Link (see CarLinkLocation). */
+    LOCATION("location"),
     ;
 
     companion object {

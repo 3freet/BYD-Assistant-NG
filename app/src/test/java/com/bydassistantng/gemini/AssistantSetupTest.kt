@@ -148,6 +148,28 @@ class AssistantSetupTest {
     }
 
     @Test
+    fun favoritePlacesAreOfferedByNameAndSavingThePlaceIsAlwaysOffered() {
+        val none = assistantTools(vehicleControlEnabled = false, conversation = true)
+        assertTrue("save_place" in names(none))
+        assertTrue(names(assistantTools(vehicleControlEnabled = false)).contains("save_place"))
+        val navigation = { tools: List<GeminiTool> -> tools.flatMap { it.functionDeclarations.orEmpty() }.single { it.name == "navigate_to" } }
+        assertNull(navigation(none).parameters?.properties?.get("saved_place"))
+        val some = assistantTools(vehicleControlEnabled = false, conversation = true, favoritePlaces = listOf("Home", "Work"))
+        assertEquals(listOf("Home", "Work"), navigation(some).parameters?.properties?.get("saved_place")?.enum)
+    }
+
+    @Test
+    fun theAssistantIsToldFavoritePlacesGoByNameOnly() {
+        val path = "Settings > Car > Favorite places"
+        val told = voiceAssistantSystemPrompt(AssistantLanguage.AUTO, conversation = true, favoritePlacesPath = path)
+        assertTrue(told.contains("never ask for or say its address"))
+        assertTrue(told.contains("rather than an address remembered about the user"))
+        assertTrue(told.contains("call save_place"))
+        assertTrue(told.contains("or in $path."))
+        assertFalse(voiceAssistantSystemPrompt(AssistantLanguage.AUTO, conversation = true).contains("favorite places"))
+    }
+
+    @Test
     fun searchGuidanceIsOnlyGivenWhenSearchIsOn() {
         assertTrue(voiceAssistantSystemPrompt(AssistantLanguage.AUTO, webSearch = true).contains("Google Search"))
         assertFalse(voiceAssistantSystemPrompt(AssistantLanguage.AUTO, webSearch = false).contains("Google Search"))

@@ -92,7 +92,7 @@ class ConversationController @Inject constructor(
             // Vehicle commands are only ever declared when the user has explicitly armed vehicle
             // control, so Gemini structurally cannot call one otherwise (navigation is always offered).
             val vehicleControlEnabled = preferencesRepository.vehicleControlEnabled.first()
-            val tools = assistantTools(vehicleControlEnabled)
+            val tools = assistantTools(vehicleControlEnabled, favoritePlaces = preferencesRepository.favoritePlaces.first().map { it.name })
 
             val encodeStartMs = SystemClock.elapsedRealtime()
             val audioBase64 = try {
@@ -114,7 +114,12 @@ class ConversationController @Inject constructor(
             val systemInstruction = GeminiContent(
                 parts = listOf(
                     GeminiPart(
-                        text = voiceAssistantSystemPrompt(language, switchedOff = switchedOff, navigationAppPath = SettingsPaths.navigationApp(context)),
+                        text = voiceAssistantSystemPrompt(
+                            language,
+                            switchedOff = switchedOff,
+                            navigationAppPath = SettingsPaths.navigationApp(context),
+                            favoritePlacesPath = SettingsPaths.favoritePlaces(context),
+                        ),
                     ),
                 ),
             )

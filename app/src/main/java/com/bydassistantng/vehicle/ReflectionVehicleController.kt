@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.IBinder
 import android.os.Parcel
 import android.util.Log
+import com.bydassistantng.navigation.CarLinkLocation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -62,6 +63,8 @@ class ReflectionVehicleController(private val context: Context) : VehicleControl
             )
             VehicleQuery.HEADREST_SOUND -> readHeadrestSound()
             VehicleQuery.DRIVER_PRESENCE -> readDriverPresence()
+            // Not the car's own services: Android's location report, which the shell this runs as may read.
+            VehicleQuery.LOCATION -> CarLinkLocation.read()
         }
     }
 

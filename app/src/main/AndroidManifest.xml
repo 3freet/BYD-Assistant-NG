@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Where the car is now, for saving a favorite place. Asked for only when the user presses "Use where the car is
+         now" in Settings; the voice command uses it once allowed. Never in the background on its own. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <!-- Never granted at install: only by `pm grant` over the loopback ADB connection (see
          WheelKeys.enableService), so the app can switch its own accessibility service on. -->
     <uses-permission
