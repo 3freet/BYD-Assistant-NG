@@ -191,6 +191,13 @@
     <string name="barge_desc">ابدأ الكلام أثناء حديثه فيتوقف ويستمع إليك. أوقفه إذا قاطع نفسه بالخطأ.</string>
     <string name="vehicle_title">التحكم بالسيارة</string>
     <string name="vehicle_desc">يتيح للمساعد تشغيل عناصر التحكم في السيارة فعلياً، لا الحديث عنها فقط.</string>
+    <string name="group_navigation">الملاحة</string>
+    <string name="navigation_app_title">تطبيق الملاحة</string>
+    <string name="navigation_app_hint">تطبيق الخرائط الذي يُفتح عندما تطلب الذهاب إلى مكان ما.</string>
+    <string name="navigation_app_automatic">تلقائي</string>
+    <string name="navigation_app_automatic_now">حاليًا: %1$s</string>
+    <string name="navigation_app_none">لا يوجد في هذه السيارة تطبيق خرائط يمكنه بدء الملاحة</string>
+    <string name="navigation_app_not_installed">غير موجود في السيارة الآن، لذا يُستخدم الخيار التلقائي</string>
     <string name="vehicle_warning_title">تفعيل التحكم بالسيارة؟</string>
     <string name="vehicle_warning_body">يتيح هذا للمساعد تشغيل المكيف والنوافذ والمقاعد وما شابهها عند طلبك. استخدمه أثناء التوقف أو عندما يكون ذلك آمنًا.</string>
     <string name="autostart_title">التشغيل التلقائي بعد إعادة التشغيل</string>

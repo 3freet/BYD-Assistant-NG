@@ -192,6 +192,13 @@
     <string name="barge_desc">Start speaking while it is talking and it stops and listens. Turn off if it ever cuts itself off by mistake.</string>
     <string name="vehicle_title">Vehicle control</string>
     <string name="vehicle_desc">Lets the assistant actually operate car controls, not just talk about them.</string>
+    <string name="group_navigation">Navigation</string>
+    <string name="navigation_app_title">Navigation app</string>
+    <string name="navigation_app_hint">The maps app that opens when you ask to be taken somewhere.</string>
+    <string name="navigation_app_automatic">Automatic</string>
+    <string name="navigation_app_automatic_now">Now: %1$s</string>
+    <string name="navigation_app_none">No maps app on this car can start a route</string>
+    <string name="navigation_app_not_installed">Not on this car now, so Automatic is used</string>
     <string name="vehicle_warning_title">Enable vehicle control?</string>
     <string name="vehicle_warning_body">This lets the assistant operate the car\'s climate, windows, seats and similar controls when you ask. Use it while parked or when it is safe to do so.</string>
     <string name="autostart_title">Auto-start after reboot</string>

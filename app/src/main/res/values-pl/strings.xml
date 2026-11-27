@@ -191,6 +191,13 @@
     <string name="barge_desc">Zacznij mówić, gdy on mówi, a przestanie i zacznie słuchać. Wyłącz, jeśli zdarza mu się przerywać własną wypowiedź przez pomyłkę.</string>
     <string name="vehicle_title">Sterowanie samochodem</string>
     <string name="vehicle_desc">Pozwala asystentowi naprawdę obsługiwać funkcje samochodu, a nie tylko o nich mówić.</string>
+    <string name="group_navigation">Nawigacja</string>
+    <string name="navigation_app_title">Aplikacja nawigacyjna</string>
+    <string name="navigation_app_hint">Aplikacja z mapami, która otwiera się, gdy prosisz o nawigację do jakiegoś miejsca.</string>
+    <string name="navigation_app_automatic">Automatycznie</string>
+    <string name="navigation_app_automatic_now">Teraz: %1$s</string>
+    <string name="navigation_app_none">W tym samochodzie nie ma aplikacji z mapami, która może wyznaczyć trasę</string>
+    <string name="navigation_app_not_installed">Nie ma jej teraz w samochodzie, więc używany jest wybór automatyczny</string>
     <string name="vehicle_warning_title">Włączyć sterowanie samochodem?</string>
     <string name="vehicle_warning_body">Asystent będzie mógł na Twoją prośbę obsługiwać klimatyzację, szyby, fotele i podobne funkcje samochodu. Używaj tego na postoju lub wtedy, gdy jest to bezpieczne.</string>
     <string name="autostart_title">Autostart po ponownym uruchomieniu</string>

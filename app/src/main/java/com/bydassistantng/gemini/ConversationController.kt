@@ -111,7 +111,13 @@ class ConversationController @Inject constructor(
             } else {
                 listOf(SwitchedOff(SwitchableFeature.VEHICLE_CONTROL, SettingsPaths.of(context, SwitchableFeature.VEHICLE_CONTROL)))
             }
-            val systemInstruction = GeminiContent(parts = listOf(GeminiPart(text = voiceAssistantSystemPrompt(language, switchedOff = switchedOff))))
+            val systemInstruction = GeminiContent(
+                parts = listOf(
+                    GeminiPart(
+                        text = voiceAssistantSystemPrompt(language, switchedOff = switchedOff, navigationAppPath = SettingsPaths.navigationApp(context)),
+                    ),
+                ),
+            )
             val history = mutableListOf(
                 GeminiContent(role = "user", parts = listOf(GeminiPart(inlineData = GeminiInlineData(mimeType, audioBase64)))),
             )

@@ -5,8 +5,9 @@ import com.bydassistantng.R
 import com.bydassistantng.util.AppLanguage
 
 /**
- * Where in Settings each [SwitchableFeature] is switched on, written with the names the screens carry **in the app's language**
- * (which is not always the language the assistant replies in), so that what the assistant tells the user is what they will read.
+ * Where in Settings each [SwitchableFeature] is switched on, and where the navigation app is chosen, written with the names
+ * the screens carry **in the app's language** (which is not always the language the assistant replies in), so that what the
+ * assistant tells the user is what they will read.
  *
  * It follows the Settings screens: each switch is in the section named here (see `SettingsScreen` and `SettingsPanesCar`). When a
  * switch moves, this moves with it.
@@ -34,5 +35,11 @@ object SettingsPaths {
             SwitchableFeature.LONG_TERM_MEMORY ->
                 compose(settings, text(R.string.settings_section_memory), text(R.string.memory_long_title))
         }
+    }
+
+    /** Where the maps app that navigation opens is chosen. */
+    fun navigationApp(context: Context): String {
+        fun text(id: Int) = AppLanguage.string(context, id)
+        return compose(text(R.string.settings_title), text(R.string.settings_section_car), text(R.string.navigation_app_title))
     }
 }

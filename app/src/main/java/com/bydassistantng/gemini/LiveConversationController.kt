@@ -791,6 +791,7 @@ class LiveConversationController @Inject constructor(
                         musicHint = musicHintForSession,
                         switchedOff = switchedOff,
                         notOnThisCar = notOnThisCar,
+                        navigationAppPath = SettingsPaths.navigationApp(context),
                     ),
                 ),
             ),

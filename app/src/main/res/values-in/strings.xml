@@ -195,6 +195,13 @@
     <string name="barge_desc">Mulailah berbicara saat asisten sedang berbicara, maka asisten akan berhenti dan mendengarkan. Nonaktifkan jika asisten pernah terpotong sendiri secara tidak sengaja.</string>
     <string name="vehicle_title">Kontrol kendaraan</string>
     <string name="vehicle_desc">Memungkinkan asisten benar-benar mengoperasikan kontrol mobil, bukan sekadar membicarakannya.</string>
+    <string name="group_navigation">Navigasi</string>
+    <string name="navigation_app_title">Aplikasi navigasi</string>
+    <string name="navigation_app_hint">Aplikasi peta yang dibuka saat Anda meminta diantar ke suatu tempat.</string>
+    <string name="navigation_app_automatic">Otomatis</string>
+    <string name="navigation_app_automatic_now">Saat ini: %1$s</string>
+    <string name="navigation_app_none">Tidak ada aplikasi peta di mobil ini yang dapat memulai navigasi</string>
+    <string name="navigation_app_not_installed">Saat ini tidak ada di mobil, jadi Otomatis yang digunakan</string>
     <string name="vehicle_warning_title">Aktifkan kontrol kendaraan?</string>
     <string name="vehicle_warning_body">Ini memungkinkan asisten mengoperasikan AC, jendela, jok, dan kontrol serupa saat Anda memintanya. Gunakan saat parkir atau saat aman untuk melakukannya.</string>
     <string name="autostart_title">Mulai otomatis setelah reboot</string>

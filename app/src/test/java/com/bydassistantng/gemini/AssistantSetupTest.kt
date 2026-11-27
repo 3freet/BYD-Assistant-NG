@@ -138,6 +138,16 @@ class AssistantSetupTest {
     }
 
     @Test
+    fun theAssistantIsToldWhereTheNavigationAppIsChosenInsteadOfRememberingOne() {
+        val path = "Settings > Car > Navigation app"
+        val told = voiceAssistantSystemPrompt(AssistantLanguage.AUTO, conversation = true, navigationAppPath = path)
+        assertTrue(told.contains("is chosen by the user in $path"))
+        assertTrue(told.contains("do not call remember for it"))
+        // Without a path (the debug model check), nothing is said about it.
+        assertFalse(voiceAssistantSystemPrompt(AssistantLanguage.AUTO, conversation = true).contains("is chosen by the user in"))
+    }
+
+    @Test
     fun searchGuidanceIsOnlyGivenWhenSearchIsOn() {
         assertTrue(voiceAssistantSystemPrompt(AssistantLanguage.AUTO, webSearch = true).contains("Google Search"))
         assertFalse(voiceAssistantSystemPrompt(AssistantLanguage.AUTO, webSearch = false).contains("Google Search"))

@@ -24,6 +24,8 @@ import com.bydassistantng.greeting.GreetingCoordinator
 import com.bydassistantng.memory.AddOutcome
 import com.bydassistantng.memory.MemoryFact
 import com.bydassistantng.memory.MemoryRepository
+import com.bydassistantng.navigation.NavigationApp
+import com.bydassistantng.navigation.NavigationTool
 import com.bydassistantng.service.WheelKeyService
 import com.bydassistantng.update.UpdateChannel
 import com.bydassistantng.update.UpdateManager
@@ -305,6 +307,20 @@ class SettingsViewModel @Inject constructor(
     fun setAssistantVoice(voiceName: String) {
         viewModelScope.launch { preferencesRepository.setAssistantVoice(voiceName) }
     }
+
+    /** The maps app navigation opens, by package; empty for automatic (the first one found). */
+    val navigationApp: StateFlow<String> = preferencesRepository.navigationApp
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    fun setNavigationApp(packageName: String) {
+        viewModelScope.launch { preferencesRepository.setNavigationApp(packageName) }
+    }
+
+    /** The maps apps on the car that navigation can open, looked up again each time: apps come and go. */
+    fun navigationApps(): List<NavigationApp> = NavigationTool.available(context)
+
+    /** The name shown for a chosen maps app, also when the car no longer has it. */
+    fun navigationAppName(packageName: String): String = NavigationTool.nameOf(context, packageName)
 
     fun setWebSearchEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setWebSearchEnabled(enabled) }

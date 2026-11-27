@@ -301,7 +301,9 @@ private val endConversationDeclaration = GeminiFunctionDeclaration(
  * when the assistant answers in Arabic; [webSearch] says Google Search is available this session.
  * [switchedOff] are the features this car has and the user has left off in Settings, with where to switch each on, and
  * [notOnThisCar] those the car does not have at all: asked for one, the assistant says so instead of a vague refusal
- * (see [SwitchedOffFeatures]); the same on every car and for every way a feature reaches it. */
+ * (see [SwitchedOffFeatures]); the same on every car and for every way a feature reaches it. [navigationAppPath] is where in
+ * Settings the maps app that navigation opens is chosen ([SettingsPaths.navigationApp]): asked to use or remember another one,
+ * the assistant says where it is chosen instead of promising what it cannot do. */
 fun voiceAssistantSystemPrompt(
     language: AssistantLanguage,
     conversation: Boolean = false,
@@ -311,6 +313,7 @@ fun voiceAssistantSystemPrompt(
     musicHint: Boolean = false,
     switchedOff: List<SwitchedOff> = emptyList(),
     notOnThisCar: List<SwitchableFeature> = emptyList(),
+    navigationAppPath: String? = null,
 ): String {
     // A fixed language is a firm rule and is said twice (here and again at the very end): a model that listens in many
     // languages, and was told only once, tends to answer in whichever it heard, which an unclear word can make the wrong one.
@@ -389,6 +392,13 @@ fun voiceAssistantSystemPrompt(
     }
     // Features the user can switch on in Settings, and those the car does not have: what to say when asked for one.
     val switchedOffInstruction = SwitchedOffFeatures.promptSection(switchedOff, notOnThisCar).orEmpty()
+    // navigate_to has no say in which app opens: the user chooses it in Settings. Without this, "always use <app>" would be
+    // saved with remember (its description invites a lasting preference) and then not kept.
+    val navigationAppInstruction = navigationAppPath?.let {
+        " The maps app that navigate_to opens is chosen by the user in $it, and you cannot change it or remember another " +
+            "one: when the user asks to navigate in a particular app, or to always use one, still call navigate_to if they " +
+            "asked to go somewhere, and tell them it is chosen in $it; do not call remember for it."
+    }.orEmpty()
     // Opt-in: music with singing can reach the microphone, and the model takes sung words for someone speaking to it.
     val musicInstruction = if (musicHint) {
         " Music may be playing in the car. Sung words and other music are not the driver speaking to you: ignore them, and " +
@@ -396,7 +406,7 @@ fun voiceAssistantSystemPrompt(
     } else ""
     return "You are a concise voice assistant built into a car's head unit. $languageInstruction$dialectInstruction$indonesianInstruction " +
         "Keep replies short — they will be read aloud.$listeningHint When the user asks to be taken somewhere, call " +
-        "navigate_to with the place name instead of describing the route. When the user asks to open an app, call " +
+        "navigate_to with the place name instead of describing the route.$navigationAppInstruction When the user asks to open an app, call " +
         "open_app, and to close or quit an app, call close_app; for play, pause, next or previous on the music, " +
         "call media_control. When the user asks you to " +
         "control something in the car and a matching function is available, call that function instead " +

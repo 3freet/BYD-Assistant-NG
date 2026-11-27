@@ -91,6 +91,7 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
         val VOICE_SENSITIVITY = intPreferencesKey("voice_sensitivity")
         val LEVEL_GATE_ENABLED = booleanPreferencesKey("level_gate_enabled")
         val MUSIC_HINT_ENABLED = booleanPreferencesKey("music_hint_enabled")
+        val NAVIGATION_APP = stringPreferencesKey("navigation_app")
     }
 
     val assistantLanguage: Flow<AssistantLanguage> = dataStore.data.map { prefs ->
@@ -176,6 +177,18 @@ class PreferencesRepository @Inject constructor(@ApplicationContext context: Con
     val musicHintEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.MUSIC_HINT_ENABLED] ?: false }
     suspend fun setMusicHintEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.MUSIC_HINT_ENABLED] = enabled }
+    }
+
+    /** The maps app navigation opens, by package; empty for automatic (the first one found, see NavigationTool). */
+    val navigationApp: Flow<String> = dataStore.data.map { it[Keys.NAVIGATION_APP] ?: "" }
+    suspend fun setNavigationApp(packageName: String) {
+        dataStore.edit { prefs ->
+            if (packageName.isEmpty()) {
+                prefs.remove(Keys.NAVIGATION_APP)
+            } else {
+                prefs[Keys.NAVIGATION_APP] = packageName
+            }
+        }
     }
 
     /** Whether the user can talk over the assistant to interrupt it. On by default; off makes the mic

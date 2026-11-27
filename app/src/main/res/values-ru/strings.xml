@@ -191,6 +191,13 @@
     <string name="barge_desc">Начните говорить, пока он говорит, — он замолчит и будет слушать. Выключите, если он иногда прерывает сам себя по ошибке.</string>
     <string name="vehicle_title">Управление автомобилем</string>
     <string name="vehicle_desc">Позволяет ассистенту действительно управлять функциями автомобиля, а не только рассказывать о них.</string>
+    <string name="group_navigation">Навигация</string>
+    <string name="navigation_app_title">Навигационное приложение</string>
+    <string name="navigation_app_hint">Приложение карт, которое открывается, когда вы просите проложить маршрут.</string>
+    <string name="navigation_app_automatic">Автоматически</string>
+    <string name="navigation_app_automatic_now">Сейчас: %1$s</string>
+    <string name="navigation_app_none">В этом автомобиле нет приложения карт, которое может проложить маршрут</string>
+    <string name="navigation_app_not_installed">Сейчас его нет в автомобиле, поэтому используется автоматический выбор</string>
     <string name="vehicle_warning_title">Включить управление автомобилем?</string>
     <string name="vehicle_warning_body">Ассистент сможет по вашей просьбе управлять климатом, окнами, сиденьями и другими подобными функциями автомобиля. Пользуйтесь этим на стоянке или когда это безопасно.</string>
     <string name="autostart_title">Автозапуск после перезагрузки</string>

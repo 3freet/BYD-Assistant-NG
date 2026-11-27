@@ -348,6 +348,7 @@ private fun searchIndex(viewModel: SettingsViewModel, hasCarVoice: Boolean): Lis
         add(SettingsCategory.SOUND, R.string.voice_channel_gain_title)
     }
     add(SettingsCategory.CAR, R.string.vehicle_title)
+    add(SettingsCategory.CAR, R.string.navigation_app_title)
     add(SettingsCategory.CAR, R.string.wheel_title)
     if (hasCarVoice) add(SettingsCategory.CAR, R.string.car_voice_title)
     if (DilinkAutoStart.isDilink()) add(SettingsCategory.CAR, R.string.autostart_title)

@@ -32,8 +32,9 @@ import com.bydassistantng.util.DilinkAutoStart
 import com.bydassistantng.util.WheelKeys
 
 /*
- * The pages about the car and about the app: what the assistant may operate, the steering-wheel button and the car's own
- * assistant, the experimental car features, and then the app's language, updates and support.
+ * The pages about the car and about the app: what the assistant may operate, the maps app it navigates with, the
+ * steering-wheel button and the car's own assistant, the experimental car features, and then the app's language, updates
+ * and support.
  */
 
 /** Whether the head unit's auto-start screen has been opened since the app was last updated (the app cannot see its answer). */
@@ -47,7 +48,7 @@ internal fun autoStartConfirmed(viewModel: SettingsViewModel): Boolean {
     return visitedAt > lastUpdateTime
 }
 
-/** Vehicle control, the steering-wheel button, the car's own assistant, auto-start, and the experimental car features. */
+/** Vehicle control, the navigation app, the steering-wheel button, the car's own assistant, auto-start, and the experimental car features. */
 @Composable
 internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup, carVoice: CarVoiceAssistantSetup) {
     val context = LocalContext.current
@@ -61,10 +62,14 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
     val driveModesEnabled by viewModel.driveModesEnabled.collectAsState()
     val clusterEnabled by viewModel.clusterScreenEnabled.collectAsState()
     val clusterKeepMapsDisabled by viewModel.clusterKeepMapsDisabled.collectAsState()
+    val navigationApp by viewModel.navigationApp.collectAsState()
+    val navigationAppName = remember(navigationApp) { if (navigationApp.isEmpty()) "" else viewModel.navigationAppName(navigationApp) }
+    val automaticLabel = stringResource(R.string.navigation_app_automatic)
     val autoStartConfirmed = autoStartConfirmed(viewModel)
     var showCarVoiceConfirm by remember { mutableStateOf(false) }
     var showVehicleControlWarning by remember { mutableStateOf(false) }
     var showVolumeChoice by remember { mutableStateOf(false) }
+    var showNavigationChoice by remember { mutableStateOf(false) }
     var confirmExterior by remember { mutableStateOf(false) }
     var confirmLive by remember { mutableStateOf(false) }
     var confirmDriveModes by remember { mutableStateOf(false) }
@@ -108,6 +113,30 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
                 showVolumeChoice = false
             },
             onDismiss = { showVolumeChoice = false },
+        )
+    }
+    if (showNavigationChoice) {
+        // Looked up when the list opens: maps apps come and go.
+        val apps = remember { viewModel.navigationApps() }
+        val automaticNote = apps.firstOrNull()?.let { stringResource(R.string.navigation_app_automatic_now, it.name) }
+            ?: stringResource(R.string.navigation_app_none)
+        val goneNote = stringResource(R.string.navigation_app_not_installed)
+        ChoiceDialog(
+            title = stringResource(R.string.navigation_app_title),
+            options = buildList {
+                add(ChoiceOption("", automaticLabel, automaticNote))
+                apps.forEach { add(ChoiceOption(it.packageName, it.name)) }
+                // The chosen app stays in the list after the car has lost it, so that the choice can be seen and changed.
+                if (navigationApp.isNotEmpty() && apps.none { it.packageName == navigationApp }) {
+                    add(ChoiceOption(navigationApp, navigationAppName, goneNote))
+                }
+            },
+            selectedKey = navigationApp,
+            onSelect = { key ->
+                viewModel.setNavigationApp(key)
+                showNavigationChoice = false
+            },
+            onDismiss = { showNavigationChoice = false },
         )
     }
     // The experimental features are only switched on after the user has read what that means.
@@ -169,6 +198,17 @@ internal fun CarPane(viewModel: SettingsViewModel, wheelSetup: WheelServiceSetup
                     checked = vehicleControlEnabled,
                     // Switching it back on says what it does first; switching it off needs no question.
                     onCheckedChange = { on -> if (on) showVehicleControlWarning = true else viewModel.setVehicleControlEnabled(false) },
+                )
+            }
+        }
+
+        SettingsSection(stringResource(R.string.group_navigation)) {
+            row {
+                ChoiceSetting(
+                    title = stringResource(R.string.navigation_app_title),
+                    subtitle = stringResource(R.string.navigation_app_hint),
+                    value = navigationAppName.ifEmpty { automaticLabel },
+                    onClick = { showNavigationChoice = true },
                 )
             }
         }
